@@ -1695,12 +1695,27 @@ function updateAllSelects() {
   if (taskEffortSelect) populateEffortSelect(taskEffortSelect);
   if (taskResourceSelect) populateUserSelect(taskResourceSelect);
   
+  // Update new requirement form selects
+  const requirementPrioritySelect = document.getElementById('requirement-priority');
+  const requirementStatusSelect = document.getElementById('requirement-status');
+  
+  if (requirementPrioritySelect) populatePrioritySelect(requirementPrioritySelect);
+  if (requirementStatusSelect) {
+    const statuses = storage.getStatuses();
+    const options = statuses.map(s => 
+      `<option value="${s.id}">${escapeHtml(s.label)}</option>`
+    ).join('');
+    requirementStatusSelect.innerHTML = '<option value="">None</option>' + options;
+  }
+  
   // Re-render views to update all dynamic selects
   if (currentView === 'projects') {
     renderProjects();
   } else if (currentView === 'tasks') {
     renderTasks();
     populateTaskFilters();
+  } else if (currentView === 'requirements') {
+    renderRequirements();
   }
 }
 

@@ -434,7 +434,8 @@ body {
    ============================================ */
 .projects-list,
 .milestones-list,
-.tasks-list {
+.tasks-list,
+.requirements-list {
   display: flex;
   flex-direction: column;
   gap: 1rem;
