@@ -197,6 +197,10 @@ function setupEventListeners() {
     elements.newTaskBtn.style.display = 'block';
     document.getElementById('task-title').value = '';
     document.getElementById('task-description').value = '';
+    document.getElementById('task-due-date').value = '';
+    if (window.taskDueDatePicker) {
+      window.taskDueDatePicker.clear();
+    }
   });
 
   elements.newTaskForm?.addEventListener('submit', (e) => {
@@ -469,8 +473,10 @@ function renderMilestoneCard(milestone, projectId) {
         <div class="project-card-content">
           <h3>${escapeHtml(milestone.title)}</h3>
           ${milestone.description ? `<p>${escapeHtml(milestone.description)}</p>` : ''}
+          ${milestone.priority ? `<span class="badge ${milestone.priority === 'high' ? 'badge-red' : milestone.priority === 'medium' ? 'badge-yellow' : 'badge-green'}">${milestone.priority.toUpperCase()}</span>` : ''}
           ${milestone.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(milestone.targetDate).toLocaleDateString()}</p>` : ''}
           ${milestone.dueDate ? `<p class="text-xs text-muted">Due: ${new Date(milestone.dueDate).toLocaleDateString()}</p>` : ''}
+          ${milestone.stakeholders && milestone.stakeholders.length > 0 ? `<div class="stakeholders-display">${milestone.stakeholders.map(s => `<span class="badge badge-gray">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
           <p class="text-xs text-muted">${completedTasks}/${totalTasks} tasks completed</p>
         </div>
         <div class="project-card-actions">
@@ -1313,7 +1319,13 @@ function attachMilestoneListeners(projectId, milestone) {
   document.querySelector(`.save-milestone[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
     const title = document.querySelector(`.edit-title[data-milestone-id="${milestoneId}"]`).value.trim();
     const description = document.querySelector(`.edit-description[data-milestone-id="${milestoneId}"]`).value.trim();
+    const priority = document.querySelector(`.edit-priority[data-milestone-id="${milestoneId}"]`)?.value || '';
     const targetDate = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`)?.value || '';
+    const dueDate = document.querySelector(`.edit-due-date[data-milestone-id="${milestoneId}"]`)?.value || '';
+    
+    // Get stakeholders from the DOM
+    const stakeholderTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
+    const stakeholders = Array.from(stakeholderTags).map(tag => tag.textContent.replace('×', '').trim()).filter(s => s);
     
     if (!title) return;
     
@@ -1321,7 +1333,10 @@ function attachMilestoneListeners(projectId, milestone) {
       storage.updateMilestone(projectId, milestoneId, { 
         title, 
         description: description || undefined,
-        targetDate: targetDate || undefined
+        priority: priority || undefined,
+        targetDate: targetDate || undefined,
+        dueDate: dueDate || undefined,
+        stakeholders: stakeholders.length > 0 ? stakeholders : undefined
       });
       state.editingMilestones.delete(milestoneId);
       loadProjects();
@@ -1329,6 +1344,66 @@ function attachMilestoneListeners(projectId, milestone) {
       console.error('Failed to update milestone:', error);
       alert('Failed to update milestone');
     }
+  });
+  
+  // Add stakeholder button
+  document.querySelector(`.add-stakeholder-btn[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
+    const input = document.querySelector(`.edit-stakeholder-input[data-milestone-id="${milestoneId}"]`);
+    const stakeholderName = input?.value.trim();
+    if (!stakeholderName) return;
+    
+    // Check if already exists
+    const existingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
+    const existingNames = Array.from(existingTags).map(tag => tag.textContent.replace('×', '').trim());
+    if (existingNames.includes(stakeholderName)) {
+      alert('Stakeholder already added');
+      return;
+    }
+    
+    // Add stakeholder tag
+    const stakeholdersList = document.querySelector(`.stakeholders-list[data-milestone-id="${milestoneId}"]`);
+    if (stakeholdersList) {
+      const tag = document.createElement('span');
+      tag.className = 'stakeholder-tag';
+      tag.setAttribute('data-milestone-id', milestoneId);
+      tag.setAttribute('data-index', existingTags.length);
+      tag.innerHTML = `
+        ${escapeHtml(stakeholderName)}
+        <button type="button" class="stakeholder-remove" data-milestone-id="${milestoneId}" data-index="${existingTags.length}">×</button>
+      `;
+      stakeholdersList.appendChild(tag);
+      
+      // Add remove listener
+      tag.querySelector('.stakeholder-remove')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        tag.remove();
+        // Update indices
+        const remainingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
+        remainingTags.forEach((t, idx) => {
+          t.setAttribute('data-index', idx);
+          t.querySelector('.stakeholder-remove')?.setAttribute('data-index', idx);
+        });
+      });
+    }
+    
+    input.value = '';
+  });
+  
+  // Remove stakeholder button (for existing tags)
+  document.querySelectorAll(`.stakeholder-remove[data-milestone-id="${milestoneId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tag = btn.closest('.stakeholder-tag');
+      if (tag) {
+        tag.remove();
+        // Update indices
+        const remainingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
+        remainingTags.forEach((t, idx) => {
+          t.setAttribute('data-index', idx);
+          t.querySelector('.stakeholder-remove')?.setAttribute('data-index', idx);
+        });
+      }
+    });
   });
   
   // Cancel edit milestone
