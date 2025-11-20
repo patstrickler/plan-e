@@ -679,6 +679,7 @@ function renderMilestones() {
   }
   
   elements.milestonesList.innerHTML = milestones.map(m => {
+    const isEditing = state.editingMilestones.has(m.id);
     const totalTasks = m.tasks ? m.tasks.length : 0;
     const notStartedTasks = m.tasks ? m.tasks.filter(t => t.status === 'not-started' || !t.status).length : 0;
     const inProgressTasks = m.tasks ? m.tasks.filter(t => t.status === 'in-progress').length : 0;
@@ -688,26 +689,237 @@ function renderMilestones() {
     const inProgressPercent = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
     const completedPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     
-    return `
-      <div class="milestone-card">
-        <h3>${escapeHtml(m.title)}</h3>
-        <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
-        ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
-        ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
-        <div class="milestone-progress">
-          <div class="progress-bar-container">
-            ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
-            ${inProgressPercent > 0 ? `<div class="progress-bar-segment progress-bar-in-progress" style="width: ${inProgressPercent}%"></div>` : ''}
-            ${completedPercent > 0 ? `<div class="progress-bar-segment progress-bar-completed" style="width: ${completedPercent}%"></div>` : ''}
+    if (isEditing) {
+      const targetDateValue = m.targetDate ? new Date(m.targetDate).toISOString().split('T')[0] : '';
+      const dueDateValue = m.dueDate ? new Date(m.dueDate).toISOString().split('T')[0] : '';
+      const stakeholdersList = m.stakeholders || [];
+      const stakeholdersHtml = stakeholdersList.map((stakeholder, idx) => `
+        <span class="stakeholder-tag" data-milestone-id="${m.id}" data-index="${idx}">
+          ${escapeHtml(stakeholder)}
+          <button type="button" class="stakeholder-remove" data-milestone-id="${m.id}" data-index="${idx}">×</button>
+        </span>
+      `).join('');
+      
+      return `
+        <div class="milestone-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
+          <div class="milestone-edit-form">
+            <input type="text" class="edit-title" value="${escapeHtml(m.title)}" data-milestone-id="${m.id}" placeholder="Milestone title" required>
+            <textarea class="edit-description" data-milestone-id="${m.id}" placeholder="Description (optional)" rows="2">${escapeHtml(m.description || '')}</textarea>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label>Priority</label>
+                <select class="edit-priority" data-milestone-id="${m.id}">
+                  <option value="">None</option>
+                  <option value="low" ${m.priority === 'low' ? 'selected' : ''}>Low</option>
+                  <option value="medium" ${m.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                  <option value="high" ${m.priority === 'high' ? 'selected' : ''}>High</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Target Date</label>
+                <input type="date" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${m.id}">
+              </div>
+              <div class="form-group">
+                <label>Due Date</label>
+                <input type="date" class="edit-due-date" value="${dueDateValue}" data-milestone-id="${m.id}">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>Stakeholders</label>
+              <div class="stakeholders-list" data-milestone-id="${m.id}">
+                ${stakeholdersHtml}
+              </div>
+              <div class="stakeholder-input-row">
+                <input type="text" class="edit-stakeholder-input" data-milestone-id="${m.id}" placeholder="Enter stakeholder name">
+                <button type="button" class="btn btn-secondary btn-sm add-stakeholder-btn" data-milestone-id="${m.id}">Add</button>
+              </div>
+            </div>
+            
+            <div class="form-actions">
+              <button class="btn btn-primary btn-sm save-milestone" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Save</button>
+              <button class="btn btn-secondary btn-sm cancel-edit-milestone" data-milestone-id="${m.id}">Cancel</button>
+            </div>
           </div>
-          <div class="progress-text">
-            <span>${completedTasks} complete, ${inProgressTasks} in progress, ${notStartedTasks} not started</span>
-            <span class="progress-percentage">${completedPercent}%</span>
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="milestone-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
+        <div class="project-card-header">
+          <div class="project-card-content">
+            <h3>${escapeHtml(m.title)}</h3>
+            <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
+            ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
+            ${m.priority ? `<span class="badge ${m.priority === 'high' ? 'badge-red' : m.priority === 'medium' ? 'badge-yellow' : 'badge-green'}">${m.priority.toUpperCase()}</span>` : ''}
+            ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
+            ${m.dueDate ? `<p class="text-xs text-muted">Due: ${new Date(m.dueDate).toLocaleDateString()}</p>` : ''}
+            ${m.stakeholders && m.stakeholders.length > 0 ? `<div class="stakeholders-display">${m.stakeholders.map(s => `<span class="badge badge-gray">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
+            <div class="milestone-progress">
+              <div class="progress-bar-container">
+                ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
+                ${inProgressPercent > 0 ? `<div class="progress-bar-segment progress-bar-in-progress" style="width: ${inProgressPercent}%"></div>` : ''}
+                ${completedPercent > 0 ? `<div class="progress-bar-segment progress-bar-completed" style="width: ${completedPercent}%"></div>` : ''}
+              </div>
+              <div class="progress-text">
+                <span>${completedTasks} complete, ${inProgressTasks} in progress, ${notStartedTasks} not started</span>
+                <span class="progress-percentage">${completedPercent}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="project-card-actions">
+            <button class="btn btn-blue btn-xs edit-milestone" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Edit</button>
+            <button class="btn btn-red btn-xs delete-milestone" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Delete</button>
           </div>
         </div>
       </div>
     `;
   }).join('');
+  
+  // Attach listeners for milestones in list view
+  milestones.forEach(m => {
+    attachMilestoneListenersForView(m);
+  });
+}
+
+function attachMilestoneListenersForView(milestone) {
+  const milestoneId = milestone.id;
+  const projectId = milestone.projectId;
+  
+  // Edit milestone
+  document.querySelector(`.edit-milestone[data-milestone-id="${milestoneId}"][data-project-id="${projectId}"]`)?.addEventListener('click', () => {
+    state.editingMilestones.add(milestoneId);
+    renderMilestones();
+    // Initialize date picker for milestone dates after rendering
+    setTimeout(() => {
+      const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
+      const dueDateInput = document.querySelector(`.edit-due-date[data-milestone-id="${milestoneId}"]`);
+      if (targetDateInput && !targetDateInput.flatpickr) {
+        flatpickr(targetDateInput, {
+          dateFormat: 'Y-m-d',
+          allowInput: true,
+        });
+      }
+      if (dueDateInput && !dueDateInput.flatpickr) {
+        flatpickr(dueDateInput, {
+          dateFormat: 'Y-m-d',
+          allowInput: true,
+        });
+      }
+    }, 0);
+  });
+  
+  // Save milestone
+  document.querySelector(`.save-milestone[data-milestone-id="${milestoneId}"][data-project-id="${projectId}"]`)?.addEventListener('click', () => {
+    const title = document.querySelector(`.edit-title[data-milestone-id="${milestoneId}"]`).value.trim();
+    const description = document.querySelector(`.edit-description[data-milestone-id="${milestoneId}"]`).value.trim();
+    const priority = document.querySelector(`.edit-priority[data-milestone-id="${milestoneId}"]`)?.value || '';
+    const targetDate = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`)?.value || '';
+    const dueDate = document.querySelector(`.edit-due-date[data-milestone-id="${milestoneId}"]`)?.value || '';
+    
+    // Get stakeholders from the DOM
+    const stakeholderTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
+    const stakeholders = Array.from(stakeholderTags).map(tag => tag.textContent.replace('×', '').trim()).filter(s => s);
+    
+    if (!title) return;
+    
+    try {
+      storage.updateMilestone(projectId, milestoneId, { 
+        title, 
+        description: description || undefined,
+        priority: priority || undefined,
+        targetDate: targetDate || undefined,
+        dueDate: dueDate || undefined,
+        stakeholders: stakeholders.length > 0 ? stakeholders : undefined
+      });
+      state.editingMilestones.delete(milestoneId);
+      renderMilestones();
+    } catch (error) {
+      console.error('Failed to update milestone:', error);
+      alert('Failed to update milestone');
+    }
+  });
+  
+  // Cancel edit milestone
+  document.querySelector(`.cancel-edit-milestone[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
+    state.editingMilestones.delete(milestoneId);
+    renderMilestones();
+  });
+  
+  // Delete milestone
+  document.querySelector(`.delete-milestone[data-milestone-id="${milestoneId}"][data-project-id="${projectId}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${milestone.title}"?`)) return;
+    
+    try {
+      storage.deleteMilestone(projectId, milestoneId);
+      renderMilestones();
+    } catch (error) {
+      console.error('Failed to delete milestone:', error);
+      alert('Failed to delete milestone');
+    }
+  });
+  
+  // Add stakeholder button
+  document.querySelector(`.add-stakeholder-btn[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
+    const input = document.querySelector(`.edit-stakeholder-input[data-milestone-id="${milestoneId}"]`);
+    const stakeholderName = input?.value.trim();
+    if (!stakeholderName) return;
+    
+    // Check if already exists
+    const existingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
+    const existingNames = Array.from(existingTags).map(tag => tag.textContent.replace('×', '').trim());
+    if (existingNames.includes(stakeholderName)) {
+      alert('Stakeholder already added');
+      return;
+    }
+    
+    // Add stakeholder tag
+    const stakeholdersList = document.querySelector(`.stakeholders-list[data-milestone-id="${milestoneId}"]`);
+    if (stakeholdersList) {
+      const tag = document.createElement('span');
+      tag.className = 'stakeholder-tag';
+      tag.setAttribute('data-milestone-id', milestoneId);
+      tag.setAttribute('data-index', existingTags.length);
+      tag.innerHTML = `
+        ${escapeHtml(stakeholderName)}
+        <button type="button" class="stakeholder-remove" data-milestone-id="${milestoneId}" data-index="${existingTags.length}">×</button>
+      `;
+      stakeholdersList.appendChild(tag);
+      
+      // Add remove listener
+      tag.querySelector('.stakeholder-remove')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        tag.remove();
+        // Update indices
+        const remainingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
+        remainingTags.forEach((t, idx) => {
+          t.setAttribute('data-index', idx);
+          t.querySelector('.stakeholder-remove')?.setAttribute('data-index', idx);
+        });
+      });
+    }
+    
+    input.value = '';
+  });
+  
+  // Remove stakeholder button (for existing tags)
+  document.querySelectorAll(`.stakeholder-remove[data-milestone-id="${milestoneId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tag = btn.closest('.stakeholder-tag');
+      if (tag) {
+        tag.remove();
+        // Update indices
+        const remainingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
+        remainingTags.forEach((t, idx) => {
+          t.setAttribute('data-index', idx);
+          t.querySelector('.stakeholder-remove')?.setAttribute('data-index', idx);
+        });
+      }
+    });
+  });
 }
 
 function renderTasks() {
