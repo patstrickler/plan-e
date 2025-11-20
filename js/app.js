@@ -1365,6 +1365,7 @@ function attachMilestoneListeners(projectId, milestone) {
       flatpickr(milestoneDateInput, {
         dateFormat: 'Y-m-d',
         clickOpens: true,
+        allowInput: false,
       });
     }
     
@@ -1374,6 +1375,7 @@ function attachMilestoneListeners(projectId, milestone) {
       flatpickr(taskDateInput, {
         dateFormat: 'Y-m-d',
         clickOpens: true,
+        allowInput: false,
       });
     }
   }, 100);
