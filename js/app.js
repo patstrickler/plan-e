@@ -46,31 +46,10 @@ const elements = {
   effortLevelsList: document.getElementById('effort-levels-list'),
 };
 
-// Color palette matching the theme
-const THEME_COLORS = [
-  // Blues
-  '#3b82f6', '#2563eb', '#1d4ed8', '#60a5fa',
-  // Greens
-  '#10b981', '#059669', '#047857', '#34d399',
-  // Oranges/Yellows
-  '#f59e0b', '#eab308', '#d97706', '#fbbf24',
-  // Reds
-  '#ef4444', '#dc2626', '#b91c1c', '#f87171',
-  // Purples
-  '#8b5cf6', '#7c3aed', '#6d28d9', '#a78bfa',
-  // Teals
-  '#14b8a6', '#0d9488', '#0f766e', '#5eead4',
-  // Grays
-  '#71717a', '#52525b', '#3f3f46', '#a1a1aa',
-  // Pinks
-  '#ec4899', '#db2777', '#be185d', '#f472b6',
-];
-
 // Initialize app
 function init() {
   loadProjects();
   setupEventListeners();
-  initializeColorPickers();
   updateAllSelects(); // Initialize all selects with metadata
   hideLoading();
 }
@@ -79,138 +58,6 @@ function hideLoading() {
   if (elements.loading) {
     elements.loading.style.display = 'none';
   }
-}
-
-// Initialize color pickers with preset swatches
-function initializeColorPickers() {
-  // Initialize add forms
-  initColorPicker('priority-color-swatches', 'priority-color', 'priority-color-text');
-  initColorPicker('status-color-swatches', 'status-color', 'status-color-text');
-  initColorPicker('effort-color-swatches', 'effort-color', 'effort-color-text');
-}
-
-function initColorPicker(swatchesContainerId, hiddenInputId, textInputId) {
-  const container = document.getElementById(swatchesContainerId);
-  const hiddenInput = document.getElementById(hiddenInputId);
-  const textInput = document.getElementById(textInputId);
-  
-  if (!container || !hiddenInput || !textInput) return;
-  
-  // Clear existing swatches
-  container.innerHTML = '';
-  
-  // Create swatches for each color
-  THEME_COLORS.forEach(color => {
-    const swatch = document.createElement('button');
-    swatch.type = 'button';
-    swatch.className = 'color-picker-swatch';
-    swatch.style.backgroundColor = color;
-    swatch.dataset.color = color;
-    swatch.setAttribute('aria-label', `Select color ${color}`);
-    
-    swatch.addEventListener('click', () => {
-      // Remove selected class from all swatches
-      container.querySelectorAll('.color-picker-swatch').forEach(s => {
-        s.classList.remove('selected');
-      });
-      
-      // Add selected class to clicked swatch
-      swatch.classList.add('selected');
-      
-      // Update hidden input and text input
-      hiddenInput.value = color;
-      textInput.value = color;
-      
-      // Trigger change event
-      hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
-      textInput.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    
-    container.appendChild(swatch);
-  });
-  
-  // Sync text input changes to hidden input and swatches
-  textInput.addEventListener('input', (e) => {
-    const colorValue = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-      hiddenInput.value = colorValue;
-      updateSelectedSwatch(container, colorValue);
-    }
-  });
-  
-  // Update selected swatch on initial load
-  const currentColor = hiddenInput.value || textInput.value || '#71717a';
-  if (/^#[0-9A-Fa-f]{6}$/.test(currentColor)) {
-    updateSelectedSwatch(container, currentColor);
-  }
-}
-
-function updateSelectedSwatch(container, color) {
-  // Remove selected from all
-  container.querySelectorAll('.color-picker-swatch').forEach(s => {
-    s.classList.remove('selected');
-  });
-  
-  // Find matching swatch and select it
-  const swatch = container.querySelector(`[data-color="${color.toLowerCase()}"]`);
-  if (swatch) {
-    swatch.classList.add('selected');
-  }
-}
-
-// Create color picker for edit forms
-function createEditColorPicker(containerId, hiddenInputId, textInputId, currentColor) {
-  const container = document.createElement('div');
-  container.className = 'color-picker-swatches';
-  container.id = containerId;
-  
-  const hiddenInput = document.createElement('input');
-  hiddenInput.type = 'hidden';
-  hiddenInput.id = hiddenInputId;
-  hiddenInput.value = currentColor || '#71717a';
-  
-  const textInput = document.createElement('input');
-  textInput.type = 'text';
-  textInput.className = 'color-text-input';
-  textInput.id = textInputId;
-  textInput.value = currentColor || '#71717a';
-  textInput.placeholder = '#71717a';
-  
-  // Create swatches
-  THEME_COLORS.forEach(color => {
-    const swatch = document.createElement('button');
-    swatch.type = 'button';
-    swatch.className = 'color-picker-swatch';
-    swatch.style.backgroundColor = color;
-    swatch.dataset.color = color;
-    swatch.setAttribute('aria-label', `Select color ${color}`);
-    
-    if (color.toLowerCase() === (currentColor || '#71717a').toLowerCase()) {
-      swatch.classList.add('selected');
-    }
-    
-    swatch.addEventListener('click', () => {
-      container.querySelectorAll('.color-picker-swatch').forEach(s => {
-        s.classList.remove('selected');
-      });
-      swatch.classList.add('selected');
-      hiddenInput.value = color;
-      textInput.value = color;
-    });
-    
-    container.appendChild(swatch);
-  });
-  
-  // Sync text input
-  textInput.addEventListener('input', (e) => {
-    const colorValue = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-      hiddenInput.value = colorValue;
-      updateSelectedSwatch(container, colorValue);
-    }
-  });
-  
-  return { container, hiddenInput, textInput };
 }
 
 function loadProjects() {
@@ -339,7 +186,16 @@ function setupEventListeners() {
     const targetDateInput = document.getElementById('milestone-target-date');
     const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
     
-    if (!title || !projectId) return;
+    // Check form validity before proceeding
+    if (!elements.newMilestoneForm.checkValidity()) {
+      elements.newMilestoneForm.reportValidity();
+      return;
+    }
+    
+    if (!title || !projectId) {
+      alert('Please fill in all required fields.');
+      return;
+    }
     
     try {
       storage.createMilestone(projectId, { 
@@ -355,7 +211,7 @@ function setupEventListeners() {
       renderMilestones();
     } catch (error) {
       console.error('Failed to create milestone:', error);
-      alert('Failed to create milestone');
+      alert('Failed to create milestone: ' + error.message);
     }
   });
 
@@ -2268,18 +2124,14 @@ function renderPriorities() {
     
     if (isEditing) {
       const currentColor = priority.color || '#71717a';
-      const swatchId = `edit-priority-swatches-${priority.id}`;
-      const hiddenInputId = `edit-priority-color-${priority.id}`;
-      const textInputId = `edit-priority-color-text-${priority.id}`;
       return `
         <div class="metadata-item-editing" data-priority-id="${priority.id}">
           <input type="text" class="edit-priority-label" value="${escapeHtml(priority.label)}" data-priority-id="${priority.id}" placeholder="Label">
           <div class="form-group">
             <label>Color</label>
-            <div class="color-picker-container">
-              <div class="color-picker-swatches" id="${swatchId}"></div>
-              <input type="hidden" class="edit-priority-color" id="${hiddenInputId}" value="${currentColor}" data-priority-id="${priority.id}">
-              <input type="text" class="edit-priority-color-text color-text-input" id="${textInputId}" value="${currentColor}" placeholder="#71717a" data-priority-id="${priority.id}">
+            <div class="color-input-group">
+              <input type="color" class="edit-priority-color" value="${currentColor}" data-priority-id="${priority.id}">
+              <input type="text" class="edit-priority-color-text color-text-input" value="${currentColor}" placeholder="#71717a" data-priority-id="${priority.id}">
             </div>
           </div>
           <div class="metadata-item-editing-actions">
@@ -2332,18 +2184,14 @@ function renderStatuses() {
     
     if (isEditing) {
       const currentColor = status.color || '#71717a';
-      const swatchId = `edit-status-swatches-${status.id}`;
-      const hiddenInputId = `edit-status-color-${status.id}`;
-      const textInputId = `edit-status-color-text-${status.id}`;
       return `
         <div class="metadata-item-editing" data-status-id="${status.id}">
           <input type="text" class="edit-status-label" value="${escapeHtml(status.label)}" data-status-id="${status.id}" placeholder="Label">
           <div class="form-group">
             <label>Color</label>
-            <div class="color-picker-container">
-              <div class="color-picker-swatches" id="${swatchId}"></div>
-              <input type="hidden" class="edit-status-color" id="${hiddenInputId}" value="${currentColor}" data-status-id="${status.id}">
-              <input type="text" class="edit-status-color-text color-text-input" id="${textInputId}" value="${currentColor}" placeholder="#71717a" data-status-id="${status.id}">
+            <div class="color-input-group">
+              <input type="color" class="edit-status-color" value="${currentColor}" data-status-id="${status.id}">
+              <input type="text" class="edit-status-color-text color-text-input" value="${currentColor}" placeholder="#71717a" data-status-id="${status.id}">
             </div>
           </div>
           <div class="metadata-item-editing-actions">
@@ -2396,18 +2244,14 @@ function renderEffortLevels() {
     
     if (isEditing) {
       const currentColor = effort.color || '#71717a';
-      const swatchId = `edit-effort-swatches-${effort.id}`;
-      const hiddenInputId = `edit-effort-color-${effort.id}`;
-      const textInputId = `edit-effort-color-text-${effort.id}`;
       return `
         <div class="metadata-item-editing" data-effort-id="${effort.id}">
           <input type="text" class="edit-effort-label" value="${escapeHtml(effort.label)}" data-effort-id="${effort.id}" placeholder="Label">
           <div class="form-group">
             <label>Color</label>
-            <div class="color-picker-container">
-              <div class="color-picker-swatches" id="${swatchId}"></div>
-              <input type="hidden" class="edit-effort-color" id="${hiddenInputId}" value="${currentColor}" data-effort-id="${effort.id}">
-              <input type="text" class="edit-effort-color-text color-text-input" id="${textInputId}" value="${currentColor}" placeholder="#71717a" data-effort-id="${effort.id}">
+            <div class="color-input-group">
+              <input type="color" class="edit-effort-color" value="${currentColor}" data-effort-id="${effort.id}">
+              <input type="text" class="edit-effort-color-text color-text-input" value="${currentColor}" placeholder="#71717a" data-effort-id="${effort.id}">
             </div>
           </div>
           <div class="metadata-item-editing-actions">
@@ -2586,7 +2430,6 @@ function setupSettingsEventListeners() {
     document.getElementById('priority-label').value = '';
     document.getElementById('priority-color').value = '#71717a';
     document.getElementById('priority-color-text').value = '#71717a';
-    updateSelectedSwatch(document.getElementById('priority-color-swatches'), '#71717a');
   });
 
   document.getElementById('add-priority-form')?.addEventListener('submit', (e) => {
@@ -2624,7 +2467,6 @@ function setupSettingsEventListeners() {
     document.getElementById('status-label').value = '';
     document.getElementById('status-color').value = '#71717a';
     document.getElementById('status-color-text').value = '#71717a';
-    updateSelectedSwatch(document.getElementById('status-color-swatches'), '#71717a');
   });
 
   document.getElementById('add-status-form')?.addEventListener('submit', (e) => {
@@ -2656,7 +2498,45 @@ function setupSettingsEventListeners() {
     document.getElementById('effort-label').focus();
   });
   
-  // Color pickers are initialized in initializeColorPickers()
+  // Color picker sync for add forms
+  // Priority color sync
+  document.getElementById('priority-color')?.addEventListener('input', (e) => {
+    const textInput = document.getElementById('priority-color-text');
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.getElementById('priority-color-text')?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.getElementById('priority-color');
+      if (colorInput) colorInput.value = colorValue;
+    }
+  });
+  
+  // Status color sync
+  document.getElementById('status-color')?.addEventListener('input', (e) => {
+    const textInput = document.getElementById('status-color-text');
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.getElementById('status-color-text')?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.getElementById('status-color');
+      if (colorInput) colorInput.value = colorValue;
+    }
+  });
+  
+  // Effort color sync
+  document.getElementById('effort-color')?.addEventListener('input', (e) => {
+    const textInput = document.getElementById('effort-color-text');
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.getElementById('effort-color-text')?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.getElementById('effort-color');
+      if (colorInput) colorInput.value = colorValue;
+    }
+  });
 
   document.getElementById('cancel-effort-btn')?.addEventListener('click', () => {
     document.getElementById('add-effort-form').style.display = 'none';
@@ -2664,7 +2544,6 @@ function setupSettingsEventListeners() {
     document.getElementById('effort-label').value = '';
     document.getElementById('effort-color').value = '#71717a';
     document.getElementById('effort-color-text').value = '#71717a';
-    updateSelectedSwatch(document.getElementById('effort-color-swatches'), '#71717a');
   });
 
   document.getElementById('add-effort-form')?.addEventListener('submit', (e) => {
@@ -2739,18 +2618,11 @@ function attachPriorityListeners(priority) {
   document.querySelector(`.edit-priority-item[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
     state.editingMetadata.set(`priority-${priorityId}`, true);
     renderSettings();
-    // Initialize color picker after rendering
-    setTimeout(() => {
-      const swatchId = `edit-priority-swatches-${priorityId}`;
-      const hiddenInputId = `edit-priority-color-${priorityId}`;
-      const textInputId = `edit-priority-color-text-${priorityId}`;
-      initColorPicker(swatchId, hiddenInputId, textInputId);
-    }, 0);
   });
   
   document.querySelector(`.save-priority[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-priority-label[data-priority-id="${priorityId}"]`).value.trim();
-    const colorInput = document.getElementById(`edit-priority-color-${priorityId}`);
+    const colorInput = document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`);
     const color = colorInput ? colorInput.value : (priority.color || '#71717a');
     
     if (!label) return;
@@ -2763,6 +2635,19 @@ function attachPriorityListeners(priority) {
     } catch (error) {
       console.error('Failed to update priority:', error);
       alert('Failed to update priority');
+    }
+  });
+  
+  // Sync color picker and text input in edit mode
+  document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`)?.addEventListener('input', (e) => {
+    const textInput = document.querySelector(`.edit-priority-color-text[data-priority-id="${priorityId}"]`);
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.querySelector(`.edit-priority-color-text[data-priority-id="${priorityId}"]`)?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`);
+      if (colorInput) colorInput.value = colorValue;
     }
   });
   
@@ -2791,18 +2676,11 @@ function attachStatusListeners(status) {
   document.querySelector(`.edit-status-item[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
     state.editingMetadata.set(`status-${statusId}`, true);
     renderSettings();
-    // Initialize color picker after rendering
-    setTimeout(() => {
-      const swatchId = `edit-status-swatches-${statusId}`;
-      const hiddenInputId = `edit-status-color-${statusId}`;
-      const textInputId = `edit-status-color-text-${statusId}`;
-      initColorPicker(swatchId, hiddenInputId, textInputId);
-    }, 0);
   });
   
   document.querySelector(`.save-status[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-status-label[data-status-id="${statusId}"]`).value.trim();
-    const colorInput = document.getElementById(`edit-status-color-${statusId}`);
+    const colorInput = document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`);
     const color = colorInput ? colorInput.value : (status.color || '#71717a');
     
     if (!label) return;
@@ -2815,6 +2693,19 @@ function attachStatusListeners(status) {
     } catch (error) {
       console.error('Failed to update status:', error);
       alert('Failed to update status');
+    }
+  });
+  
+  // Sync color picker and text input in edit mode
+  document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`)?.addEventListener('input', (e) => {
+    const textInput = document.querySelector(`.edit-status-color-text[data-status-id="${statusId}"]`);
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.querySelector(`.edit-status-color-text[data-status-id="${statusId}"]`)?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`);
+      if (colorInput) colorInput.value = colorValue;
     }
   });
   
@@ -2843,18 +2734,11 @@ function attachEffortListeners(effort) {
   document.querySelector(`.edit-effort-item[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
     state.editingMetadata.set(`effort-${effortId}`, true);
     renderSettings();
-    // Initialize color picker after rendering
-    setTimeout(() => {
-      const swatchId = `edit-effort-swatches-${effortId}`;
-      const hiddenInputId = `edit-effort-color-${effortId}`;
-      const textInputId = `edit-effort-color-text-${effortId}`;
-      initColorPicker(swatchId, hiddenInputId, textInputId);
-    }, 0);
   });
   
   document.querySelector(`.save-effort[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-effort-label[data-effort-id="${effortId}"]`).value.trim();
-    const colorInput = document.getElementById(`edit-effort-color-${effortId}`);
+    const colorInput = document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`);
     const color = colorInput ? colorInput.value : (effort.color || '#71717a');
     
     if (!label) return;
@@ -2867,6 +2751,19 @@ function attachEffortListeners(effort) {
     } catch (error) {
       console.error('Failed to update effort level:', error);
       alert('Failed to update effort level');
+    }
+  });
+  
+  // Sync color picker and text input in edit mode
+  document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`)?.addEventListener('input', (e) => {
+    const textInput = document.querySelector(`.edit-effort-color-text[data-effort-id="${effortId}"]`);
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.querySelector(`.edit-effort-color-text[data-effort-id="${effortId}"]`)?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`);
+      if (colorInput) colorInput.value = colorValue;
     }
   });
   
