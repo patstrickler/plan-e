@@ -8,18 +8,19 @@ A work planning tool that helps organize projects, milestones, and tasks.
 - **Milestones**: Organize work into milestones within projects
 - **Tasks**: Track individual tasks within milestones
 - **Full CRUD**: Create, read, update, and delete projects, milestones, and tasks
-- **Task Completion**: Mark tasks as complete/incomplete with checkboxes
+- **Task Status Updates**: Change task status (Not Started, In Progress, Completed)
+- **Task Editing**: Edit task details including title, description, priority, effort, and assigned resources
 - **Modern UI**: Clean, responsive interface with dark mode support
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 18+ and npm (optional - only needed for local development server)
 
 ### Installation
 
-1. Install dependencies:
+1. Install dependencies (optional):
 ```bash
 npm install
 ```
@@ -31,52 +32,26 @@ npm run dev
 
 3. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Build for Production (Static Export)
-
-```bash
-npm run build
-```
-
-This creates a static export in the `out` directory that can be deployed to any static hosting service.
+Or simply open `index.html` directly in your browser - no build step required!
 
 ## Deployment
 
 ### GitHub Pages
 
-**Option 1: Using GitHub Actions (Recommended)**
+**Using GitHub Actions (Recommended)**
 
 1. Push your code to GitHub
 2. Go to your repository Settings > Pages
 3. Set Source to "GitHub Actions"
 4. The workflow (`.github/workflows/deploy-pages.yml`) will automatically deploy on every push to `main`
 
-**Option 2: Manual Deploy**
-
-1. Build the static export:
-```bash
-npm run build
-```
-
-2. If your repository name is NOT the same as your username (e.g., `username.github.io`), you need to set the `basePath` in `next.config.js`:
-   - Uncomment the `basePath` line and set it to your repository name
-
-3. Deploy the `out` directory:
-   - Option A: Use GitHub Actions (automatically handles this)
-   - Option B: Use the `gh-pages` package:
-     ```bash
-     npm install -D gh-pages
-     npx gh-pages -d out
-     ```
-
-4. In GitHub repository Settings > Pages, set the source to the `gh-pages` branch (if using Option B) or GitHub Actions (if using Option A)
-
-### Vercel (Recommended)
+### Vercel
 
 The easiest way to deploy is using [Vercel](https://vercel.com):
 
 1. Push your code to GitHub
 2. Import your repository in Vercel
-3. Vercel will automatically detect Next.js and deploy
+3. Vercel will automatically detect and deploy the static site
 
 Or use the GitHub Actions workflow (requires Vercel tokens in GitHub secrets):
 - `VERCEL_TOKEN` - Your Vercel API token
@@ -85,25 +60,25 @@ Or use the GitHub Actions workflow (requires Vercel tokens in GitHub secrets):
 
 ## Project Structure
 
-- `/app` - Next.js app directory with pages and API routes
-- `/components` - React components for UI elements
-- `/lib` - Utility functions and data storage
-- `/types` - TypeScript type definitions
-- `/data.json` - Data storage (auto-generated, git-ignored)
+- `/index.html` - Main HTML file
+- `/js/app.js` - Main application logic
+- `/js/storage.js` - Data storage and CRUD operations
+- `/styles.css` - Application styles
 
 ## Usage
 
 1. **Create a Project**: Click "New Project" and enter a title and optional description
 2. **Add Milestones**: Expand a project and click "Add Milestone"
 3. **Add Tasks**: Expand a milestone and click "Add Task"
-4. **Complete Tasks**: Check the checkbox next to any task to mark it complete
-5. **Edit/Delete**: Use the Edit and Delete buttons to modify or remove items
+4. **Update Task Status**: Use the status dropdown on any task card to change its status
+5. **Edit Tasks**: Click the "Edit" button on any task to modify its details
+6. **Edit/Delete**: Use the Edit and Delete buttons to modify or remove projects, milestones, and tasks
 
 ## Tech Stack
 
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
+- **Vanilla JavaScript** - No frameworks, pure JavaScript
+- **HTML5** - Semantic markup
+- **CSS3** - Modern styling with dark mode support
 - **localStorage** - Client-side data persistence (works offline!)
 
 ## Data Storage
