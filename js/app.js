@@ -10,6 +10,7 @@ const state = {
   editingTasks: new Set(),
   showAddMilestone: new Map(),
   showAddTask: new Map(),
+  editingMetadata: new Map(), // For editing metadata items in settings
 };
 
 // DOM elements
@@ -18,6 +19,7 @@ const elements = {
   projectsView: document.getElementById('projects-view'),
   milestonesView: document.getElementById('milestones-view'),
   tasksView: document.getElementById('tasks-view'),
+  settingsView: document.getElementById('settings-view'),
   projectsList: document.getElementById('projects-list'),
   milestonesList: document.getElementById('milestones-list'),
   tasksList: document.getElementById('tasks-list'),
@@ -27,6 +29,11 @@ const elements = {
   newMilestoneForm: document.getElementById('new-milestone-form'),
   newTaskBtn: document.getElementById('new-task-btn'),
   newTaskForm: document.getElementById('new-task-form'),
+  // Settings elements
+  usersList: document.getElementById('users-list'),
+  prioritiesList: document.getElementById('priorities-list'),
+  statusesList: document.getElementById('statuses-list'),
+  effortLevelsList: document.getElementById('effort-levels-list'),
 };
 
 // Initialize app
@@ -57,11 +64,14 @@ function showView(viewName) {
   elements.projectsView.style.display = viewName === 'projects' ? 'block' : 'none';
   elements.milestonesView.style.display = viewName === 'milestones' ? 'block' : 'none';
   elements.tasksView.style.display = viewName === 'tasks' ? 'block' : 'none';
+  elements.settingsView.style.display = viewName === 'settings' ? 'block' : 'none';
   
   if (viewName === 'milestones') {
     renderMilestones();
   } else if (viewName === 'tasks') {
     renderTasks();
+  } else if (viewName === 'settings') {
+    renderSettings();
   }
 }
 
@@ -72,8 +82,10 @@ function setupEventListeners() {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       const href = link.getAttribute('href');
+      if (href === '#projects') showView('projects');
       if (href === '#milestones') showView('milestones');
       if (href === '#tasks') showView('tasks');
+      if (href === '#settings') showView('settings');
     });
   });
 
@@ -204,6 +216,9 @@ function setupEventListeners() {
       alert('Failed to create task');
     }
   });
+
+  // Settings event listeners
+  setupSettingsEventListeners();
 }
 
 // Render functions
@@ -250,6 +265,32 @@ function renderProjectCard(project) {
     `;
   }
   
+  // Calculate progress for each milestone
+  const milestoneProgressHtml = project.milestones.length > 0 ? `
+    <div class="project-milestones-progress">
+      <h3 class="text-sm" style="margin-bottom: 0.75rem; font-weight: 600;">Milestone Progress</h3>
+      <div class="milestones-progress-list">
+        ${project.milestones.map(m => {
+          const totalTasks = m.tasks ? m.tasks.length : 0;
+          const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
+          const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+          
+          return `
+            <div class="milestone-progress-item">
+              <div class="milestone-progress-header">
+                <span class="milestone-progress-title">${escapeHtml(m.title)}</span>
+                <span class="milestone-progress-stats">${completedTasks}/${totalTasks} tasks</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${progressPercentage}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+  
   const milestonesHtml = isExpanded ? `
     <div class="expanded-content">
       <div class="mb-4">
@@ -278,6 +319,7 @@ function renderProjectCard(project) {
           <button class="btn btn-red btn-sm delete-project" data-project-id="${project.id}">Delete</button>
         </div>
       </div>
+      ${milestoneProgressHtml}
       ${milestonesHtml}
     </div>
   `;

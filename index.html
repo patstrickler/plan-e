@@ -15,8 +15,10 @@
           <p class="subtitle">Organize your projects, milestones, and tasks</p>
         </div>
         <nav class="nav-links">
+          <a href="#projects" class="nav-link">Projects</a>
           <a href="#milestones" class="nav-link">Milestones</a>
           <a href="#tasks" class="nav-link">Tasks</a>
+          <a href="#settings" class="nav-link">Settings</a>
         </nav>
       </div>
     </header>
@@ -109,25 +111,21 @@
               <div class="form-group">
                 <label for="task-priority">Priority</label>
                 <select id="task-priority">
-                  <option value="low">Low</option>
-                  <option value="medium" selected>Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="">None</option>
                 </select>
               </div>
               <div class="form-group">
                 <label for="task-effort">Effort</label>
                 <select id="task-effort">
-                  <option value="small">Small</option>
-                  <option value="medium" selected>Medium</option>
-                  <option value="large">Large</option>
-                  <option value="x-large">X-Large</option>
+                  <option value="">None</option>
                 </select>
               </div>
             </div>
             <div class="form-group">
               <label for="task-resource">Assigned Resource</label>
-              <input type="text" id="task-resource" placeholder="Enter resource name">
+              <select id="task-resource">
+                <option value="">None</option>
+              </select>
             </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Create Task</button>
@@ -137,6 +135,105 @@
         </div>
 
         <div id="tasks-list" class="tasks-list"></div>
+      </div>
+
+      <!-- Settings View -->
+      <div id="settings-view" class="view" style="display: none;">
+        <div class="mb-6">
+          <a href="#" class="back-link" data-view="projects">← Back to Projects</a>
+          <h2>Settings</h2>
+          <p class="subtitle">Manage metadata for your workspace</p>
+        </div>
+
+        <div class="settings-sections">
+          <!-- Users Section -->
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <h3>Users</h3>
+              <button class="btn btn-primary btn-sm" id="add-user-btn">+ Add User</button>
+            </div>
+            <form id="add-user-form" class="form-card" style="display: none;">
+              <div class="form-group">
+                <label for="user-name">User Name *</label>
+                <input type="text" id="user-name" required placeholder="Enter user name">
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Add User</button>
+                <button type="button" id="cancel-user-btn" class="btn btn-secondary btn-sm">Cancel</button>
+              </div>
+            </form>
+            <div id="users-list" class="metadata-list"></div>
+          </div>
+
+          <!-- Priorities Section -->
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <h3>Priorities</h3>
+              <button class="btn btn-primary btn-sm" id="add-priority-btn">+ Add Priority</button>
+            </div>
+            <form id="add-priority-form" class="form-card" style="display: none;">
+              <div class="form-group">
+                <label for="priority-label">Priority Label *</label>
+                <input type="text" id="priority-label" required placeholder="e.g., Critical">
+              </div>
+              <div class="form-group">
+                <label for="priority-order">Order</label>
+                <input type="number" id="priority-order" min="1" placeholder="Display order">
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Add Priority</button>
+                <button type="button" id="cancel-priority-btn" class="btn btn-secondary btn-sm">Cancel</button>
+              </div>
+            </form>
+            <div id="priorities-list" class="metadata-list"></div>
+          </div>
+
+          <!-- Statuses Section -->
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <h3>Statuses</h3>
+              <button class="btn btn-primary btn-sm" id="add-status-btn">+ Add Status</button>
+            </div>
+            <form id="add-status-form" class="form-card" style="display: none;">
+              <div class="form-group">
+                <label for="status-label">Status Label *</label>
+                <input type="text" id="status-label" required placeholder="e.g., On Hold">
+              </div>
+              <div class="form-group">
+                <label for="status-order">Order</label>
+                <input type="number" id="status-order" min="1" placeholder="Display order">
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Add Status</button>
+                <button type="button" id="cancel-status-btn" class="btn btn-secondary btn-sm">Cancel</button>
+              </div>
+            </form>
+            <div id="statuses-list" class="metadata-list"></div>
+          </div>
+
+          <!-- Effort Levels Section -->
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <h3>Effort Levels</h3>
+              <button class="btn btn-primary btn-sm" id="add-effort-btn">+ Add Effort Level</button>
+            </div>
+            <form id="add-effort-form" class="form-card" style="display: none;">
+              <div class="form-group">
+                <label for="effort-label">Effort Label *</label>
+                <input type="text" id="effort-label" required placeholder="e.g., Extra Large">
+              </div>
+              <div class="form-group">
+                <label for="effort-order">Order</label>
+                <input type="number" id="effort-order" min="1" placeholder="Display order">
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Add Effort Level</button>
+                <button type="button" id="cancel-effort-btn" class="btn btn-secondary btn-sm">Cancel</button>
+              </div>
+            </form>
+            <div id="effort-levels-list" class="metadata-list"></div>
+          </div>
+        </div>
       </div>
     </main>
   </div>

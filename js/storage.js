@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'plan-e-data';
+const METADATA_KEY = 'plan-e-metadata';
 
 // Migrate old task format to new format
 function migrateTask(task, projectId) {
@@ -285,5 +286,267 @@ export function getAllTasks() {
   });
   
   return tasks;
+}
+
+// ============================================
+// Metadata Management Functions
+// ============================================
+
+function getDefaultMetadata() {
+  return {
+    users: [],
+    priorities: [
+      { id: 'low', label: 'Low', order: 1 },
+      { id: 'medium', label: 'Medium', order: 2 },
+      { id: 'high', label: 'High', order: 3 },
+      { id: 'urgent', label: 'Urgent', order: 4 },
+    ],
+    statuses: [
+      { id: 'not-started', label: 'Not Started', order: 1 },
+      { id: 'in-progress', label: 'In Progress', order: 2 },
+      { id: 'completed', label: 'Completed', order: 3 },
+    ],
+    effortLevels: [
+      { id: 'small', label: 'Small', order: 1 },
+      { id: 'medium', label: 'Medium', order: 2 },
+      { id: 'large', label: 'Large', order: 3 },
+      { id: 'x-large', label: 'X-Large', order: 4 },
+    ],
+  };
+}
+
+function readMetadata() {
+  if (typeof window === 'undefined') {
+    return getDefaultMetadata();
+  }
+  
+  try {
+    const metadata = localStorage.getItem(METADATA_KEY);
+    if (metadata) {
+      return JSON.parse(metadata);
+    }
+  } catch (error) {
+    console.error('Error reading metadata from localStorage:', error);
+  }
+  
+  // Initialize with defaults
+  const defaultMetadata = getDefaultMetadata();
+  writeMetadata(defaultMetadata);
+  return defaultMetadata;
+}
+
+function writeMetadata(metadata) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  
+  try {
+    localStorage.setItem(METADATA_KEY, JSON.stringify(metadata));
+  } catch (error) {
+    console.error('Error writing metadata to localStorage:', error);
+    throw error;
+  }
+}
+
+export function getMetadata() {
+  return readMetadata();
+}
+
+export function updateMetadata(metadata) {
+  writeMetadata(metadata);
+}
+
+// Users
+export function getUsers() {
+  const metadata = readMetadata();
+  return metadata.users || [];
+}
+
+export function addUser(name) {
+  const metadata = readMetadata();
+  if (!metadata.users) {
+    metadata.users = [];
+  }
+  const newUser = {
+    id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: name.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  metadata.users.push(newUser);
+  writeMetadata(metadata);
+  return newUser;
+}
+
+export function updateUser(userId, updates) {
+  const metadata = readMetadata();
+  if (!metadata.users) return null;
+  
+  const userIndex = metadata.users.findIndex(u => u.id === userId);
+  if (userIndex === -1) return null;
+  
+  metadata.users[userIndex] = {
+    ...metadata.users[userIndex],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  writeMetadata(metadata);
+  return metadata.users[userIndex];
+}
+
+export function deleteUser(userId) {
+  const metadata = readMetadata();
+  if (!metadata.users) return false;
+  
+  const initialLength = metadata.users.length;
+  metadata.users = metadata.users.filter(u => u.id !== userId);
+  writeMetadata(metadata);
+  return metadata.users.length < initialLength;
+}
+
+// Priorities
+export function getPriorities() {
+  const metadata = readMetadata();
+  return (metadata.priorities || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+export function addPriority(label, order) {
+  const metadata = readMetadata();
+  if (!metadata.priorities) {
+    metadata.priorities = [];
+  }
+  const id = label.toLowerCase().replace(/\s+/g, '-');
+  const newPriority = {
+    id,
+    label: label.trim(),
+    order: order || metadata.priorities.length + 1,
+    createdAt: new Date().toISOString(),
+  };
+  metadata.priorities.push(newPriority);
+  writeMetadata(metadata);
+  return newPriority;
+}
+
+export function updatePriority(priorityId, updates) {
+  const metadata = readMetadata();
+  if (!metadata.priorities) return null;
+  
+  const priorityIndex = metadata.priorities.findIndex(p => p.id === priorityId);
+  if (priorityIndex === -1) return null;
+  
+  metadata.priorities[priorityIndex] = {
+    ...metadata.priorities[priorityIndex],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  writeMetadata(metadata);
+  return metadata.priorities[priorityIndex];
+}
+
+export function deletePriority(priorityId) {
+  const metadata = readMetadata();
+  if (!metadata.priorities) return false;
+  
+  const initialLength = metadata.priorities.length;
+  metadata.priorities = metadata.priorities.filter(p => p.id !== priorityId);
+  writeMetadata(metadata);
+  return metadata.priorities.length < initialLength;
+}
+
+// Statuses
+export function getStatuses() {
+  const metadata = readMetadata();
+  return (metadata.statuses || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+export function addStatus(label, order) {
+  const metadata = readMetadata();
+  if (!metadata.statuses) {
+    metadata.statuses = [];
+  }
+  const id = label.toLowerCase().replace(/\s+/g, '-');
+  const newStatus = {
+    id,
+    label: label.trim(),
+    order: order || metadata.statuses.length + 1,
+    createdAt: new Date().toISOString(),
+  };
+  metadata.statuses.push(newStatus);
+  writeMetadata(metadata);
+  return newStatus;
+}
+
+export function updateStatus(statusId, updates) {
+  const metadata = readMetadata();
+  if (!metadata.statuses) return null;
+  
+  const statusIndex = metadata.statuses.findIndex(s => s.id === statusId);
+  if (statusIndex === -1) return null;
+  
+  metadata.statuses[statusIndex] = {
+    ...metadata.statuses[statusIndex],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  writeMetadata(metadata);
+  return metadata.statuses[statusIndex];
+}
+
+export function deleteStatus(statusId) {
+  const metadata = readMetadata();
+  if (!metadata.statuses) return false;
+  
+  const initialLength = metadata.statuses.length;
+  metadata.statuses = metadata.statuses.filter(s => s.id !== statusId);
+  writeMetadata(metadata);
+  return metadata.statuses.length < initialLength;
+}
+
+// Effort Levels
+export function getEffortLevels() {
+  const metadata = readMetadata();
+  return (metadata.effortLevels || []).sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+export function addEffortLevel(label, order) {
+  const metadata = readMetadata();
+  if (!metadata.effortLevels) {
+    metadata.effortLevels = [];
+  }
+  const id = label.toLowerCase().replace(/\s+/g, '-');
+  const newEffortLevel = {
+    id,
+    label: label.trim(),
+    order: order || metadata.effortLevels.length + 1,
+    createdAt: new Date().toISOString(),
+  };
+  metadata.effortLevels.push(newEffortLevel);
+  writeMetadata(metadata);
+  return newEffortLevel;
+}
+
+export function updateEffortLevel(effortLevelId, updates) {
+  const metadata = readMetadata();
+  if (!metadata.effortLevels) return null;
+  
+  const effortLevelIndex = metadata.effortLevels.findIndex(e => e.id === effortLevelId);
+  if (effortLevelIndex === -1) return null;
+  
+  metadata.effortLevels[effortLevelIndex] = {
+    ...metadata.effortLevels[effortLevelIndex],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  writeMetadata(metadata);
+  return metadata.effortLevels[effortLevelIndex];
+}
+
+export function deleteEffortLevel(effortLevelId) {
+  const metadata = readMetadata();
+  if (!metadata.effortLevels) return false;
+  
+  const initialLength = metadata.effortLevels.length;
+  metadata.effortLevels = metadata.effortLevels.filter(e => e.id !== effortLevelId);
+  writeMetadata(metadata);
+  return metadata.effortLevels.length < initialLength;
 }
 
