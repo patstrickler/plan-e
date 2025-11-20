@@ -11,6 +11,11 @@ const state = {
   showAddMilestone: new Map(),
   showAddTask: new Map(),
   editingMetadata: new Map(), // For editing metadata items in settings
+  taskSearch: '',
+  taskFilterStatus: '',
+  taskFilterPriority: '',
+  taskFilterProject: '',
+  taskFilterResource: '',
 };
 
 // DOM elements
@@ -223,6 +228,42 @@ function setupEventListeners() {
 
   // Settings event listeners
   setupSettingsEventListeners();
+  
+  // Task search and filter listeners
+  setupTaskSearchAndFilterListeners();
+}
+
+function setupTaskSearchAndFilterListeners() {
+  const searchInput = document.getElementById('task-search');
+  const statusFilter = document.getElementById('task-filter-status');
+  const priorityFilter = document.getElementById('task-filter-priority');
+  const projectFilter = document.getElementById('task-filter-project');
+  const resourceFilter = document.getElementById('task-filter-resource');
+  
+  searchInput?.addEventListener('input', (e) => {
+    state.taskSearch = e.target.value;
+    renderTasks();
+  });
+  
+  statusFilter?.addEventListener('change', (e) => {
+    state.taskFilterStatus = e.target.value;
+    renderTasks();
+  });
+  
+  priorityFilter?.addEventListener('change', (e) => {
+    state.taskFilterPriority = e.target.value;
+    renderTasks();
+  });
+  
+  projectFilter?.addEventListener('change', (e) => {
+    state.taskFilterProject = e.target.value;
+    renderTasks();
+  });
+  
+  resourceFilter?.addEventListener('change', (e) => {
+    state.taskFilterResource = e.target.value;
+    renderTasks();
+  });
 }
 
 // Render functions
@@ -579,24 +620,256 @@ function renderMilestones() {
 function renderTasks() {
   if (!elements.tasksList) return;
   
-  const tasks = storage.getAllTasks();
+  const allTasks = storage.getAllTasks();
   
-  if (tasks.length === 0) {
+  // Apply filters
+  const filteredTasks = filterTasks(allTasks);
+  
+  if (filteredTasks.length === 0) {
     elements.tasksList.innerHTML = `
       <div class="empty-state">
-        <p>No tasks yet</p>
-        <p class="empty-state-sub">Create your first task to get started!</p>
+        <p>No tasks found</p>
+        <p class="empty-state-sub">${allTasks.length === 0 ? 'Create your first task to get started!' : 'Try adjusting your search or filters.'}</p>
       </div>
     `;
     return;
   }
   
-  elements.tasksList.innerHTML = tasks.map(t => renderTaskCardForView(t)).join('');
+  // Render table
+  elements.tasksList.innerHTML = renderTasksTable(filteredTasks);
   
   // Re-attach event listeners
-  tasks.forEach(task => {
+  filteredTasks.forEach(task => {
     attachTaskListenersForView(task);
   });
+  
+  // Populate filter dropdowns if not already populated
+  populateTaskFilters();
+}
+
+function filterTasks(tasks) {
+  return tasks.filter(task => {
+    // Search filter
+    if (state.taskSearch) {
+      const searchLower = state.taskSearch.toLowerCase();
+      const matchesSearch = 
+        task.title.toLowerCase().includes(searchLower) ||
+        (task.description && task.description.toLowerCase().includes(searchLower)) ||
+        task.project.title.toLowerCase().includes(searchLower) ||
+        task.milestone.title.toLowerCase().includes(searchLower) ||
+        (task.assignedResource && task.assignedResource.toLowerCase().includes(searchLower));
+      if (!matchesSearch) return false;
+    }
+    
+    // Status filter
+    if (state.taskFilterStatus && task.status !== state.taskFilterStatus) {
+      return false;
+    }
+    
+    // Priority filter
+    if (state.taskFilterPriority && task.priority !== state.taskFilterPriority) {
+      return false;
+    }
+    
+    // Project filter
+    if (state.taskFilterProject && task.projectId !== state.taskFilterProject) {
+      return false;
+    }
+    
+    // Resource filter
+    if (state.taskFilterResource && task.assignedResource !== state.taskFilterResource) {
+      return false;
+    }
+    
+    return true;
+  });
+}
+
+function renderTasksTable(tasks) {
+  const statuses = storage.getStatuses();
+  const priorities = storage.getPriorities();
+  const effortLevels = storage.getEffortLevels();
+  
+  const rows = tasks.map(task => {
+    const isEditing = state.editingTasks.has(task.id);
+    const isCompleted = task.status === 'completed';
+    
+    if (isEditing) {
+      return renderTaskTableRowEdit(task, statuses, priorities, effortLevels);
+    }
+    
+    const status = statuses.find(s => s.id === task.status);
+    const statusColor = status?.id === 'completed' ? 'badge-green' : 
+                       status?.id === 'in-progress' ? 'badge-blue' : 'badge-gray';
+    
+    const priority = priorities.find(p => p.id === task.priority);
+    const priorityColor = priority?.id === 'urgent' ? 'badge-red' :
+                         priority?.id === 'high' ? 'badge-orange' :
+                         priority?.id === 'medium' ? 'badge-yellow' :
+                         priority?.id === 'low' ? 'badge-green' : '';
+    
+    const effort = effortLevels.find(e => e.id === task.effortLevel);
+    
+    const statusOptions = statuses.map(s => 
+      `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
+    ).join('');
+    
+    return `
+      <tr class="task-table-row ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
+        <td>
+          <select class="task-status-select-view ${statusColor}" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
+            ${statusOptions}
+          </select>
+        </td>
+        <td>
+          ${task.priority && priority ? `<span class="badge ${priorityColor}">${escapeHtml(priority.label)}</span>` : '<span class="text-muted">—</span>'}
+        </td>
+        <td class="task-title-cell">
+          <strong>${escapeHtml(task.title)}</strong>
+          ${task.description ? `<div class="task-description-small">${escapeHtml(task.description)}</div>` : ''}
+        </td>
+        <td class="task-project-cell">${escapeHtml(task.project.title)}</td>
+        <td class="task-milestone-cell">${escapeHtml(task.milestone.title)}</td>
+        <td>${effort ? escapeHtml(effort.label) : '<span class="text-muted">—</span>'}</td>
+        <td>${task.assignedResource ? escapeHtml(task.assignedResource) : '<span class="text-muted">—</span>'}</td>
+        <td class="task-dates-cell">
+          ${task.startDate ? `<div class="task-date-small">Started: ${new Date(task.startDate).toLocaleDateString()}</div>` : ''}
+          ${task.completedDate ? `<div class="task-date-small">Completed: ${new Date(task.completedDate).toLocaleDateString()}</div>` : ''}
+          ${!task.startDate && !task.completedDate ? '<span class="text-muted">—</span>' : ''}
+        </td>
+        <td class="task-actions-cell">
+          <button class="btn btn-blue btn-xs edit-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Edit</button>
+          <button class="btn btn-red btn-xs delete-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Delete</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  
+  return `
+    <table class="tasks-table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Priority</th>
+          <th>Task</th>
+          <th>Project</th>
+          <th>Milestone</th>
+          <th>Effort</th>
+          <th>Assigned</th>
+          <th>Dates</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderTaskTableRowEdit(task, statuses, priorities, effortLevels, users) {
+  const usersList = storage.getUsers();
+  
+  const statusOptions = statuses.map(s => 
+    `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
+  ).join('');
+  
+  const priorityOptions = priorities.map(p => 
+    `<option value="${p.id}" ${task.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+  ).join('');
+  
+  const effortOptions = effortLevels.map(e => 
+    `<option value="${e.id}" ${task.effortLevel === e.id ? 'selected' : ''}>${escapeHtml(e.label)}</option>`
+  ).join('');
+  
+  const userOptions = usersList.map(u => 
+    `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
+  ).join('');
+  
+  return `
+    <tr class="task-table-row task-table-row-edit" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
+      <td colspan="9">
+        <div class="task-edit-form-inline">
+          <div class="task-edit-row">
+            <input type="text" class="edit-title" value="${escapeHtml(task.title)}" data-task-id="${task.id}" placeholder="Task title">
+            <textarea class="edit-description-small" data-task-id="${task.id}" placeholder="Description (optional)">${escapeHtml(task.description || '')}</textarea>
+          </div>
+          <div class="task-edit-row">
+            <select class="edit-status" data-task-id="${task.id}">
+              ${statusOptions}
+            </select>
+            <select class="edit-priority" data-task-id="${task.id}">
+              <option value="">None</option>
+              ${priorityOptions}
+            </select>
+            <select class="edit-effort" data-task-id="${task.id}">
+              <option value="">None</option>
+              ${effortOptions}
+            </select>
+            <select class="edit-resource" data-task-id="${task.id}">
+              <option value="">None</option>
+              ${userOptions}
+            </select>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm save-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-task-view" data-task-id="${task.id}">Cancel</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function populateTaskFilters() {
+  const statuses = storage.getStatuses();
+  const priorities = storage.getPriorities();
+  const projects = storage.getAllProjects();
+  const users = storage.getUsers();
+  
+  // Populate status filter
+  const statusFilter = document.getElementById('task-filter-status');
+  if (statusFilter && statusFilter.options.length === 1) {
+    statuses.forEach(status => {
+      const option = document.createElement('option');
+      option.value = status.id;
+      option.textContent = status.label;
+      statusFilter.appendChild(option);
+    });
+  }
+  
+  // Populate priority filter
+  const priorityFilter = document.getElementById('task-filter-priority');
+  if (priorityFilter && priorityFilter.options.length === 1) {
+    priorities.forEach(priority => {
+      const option = document.createElement('option');
+      option.value = priority.id;
+      option.textContent = priority.label;
+      priorityFilter.appendChild(option);
+    });
+  }
+  
+  // Populate project filter
+  const projectFilter = document.getElementById('task-filter-project');
+  if (projectFilter && projectFilter.options.length === 1) {
+    projects.forEach(project => {
+      const option = document.createElement('option');
+      option.value = project.id;
+      option.textContent = project.title;
+      projectFilter.appendChild(option);
+    });
+  }
+  
+  // Populate resource filter
+  const resourceFilter = document.getElementById('task-filter-resource');
+  if (resourceFilter && resourceFilter.options.length === 1) {
+    users.forEach(user => {
+      const option = document.createElement('option');
+      option.value = user.name;
+      option.textContent = user.name;
+      resourceFilter.appendChild(option);
+    });
+  }
 }
 
 function renderTaskCardForView(task) {
@@ -861,6 +1134,7 @@ function updateAllSelects() {
     renderProjects();
   } else if (currentView === 'tasks') {
     renderTasks();
+    populateTaskFilters();
   }
 }
 
@@ -1188,7 +1462,6 @@ function renderPriorities() {
       return `
         <div class="metadata-item-editing" data-priority-id="${priority.id}">
           <input type="text" class="edit-priority-label" value="${escapeHtml(priority.label)}" data-priority-id="${priority.id}" placeholder="Label">
-          <input type="number" class="edit-priority-order" value="${priority.order || ''}" data-priority-id="${priority.id}" placeholder="Order">
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-priority" data-priority-id="${priority.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-priority" data-priority-id="${priority.id}">Cancel</button>
@@ -1201,7 +1474,6 @@ function renderPriorities() {
       <div class="metadata-item" data-priority-id="${priority.id}">
         <div class="metadata-item-content">
           <span class="metadata-item-label">${escapeHtml(priority.label)}</span>
-          <span class="metadata-item-order">Order: ${priority.order || 0}</span>
         </div>
         <div class="metadata-item-actions">
           <button class="btn btn-blue btn-xs edit-priority-item" data-priority-id="${priority.id}">Edit</button>
@@ -1214,6 +1486,12 @@ function renderPriorities() {
   // Attach event listeners
   priorities.forEach(priority => {
     attachPriorityListeners(priority);
+  });
+  
+  // Setup drag-and-drop for priorities
+  setupDragAndDrop('priorities-list', 'priority', (ids) => {
+    storage.reorderPriorities(ids);
+    updateAllSelects();
   });
 }
 
@@ -1234,7 +1512,6 @@ function renderStatuses() {
       return `
         <div class="metadata-item-editing" data-status-id="${status.id}">
           <input type="text" class="edit-status-label" value="${escapeHtml(status.label)}" data-status-id="${status.id}" placeholder="Label">
-          <input type="number" class="edit-status-order" value="${status.order || ''}" data-status-id="${status.id}" placeholder="Order">
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-status" data-status-id="${status.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-status" data-status-id="${status.id}">Cancel</button>
@@ -1247,7 +1524,6 @@ function renderStatuses() {
       <div class="metadata-item" data-status-id="${status.id}">
         <div class="metadata-item-content">
           <span class="metadata-item-label">${escapeHtml(status.label)}</span>
-          <span class="metadata-item-order">Order: ${status.order || 0}</span>
         </div>
         <div class="metadata-item-actions">
           <button class="btn btn-blue btn-xs edit-status-item" data-status-id="${status.id}">Edit</button>
@@ -1260,6 +1536,12 @@ function renderStatuses() {
   // Attach event listeners
   statuses.forEach(status => {
     attachStatusListeners(status);
+  });
+  
+  // Setup drag-and-drop for statuses
+  setupDragAndDrop('statuses-list', 'status', (ids) => {
+    storage.reorderStatuses(ids);
+    updateAllSelects();
   });
 }
 
@@ -1280,7 +1562,6 @@ function renderEffortLevels() {
       return `
         <div class="metadata-item-editing" data-effort-id="${effort.id}">
           <input type="text" class="edit-effort-label" value="${escapeHtml(effort.label)}" data-effort-id="${effort.id}" placeholder="Label">
-          <input type="number" class="edit-effort-order" value="${effort.order || ''}" data-effort-id="${effort.id}" placeholder="Order">
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-effort" data-effort-id="${effort.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-effort" data-effort-id="${effort.id}">Cancel</button>
@@ -1293,7 +1574,6 @@ function renderEffortLevels() {
       <div class="metadata-item" data-effort-id="${effort.id}">
         <div class="metadata-item-content">
           <span class="metadata-item-label">${escapeHtml(effort.label)}</span>
-          <span class="metadata-item-order">Order: ${effort.order || 0}</span>
         </div>
         <div class="metadata-item-actions">
           <button class="btn btn-blue btn-xs edit-effort-item" data-effort-id="${effort.id}">Edit</button>
@@ -1307,6 +1587,107 @@ function renderEffortLevels() {
   effortLevels.forEach(effort => {
     attachEffortListeners(effort);
   });
+  
+  // Setup drag-and-drop for effort levels
+  setupDragAndDrop('effort-levels-list', 'effort', (ids) => {
+    storage.reorderEffortLevels(ids);
+    updateAllSelects();
+  });
+}
+
+function setupDragAndDrop(listId, typePrefix, reorderCallback) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  
+  let draggedElement = null;
+  let draggedIndex = -1;
+  
+  // Get all draggable items
+  const items = Array.from(list.querySelectorAll(`.metadata-item[data-${typePrefix}-id]`));
+  
+  items.forEach((item, index) => {
+    item.draggable = true;
+    item.dataset.index = index;
+    
+    item.addEventListener('dragstart', (e) => {
+      draggedElement = item;
+      draggedIndex = index;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', item.innerHTML);
+    });
+    
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      items.forEach(i => i.classList.remove('drag-over'));
+    });
+    
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      const afterElement = getDragAfterElement(list, e.clientY);
+      const currentTarget = e.currentTarget;
+      
+      items.forEach(i => i.classList.remove('drag-over'));
+      
+      if (afterElement == null) {
+        currentTarget.classList.add('drag-over');
+      } else {
+        afterElement.classList.add('drag-over');
+      }
+    });
+    
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      
+      if (draggedElement === null) return;
+      
+      const afterElement = getDragAfterElement(list, e.clientY);
+      const currentTarget = e.currentTarget;
+      
+      if (afterElement == null) {
+        list.appendChild(draggedElement);
+      } else {
+        list.insertBefore(draggedElement, afterElement);
+      }
+      
+      // Get new order of IDs
+      const newItems = Array.from(list.querySelectorAll(`.metadata-item[data-${typePrefix}-id]`));
+      const newIds = newItems.map(i => {
+        // Extract ID from data attribute based on type
+        if (typePrefix === 'priority') return i.dataset.priorityId;
+        if (typePrefix === 'status') return i.dataset.statusId;
+        if (typePrefix === 'effort') return i.dataset.effortId;
+        return null;
+      }).filter(id => id !== null);
+      
+      // Update order
+      reorderCallback(newIds);
+      
+      // Re-render to update
+      renderSettings();
+    });
+    
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+    });
+  });
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.metadata-item:not(.dragging)')];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 function setupSettingsEventListeners() {
@@ -1353,20 +1734,17 @@ function setupSettingsEventListeners() {
     document.getElementById('add-priority-form').style.display = 'none';
     document.getElementById('add-priority-btn').style.display = 'block';
     document.getElementById('priority-label').value = '';
-    document.getElementById('priority-order').value = '';
   });
 
   document.getElementById('add-priority-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const label = document.getElementById('priority-label').value.trim();
-    const order = parseInt(document.getElementById('priority-order').value) || undefined;
     
     if (!label) return;
     
     try {
-      storage.addPriority(label, order);
+      storage.addPriority(label);
       document.getElementById('priority-label').value = '';
-      document.getElementById('priority-order').value = '';
       document.getElementById('add-priority-form').style.display = 'none';
       document.getElementById('add-priority-btn').style.display = 'block';
       renderSettings();
@@ -1388,20 +1766,17 @@ function setupSettingsEventListeners() {
     document.getElementById('add-status-form').style.display = 'none';
     document.getElementById('add-status-btn').style.display = 'block';
     document.getElementById('status-label').value = '';
-    document.getElementById('status-order').value = '';
   });
 
   document.getElementById('add-status-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const label = document.getElementById('status-label').value.trim();
-    const order = parseInt(document.getElementById('status-order').value) || undefined;
     
     if (!label) return;
     
     try {
-      storage.addStatus(label, order);
+      storage.addStatus(label);
       document.getElementById('status-label').value = '';
-      document.getElementById('status-order').value = '';
       document.getElementById('add-status-form').style.display = 'none';
       document.getElementById('add-status-btn').style.display = 'block';
       renderSettings();
@@ -1423,20 +1798,17 @@ function setupSettingsEventListeners() {
     document.getElementById('add-effort-form').style.display = 'none';
     document.getElementById('add-effort-btn').style.display = 'block';
     document.getElementById('effort-label').value = '';
-    document.getElementById('effort-order').value = '';
   });
 
   document.getElementById('add-effort-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const label = document.getElementById('effort-label').value.trim();
-    const order = parseInt(document.getElementById('effort-order').value) || undefined;
     
     if (!label) return;
     
     try {
-      storage.addEffortLevel(label, order);
+      storage.addEffortLevel(label);
       document.getElementById('effort-label').value = '';
-      document.getElementById('effort-order').value = '';
       document.getElementById('add-effort-form').style.display = 'none';
       document.getElementById('add-effort-btn').style.display = 'block';
       renderSettings();
@@ -1501,12 +1873,11 @@ function attachPriorityListeners(priority) {
   
   document.querySelector(`.save-priority[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-priority-label[data-priority-id="${priorityId}"]`).value.trim();
-    const order = parseInt(document.querySelector(`.edit-priority-order[data-priority-id="${priorityId}"]`).value) || priority.order;
     
     if (!label) return;
     
     try {
-      storage.updatePriority(priorityId, { label, order });
+      storage.updatePriority(priorityId, { label });
       state.editingMetadata.delete(`priority-${priorityId}`);
       renderSettings();
       updateAllSelects();
@@ -1545,12 +1916,11 @@ function attachStatusListeners(status) {
   
   document.querySelector(`.save-status[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-status-label[data-status-id="${statusId}"]`).value.trim();
-    const order = parseInt(document.querySelector(`.edit-status-order[data-status-id="${statusId}"]`).value) || status.order;
     
     if (!label) return;
     
     try {
-      storage.updateStatus(statusId, { label, order });
+      storage.updateStatus(statusId, { label });
       state.editingMetadata.delete(`status-${statusId}`);
       renderSettings();
       updateAllSelects();
@@ -1589,12 +1959,11 @@ function attachEffortListeners(effort) {
   
   document.querySelector(`.save-effort[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-effort-label[data-effort-id="${effortId}"]`).value.trim();
-    const order = parseInt(document.querySelector(`.edit-effort-order[data-effort-id="${effortId}"]`).value) || effort.order;
     
     if (!label) return;
     
     try {
-      storage.updateEffortLevel(effortId, { label, order });
+      storage.updateEffortLevel(effortId, { label });
       state.editingMetadata.delete(`effort-${effortId}`);
       renderSettings();
       updateAllSelects();

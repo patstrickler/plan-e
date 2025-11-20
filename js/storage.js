@@ -409,7 +409,7 @@ export function getPriorities() {
   return (metadata.priorities || []).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-export function addPriority(label, order) {
+export function addPriority(label) {
   const metadata = readMetadata();
   if (!metadata.priorities) {
     metadata.priorities = [];
@@ -418,7 +418,7 @@ export function addPriority(label, order) {
   const newPriority = {
     id,
     label: label.trim(),
-    order: order || metadata.priorities.length + 1,
+    order: metadata.priorities.length + 1,
     createdAt: new Date().toISOString(),
   };
   metadata.priorities.push(newPriority);
@@ -448,8 +448,33 @@ export function deletePriority(priorityId) {
   
   const initialLength = metadata.priorities.length;
   metadata.priorities = metadata.priorities.filter(p => p.id !== priorityId);
+  // Reassign order based on array position
+  metadata.priorities.forEach((p, index) => {
+    p.order = index + 1;
+  });
   writeMetadata(metadata);
   return metadata.priorities.length < initialLength;
+}
+
+export function reorderPriorities(priorityIds) {
+  const metadata = readMetadata();
+  if (!metadata.priorities) return false;
+  
+  // Create a map of priorities by id
+  const priorityMap = new Map(metadata.priorities.map(p => [p.id, p]));
+  
+  // Reorder based on the provided array of IDs
+  metadata.priorities = priorityIds.map((id, index) => {
+    const priority = priorityMap.get(id);
+    if (priority) {
+      priority.order = index + 1;
+      return priority;
+    }
+    return null;
+  }).filter(p => p !== null);
+  
+  writeMetadata(metadata);
+  return true;
 }
 
 // Statuses
@@ -458,7 +483,7 @@ export function getStatuses() {
   return (metadata.statuses || []).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-export function addStatus(label, order) {
+export function addStatus(label) {
   const metadata = readMetadata();
   if (!metadata.statuses) {
     metadata.statuses = [];
@@ -467,7 +492,7 @@ export function addStatus(label, order) {
   const newStatus = {
     id,
     label: label.trim(),
-    order: order || metadata.statuses.length + 1,
+    order: metadata.statuses.length + 1,
     createdAt: new Date().toISOString(),
   };
   metadata.statuses.push(newStatus);
@@ -497,8 +522,33 @@ export function deleteStatus(statusId) {
   
   const initialLength = metadata.statuses.length;
   metadata.statuses = metadata.statuses.filter(s => s.id !== statusId);
+  // Reassign order based on array position
+  metadata.statuses.forEach((s, index) => {
+    s.order = index + 1;
+  });
   writeMetadata(metadata);
   return metadata.statuses.length < initialLength;
+}
+
+export function reorderStatuses(statusIds) {
+  const metadata = readMetadata();
+  if (!metadata.statuses) return false;
+  
+  // Create a map of statuses by id
+  const statusMap = new Map(metadata.statuses.map(s => [s.id, s]));
+  
+  // Reorder based on the provided array of IDs
+  metadata.statuses = statusIds.map((id, index) => {
+    const status = statusMap.get(id);
+    if (status) {
+      status.order = index + 1;
+      return status;
+    }
+    return null;
+  }).filter(s => s !== null);
+  
+  writeMetadata(metadata);
+  return true;
 }
 
 // Effort Levels
@@ -507,7 +557,7 @@ export function getEffortLevels() {
   return (metadata.effortLevels || []).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-export function addEffortLevel(label, order) {
+export function addEffortLevel(label) {
   const metadata = readMetadata();
   if (!metadata.effortLevels) {
     metadata.effortLevels = [];
@@ -516,7 +566,7 @@ export function addEffortLevel(label, order) {
   const newEffortLevel = {
     id,
     label: label.trim(),
-    order: order || metadata.effortLevels.length + 1,
+    order: metadata.effortLevels.length + 1,
     createdAt: new Date().toISOString(),
   };
   metadata.effortLevels.push(newEffortLevel);
@@ -546,7 +596,32 @@ export function deleteEffortLevel(effortLevelId) {
   
   const initialLength = metadata.effortLevels.length;
   metadata.effortLevels = metadata.effortLevels.filter(e => e.id !== effortLevelId);
+  // Reassign order based on array position
+  metadata.effortLevels.forEach((e, index) => {
+    e.order = index + 1;
+  });
   writeMetadata(metadata);
   return metadata.effortLevels.length < initialLength;
+}
+
+export function reorderEffortLevels(effortIds) {
+  const metadata = readMetadata();
+  if (!metadata.effortLevels) return false;
+  
+  // Create a map of effort levels by id
+  const effortMap = new Map(metadata.effortLevels.map(e => [e.id, e]));
+  
+  // Reorder based on the provided array of IDs
+  metadata.effortLevels = effortIds.map((id, index) => {
+    const effort = effortMap.get(id);
+    if (effort) {
+      effort.order = index + 1;
+      return effort;
+    }
+    return null;
+  }).filter(e => e !== null);
+  
+  writeMetadata(metadata);
+  return true;
 }
 
