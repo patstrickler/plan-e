@@ -1381,17 +1381,6 @@ function attachProjectListeners(project) {
 
 function attachMilestoneListeners(projectId, milestone) {
   const milestoneId = milestone.id;
-  const key = `${projectId}-${milestoneId}`;
-  
-  // Toggle milestone expand
-  document.querySelector(`.toggle-milestone-expand[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    if (state.expandedProjects.has(key)) {
-      state.expandedProjects.delete(key);
-    } else {
-      state.expandedProjects.add(key);
-    }
-    renderProjects();
-  });
   
   // Edit milestone
   document.querySelector(`.edit-milestone[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
@@ -2090,17 +2079,32 @@ function attachPriorityListeners(priority) {
   
   document.querySelector(`.save-priority[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-priority-label[data-priority-id="${priorityId}"]`).value.trim();
+    const colorInput = document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`);
+    const color = colorInput ? colorInput.value : (priority.color || '#71717a');
     
     if (!label) return;
     
     try {
-      storage.updatePriority(priorityId, { label });
+      storage.updatePriority(priorityId, { label, color });
       state.editingMetadata.delete(`priority-${priorityId}`);
       renderSettings();
       updateAllSelects();
     } catch (error) {
       console.error('Failed to update priority:', error);
       alert('Failed to update priority');
+    }
+  });
+  
+  // Sync color picker and text input in edit mode
+  document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`)?.addEventListener('input', (e) => {
+    const textInput = document.querySelector(`.edit-priority-color-text[data-priority-id="${priorityId}"]`);
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.querySelector(`.edit-priority-color-text[data-priority-id="${priorityId}"]`)?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`);
+      if (colorInput) colorInput.value = colorValue;
     }
   });
   
