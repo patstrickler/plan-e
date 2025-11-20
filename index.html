@@ -134,7 +134,26 @@
           </form>
         </div>
 
-        <div id="tasks-list" class="tasks-list"></div>
+        <!-- Search and Filter Controls -->
+        <div class="tasks-controls mb-4">
+          <div class="tasks-search-filter">
+            <input type="text" id="task-search" class="task-search-input" placeholder="Search tasks...">
+            <select id="task-filter-status" class="task-filter-select">
+              <option value="">All Statuses</option>
+            </select>
+            <select id="task-filter-priority" class="task-filter-select">
+              <option value="">All Priorities</option>
+            </select>
+            <select id="task-filter-project" class="task-filter-select">
+              <option value="">All Projects</option>
+            </select>
+            <select id="task-filter-resource" class="task-filter-select">
+              <option value="">All Resources</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="tasks-list" class="tasks-table-container"></div>
       </div>
 
       <!-- Settings View -->
@@ -176,10 +195,6 @@
                 <label for="priority-label">Priority Label *</label>
                 <input type="text" id="priority-label" required placeholder="e.g., Critical">
               </div>
-              <div class="form-group">
-                <label for="priority-order">Order</label>
-                <input type="number" id="priority-order" min="1" placeholder="Display order">
-              </div>
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-sm">Add Priority</button>
                 <button type="button" id="cancel-priority-btn" class="btn btn-secondary btn-sm">Cancel</button>
@@ -198,10 +213,6 @@
               <div class="form-group">
                 <label for="status-label">Status Label *</label>
                 <input type="text" id="status-label" required placeholder="e.g., On Hold">
-              </div>
-              <div class="form-group">
-                <label for="status-order">Order</label>
-                <input type="number" id="status-order" min="1" placeholder="Display order">
               </div>
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-sm">Add Status</button>
@@ -222,10 +233,6 @@
                 <label for="effort-label">Effort Label *</label>
                 <input type="text" id="effort-label" required placeholder="e.g., Extra Large">
               </div>
-              <div class="form-group">
-                <label for="effort-order">Order</label>
-                <input type="number" id="effort-order" min="1" placeholder="Display order">
-              </div>
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-sm">Add Effort Level</button>
                 <button type="button" id="cancel-effort-btn" class="btn btn-secondary btn-sm">Cancel</button>
@@ -241,9 +248,8 @@
   <footer id="app-footer" class="footer">
     <div class="footer-content">
       <p class="footer-text">
-        © <span id="footer-year"></span> Plan-E. All rights reserved.
+        © <span id="footer-year"></span> Plan-E. All rights reserved. | <span class="footer-version" id="footer-version"></span>
       </p>
-      <p class="footer-version" id="footer-version"></p>
     </div>
   </footer>
 
