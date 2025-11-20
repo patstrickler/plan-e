@@ -446,9 +446,7 @@ function renderProjects() {
 }
 
 function renderProjectCard(project) {
-  const isExpanded = state.expandedProjects.has(project.id);
   const isEditing = state.editingProjects.has(project.id);
-  const showAddMilestone = state.showAddMilestone.get(project.id);
   
   if (isEditing) {
     return `
@@ -472,41 +470,7 @@ function renderProjectCard(project) {
     <div class="project-milestones-progress">
       <h3 class="text-sm" style="margin-bottom: 0.75rem; font-weight: 600;">Milestone Progress</h3>
       <div class="milestones-progress-list">
-        ${project.milestones.map(m => {
-          const totalTasks = m.tasks ? m.tasks.length : 0;
-          const notStartedTasks = m.tasks ? m.tasks.filter(t => t.status === 'not-started' || !t.status).length : 0;
-          const inProgressTasks = m.tasks ? m.tasks.filter(t => t.status === 'in-progress').length : 0;
-          const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
-          
-          const notStartedPercent = totalTasks > 0 ? Math.round((notStartedTasks / totalTasks) * 100) : 0;
-          const inProgressPercent = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
-          const completedPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-          
-          return `
-            <div class="milestone-progress-item">
-              <div class="milestone-progress-header">
-                <span class="milestone-progress-title">${escapeHtml(m.title)}</span>
-                <span class="milestone-progress-stats">${completedTasks} complete, ${inProgressTasks} in progress, ${notStartedTasks} not started</span>
-              </div>
-              <div class="progress-bar-container">
-                ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
-                ${inProgressPercent > 0 ? `<div class="progress-bar-segment progress-bar-in-progress" style="width: ${inProgressPercent}%"></div>` : ''}
-                ${completedPercent > 0 ? `<div class="progress-bar-segment progress-bar-completed" style="width: ${completedPercent}%"></div>` : ''}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </div>
-  ` : '';
-  
-  const milestonesHtml = isExpanded ? `
-    <div class="expanded-content">
-      <div class="milestones-list">
-        ${project.milestones.length === 0 
-          ? '<p class="text-muted">No milestones yet.</p>'
-          : project.milestones.map(m => renderMilestoneCard(m, project.id)).join('')
-        }
+        ${project.milestones.map(m => renderMilestoneProgressBar(m)).join('')}
       </div>
     </div>
   ` : '';
@@ -520,21 +484,17 @@ function renderProjectCard(project) {
           <p class="text-xs text-muted">${project.milestones.length} milestone${project.milestones.length !== 1 ? 's' : ''}</p>
         </div>
         <div class="project-card-actions">
-          <button class="btn btn-gray btn-sm toggle-expand" data-project-id="${project.id}">${isExpanded ? 'Collapse' : 'Expand'}</button>
           <button class="btn btn-blue btn-sm edit-project" data-project-id="${project.id}">Edit</button>
           <button class="btn btn-red btn-sm delete-project" data-project-id="${project.id}">Delete</button>
         </div>
       </div>
       ${milestoneProgressHtml}
-      ${milestonesHtml}
     </div>
   `;
 }
 
 function renderMilestoneCard(milestone, projectId) {
-  const isExpanded = state.expandedProjects.has(`${projectId}-${milestone.id}`);
   const isEditing = state.editingMilestones.has(milestone.id);
-  const showAddTask = state.showAddTask.get(milestone.id);
   
   const completedTasks = milestone.tasks.filter(t => t.status === 'completed').length;
   const totalTasks = milestone.tasks.length;
@@ -554,17 +514,6 @@ function renderMilestoneCard(milestone, projectId) {
     `;
   }
   
-  const tasksHtml = isExpanded ? `
-    <div class="expanded-content">
-      <div class="tasks-list">
-        ${milestone.tasks.length === 0 
-          ? '<p class="text-muted">No tasks yet.</p>'
-          : milestone.tasks.map(t => renderTaskCard(t, projectId, milestone.id)).join('')
-        }
-      </div>
-    </div>
-  ` : '';
-  
   return `
     <div class="milestone-card" data-milestone-id="${milestone.id}" data-project-id="${projectId}">
       <div class="project-card-header">
@@ -576,12 +525,10 @@ function renderMilestoneCard(milestone, projectId) {
           <p class="text-xs text-muted">${completedTasks}/${totalTasks} tasks completed</p>
         </div>
         <div class="project-card-actions">
-          <button class="btn btn-gray btn-xs toggle-milestone-expand" data-project-id="${projectId}" data-milestone-id="${milestone.id}">${isExpanded ? 'Collapse' : 'Expand'}</button>
           <button class="btn btn-blue btn-xs edit-milestone" data-milestone-id="${milestone.id}" data-project-id="${projectId}">Edit</button>
           <button class="btn btn-red btn-xs delete-milestone" data-milestone-id="${milestone.id}" data-project-id="${projectId}">Delete</button>
         </div>
       </div>
-      ${tasksHtml}
     </div>
   `;
 }
@@ -739,15 +686,7 @@ function renderMilestones() {
   }
   
   elements.milestonesList.innerHTML = milestones.map(m => {
-    const totalTasks = m.tasks ? m.tasks.length : 0;
-    const notStartedTasks = m.tasks ? m.tasks.filter(t => t.status === 'not-started' || !t.status).length : 0;
-    const inProgressTasks = m.tasks ? m.tasks.filter(t => t.status === 'in-progress').length : 0;
-    const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
-    
-    const notStartedPercent = totalTasks > 0 ? Math.round((notStartedTasks / totalTasks) * 100) : 0;
-    const inProgressPercent = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
-    const completedPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
+    const progressBarHtml = renderMilestoneProgressBar(m, true);
     return `
       <div class="milestone-card">
         <h3>${escapeHtml(m.title)}</h3>
@@ -755,15 +694,7 @@ function renderMilestones() {
         ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
         ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
         <div class="milestone-progress">
-          <div class="progress-bar-container">
-            ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
-            ${inProgressPercent > 0 ? `<div class="progress-bar-segment progress-bar-in-progress" style="width: ${inProgressPercent}%"></div>` : ''}
-            ${completedPercent > 0 ? `<div class="progress-bar-segment progress-bar-completed" style="width: ${completedPercent}%"></div>` : ''}
-          </div>
-          <div class="progress-text">
-            <span>${completedTasks} complete, ${inProgressTasks} in progress, ${notStartedTasks} not started</span>
-            <span class="progress-percentage">${completedPercent}%</span>
-          </div>
+          ${progressBarHtml}
         </div>
       </div>
     `;
@@ -1220,6 +1151,57 @@ function attachTaskListenersForView(task) {
 }
 
 // Helper functions
+function renderMilestoneProgressBar(milestone, includeText = false) {
+  const statuses = storage.getStatuses();
+  const totalTasks = milestone.tasks ? milestone.tasks.length : 0;
+  
+  // Count tasks by status
+  const statusCounts = {};
+  statuses.forEach(status => {
+    statusCounts[status.id] = milestone.tasks ? milestone.tasks.filter(t => t.status === status.id || (!t.status && status.id === 'not-started')).length : 0;
+  });
+  
+  // Calculate percentages and build segments
+  const segments = [];
+  const stats = [];
+  
+  statuses.forEach(status => {
+    const count = statusCounts[status.id] || 0;
+    if (count > 0) {
+      const percent = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
+      segments.push(`<div class="progress-bar-segment" style="width: ${percent}%; background-color: ${status.color};"></div>`);
+      stats.push(`${count} ${status.label.toLowerCase()}`);
+    }
+  });
+  
+  const statsText = stats.length > 0 ? stats.join(', ') : '0 tasks';
+  const completedCount = statusCounts['completed'] || 0;
+  const completedPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+  
+  if (includeText) {
+    return `
+      <div class="progress-bar-container">
+        ${segments.join('')}
+      </div>
+      <div class="progress-text">
+        <span>${statsText}</span>
+        <span class="progress-percentage">${completedPercent}%</span>
+      </div>
+    `;
+  } else {
+    return `
+      <div class="milestone-progress-item">
+        <div class="milestone-progress-header">
+          <span class="milestone-progress-title">${escapeHtml(milestone.title)}</span>
+          <span class="milestone-progress-stats">${statsText}</span>
+        </div>
+        <div class="progress-bar-container">
+          ${segments.join('')}
+        </div>
+      </div>
+    `;
+  }
+}
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
@@ -1323,16 +1305,6 @@ function updateAllSelects() {
 function attachProjectListeners(project) {
   const projectId = project.id;
   
-  // Toggle expand
-  document.querySelector(`.toggle-expand[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    if (state.expandedProjects.has(projectId)) {
-      state.expandedProjects.delete(projectId);
-    } else {
-      state.expandedProjects.add(projectId);
-    }
-    renderProjects();
-  });
-  
   // Edit project
   document.querySelector(`.edit-project[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
     state.editingProjects.add(projectId);
@@ -1405,10 +1377,6 @@ function attachProjectListeners(project) {
     }
   });
   
-  // Milestone listeners
-  project.milestones.forEach(milestone => {
-    attachMilestoneListeners(projectId, milestone);
-  });
 }
 
 function attachMilestoneListeners(projectId, milestone) {
