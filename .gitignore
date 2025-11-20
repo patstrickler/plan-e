@@ -34,6 +34,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# data storage
+# data storage (not used with localStorage, but keep for compatibility)
 /data.json
+/out
 
