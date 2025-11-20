@@ -35,8 +35,8 @@ function initFooter() {
     })
     .catch(err => {
       // Try alternative path
-      console.warn('Failed to fetch /version.json, trying /public/version.json:', err);
-      fetch('/public/version.json')
+      console.warn('Failed to fetch ./version.json, trying ./public/version.json:', err);
+      fetch('./public/version.json')
         .then(res => {
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           return res.json();
