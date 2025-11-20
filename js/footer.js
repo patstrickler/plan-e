@@ -13,8 +13,8 @@ function initFooter() {
     return;
   }
 
-  // Try to fetch version.json from root
-  fetch('/version.json')
+  // Try to fetch version.json - use relative path to work with any base path
+  fetch('./version.json')
     .then(res => {
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
