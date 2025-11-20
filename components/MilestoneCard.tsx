@@ -82,7 +82,7 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
 
   const displayMilestone = currentMilestone || milestone;
 
-  const completedTasks = displayMilestone.tasks.filter((t) => t.completed).length;
+  const completedTasks = displayMilestone.tasks.filter((t) => t.status === 'completed').length;
   const totalTasks = displayMilestone.tasks.length;
 
   return (

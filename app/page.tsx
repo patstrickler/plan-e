@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Project } from '@/types';
 import ProjectCard from '@/components/ProjectCard';
 import { getAllProjects, createProject } from '@/lib/storage-client';
+import Link from 'next/link';
 
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -57,12 +58,30 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Plan-E
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Organize your projects, milestones, and tasks
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                Plan-E
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Organize your projects, milestones, and tasks
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href="/milestones"
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
+              >
+                Milestones
+              </Link>
+              <Link
+                href="/tasks"
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
+              >
+                Tasks
+              </Link>
+            </div>
+          </div>
         </header>
 
         <div className="mb-6">

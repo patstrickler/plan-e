@@ -1,9 +1,19 @@
+export type TaskStatus = 'not-started' | 'in-progress' | 'completed';
+export type Priority = 'low' | 'medium' | 'high' | 'urgent';
+export type EffortLevel = 'small' | 'medium' | 'large' | 'x-large';
+
 export interface Task {
   id: string;
   milestoneId: string;
+  projectId: string; // Added for easier reference
   title: string;
   description?: string;
-  completed: boolean;
+  status: TaskStatus;
+  priority?: Priority;
+  effortLevel?: EffortLevel;
+  assignedResource?: string;
+  startDate?: string; // Recorded when status changes to 'in-progress'
+  completedDate?: string; // Recorded when status changes to 'completed'
   createdAt: string;
   updatedAt: string;
 }

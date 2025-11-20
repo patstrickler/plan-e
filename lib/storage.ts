@@ -4,11 +4,60 @@ import { DataStore, Project, Milestone, Task } from '@/types';
 
 const DATA_FILE = path.join(process.cwd(), 'data.json');
 
+// Migrate old task format to new format
+function migrateTask(task: any, projectId: string): Task {
+  // If task already has new format, return as is
+  if (task.status && task.projectId) {
+    return task as Task;
+  }
+  
+  // Migrate from old format
+  const migrated: Task = {
+    ...task,
+    projectId: task.projectId || projectId,
+    status: task.status || (task.completed ? 'completed' : 'not-started'),
+    priority: task.priority || undefined,
+    effortLevel: task.effortLevel || undefined,
+    assignedResource: task.assignedResource || undefined,
+    startDate: task.startDate || undefined,
+    completedDate: task.completedDate || (task.completed ? task.updatedAt : undefined),
+  };
+  
+  // Remove old completed field if it exists
+  delete (migrated as any).completed;
+  
+  return migrated;
+}
+
+function migrateData(data: any): DataStore {
+  if (!data || !data.projects) {
+    return { projects: [] };
+  }
+  
+  const migrated: DataStore = {
+    projects: data.projects.map((project: any) => ({
+      ...project,
+      milestones: project.milestones?.map((milestone: any) => ({
+        ...milestone,
+        tasks: milestone.tasks?.map((task: any) => migrateTask(task, project.id)) || [],
+      })) || [],
+    })),
+  };
+  
+  return migrated;
+}
+
 function readData(): DataStore {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const data = fs.readFileSync(DATA_FILE, 'utf-8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      const migrated = migrateData(parsed);
+      // Write back migrated data if migration occurred
+      if (JSON.stringify(parsed) !== JSON.stringify(migrated)) {
+        writeData(migrated);
+      }
+      return migrated;
     }
   } catch (error) {
     console.error('Error reading data:', error);
@@ -121,7 +170,7 @@ export function deleteMilestone(projectId: string, milestoneId: string): boolean
   return project.milestones.length < initialLength;
 }
 
-export function createTask(projectId: string, milestoneId: string, task: Omit<Task, 'id' | 'milestoneId' | 'createdAt' | 'updatedAt' | 'completed'>): Task {
+export function createTask(projectId: string, milestoneId: string, task: Omit<Task, 'id' | 'milestoneId' | 'projectId' | 'createdAt' | 'updatedAt' | 'status' | 'startDate' | 'completedDate'>): Task {
   const data = readData();
   const project = data.projects.find(p => p.id === projectId);
   if (!project) throw new Error('Project not found');
@@ -133,7 +182,8 @@ export function createTask(projectId: string, milestoneId: string, task: Omit<Ta
     ...task,
     id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     milestoneId,
-    completed: false,
+    projectId,
+    status: 'not-started',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -145,7 +195,7 @@ export function createTask(projectId: string, milestoneId: string, task: Omit<Ta
   return newTask;
 }
 
-export function updateTask(projectId: string, milestoneId: string, taskId: string, updates: Partial<Omit<Task, 'id' | 'milestoneId' | 'createdAt'>>): Task | null {
+export function updateTask(projectId: string, milestoneId: string, taskId: string, updates: Partial<Omit<Task, 'id' | 'milestoneId' | 'projectId' | 'createdAt'>>): Task | null {
   const data = readData();
   const project = data.projects.find(p => p.id === projectId);
   if (!project) return null;
@@ -156,13 +206,34 @@ export function updateTask(projectId: string, milestoneId: string, taskId: strin
   const taskIndex = milestone.tasks.findIndex(t => t.id === taskId);
   if (taskIndex === -1) return null;
   
+  const currentTask = milestone.tasks[taskIndex];
+  const now = new Date().toISOString();
+  
+  // Handle status transitions
+  const statusUpdate: Partial<Task> = {};
+  if (updates.status && updates.status !== currentTask.status) {
+    if (updates.status === 'in-progress' && !currentTask.startDate) {
+      statusUpdate.startDate = now;
+    } else if (updates.status === 'completed' && !currentTask.completedDate) {
+      statusUpdate.completedDate = now;
+    } else if (updates.status === 'not-started') {
+      // Reset dates if going back to not-started
+      statusUpdate.startDate = undefined;
+      statusUpdate.completedDate = undefined;
+    } else if (updates.status === 'in-progress' && currentTask.status === 'completed') {
+      // If going from completed back to in-progress, clear completed date
+      statusUpdate.completedDate = undefined;
+    }
+  }
+  
   milestone.tasks[taskIndex] = {
-    ...milestone.tasks[taskIndex],
+    ...currentTask,
     ...updates,
-    updatedAt: new Date().toISOString(),
+    ...statusUpdate,
+    updatedAt: now,
   };
-  milestone.updatedAt = new Date().toISOString();
-  project.updatedAt = new Date().toISOString();
+  milestone.updatedAt = now;
+  project.updatedAt = now;
   writeData(data);
   return milestone.tasks[taskIndex];
 }
