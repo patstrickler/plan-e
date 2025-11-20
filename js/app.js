@@ -725,19 +725,52 @@ function renderMilestones() {
   }
   
   elements.milestonesList.innerHTML = milestones.map(m => {
+    const isEditing = state.editingMilestones.has(m.id);
     const progressBarHtml = renderMilestoneProgressBar(m, true);
+    const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
+    const totalTasks = m.tasks ? m.tasks.length : 0;
+    
+    if (isEditing) {
+      const targetDateValue = m.targetDate ? new Date(m.targetDate).toISOString().split('T')[0] : '';
+      return `
+        <div class="milestone-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
+          <input type="text" class="edit-title-milestone-view" value="${escapeHtml(m.title)}" data-milestone-id="${m.id}">
+          <textarea class="edit-description-milestone-view" data-milestone-id="${m.id}">${escapeHtml(m.description || '')}</textarea>
+          <input type="text" class="edit-target-date-milestone-view" value="${targetDateValue}" data-milestone-id="${m.id}" placeholder="Select target date">
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm save-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-milestone-view" data-milestone-id="${m.id}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+    
     return `
-      <div class="milestone-card">
-        <h3>${escapeHtml(m.title)}</h3>
-        <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
-        ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
-        ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
-        <div class="milestone-progress">
-          ${progressBarHtml}
+      <div class="milestone-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
+        <div class="project-card-header">
+          <div class="project-card-content">
+            <h3>${escapeHtml(m.title)}</h3>
+            <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
+            ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
+            ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
+            <p class="text-xs text-muted">${completedTasks}/${totalTasks} tasks completed</p>
+            <div class="milestone-progress">
+              ${progressBarHtml}
+            </div>
+          </div>
+          <div class="project-card-actions">
+            <button class="btn btn-blue btn-xs edit-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Edit</button>
+            <button class="btn btn-red btn-xs delete-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Delete</button>
+          </div>
         </div>
       </div>
     `;
   }).join('');
+  
+  // Attach event listeners for milestones in the view
+  milestones.forEach(milestone => {
+    attachMilestoneViewListeners(milestone);
+  });
 }
 
 function renderTasks() {
