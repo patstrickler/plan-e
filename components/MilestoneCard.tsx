@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Milestone } from '@/types';
+import { Milestone, MilestonePriority } from '@/types';
 import TaskCard from './TaskCard';
 import { createTask, updateMilestone, deleteMilestone, getProject } from '@/lib/storage-client';
 
@@ -19,6 +19,10 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(milestone.title);
   const [editDescription, setEditDescription] = useState(milestone.description || '');
+  const [editPriority, setEditPriority] = useState<MilestonePriority | ''>(milestone.priority || '');
+  const [editDueDate, setEditDueDate] = useState(milestone.dueDate ? milestone.dueDate.split('T')[0] : '');
+  const [editStakeholders, setEditStakeholders] = useState<string[]>(milestone.stakeholders || []);
+  const [newStakeholder, setNewStakeholder] = useState('');
   const [currentMilestone, setCurrentMilestone] = useState(milestone);
 
   // Refresh milestone data
@@ -56,11 +60,26 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
     }
   };
 
+  const handleAddStakeholder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newStakeholder.trim() && !editStakeholders.includes(newStakeholder.trim())) {
+      setEditStakeholders([...editStakeholders, newStakeholder.trim()]);
+      setNewStakeholder('');
+    }
+  };
+
+  const handleRemoveStakeholder = (name: string) => {
+    setEditStakeholders(editStakeholders.filter(s => s !== name));
+  };
+
   const handleUpdateMilestone = () => {
     try {
       updateMilestone(projectId, milestone.id, {
         title: editTitle,
         description: editDescription || undefined,
+        priority: editPriority || undefined,
+        dueDate: editDueDate || undefined,
+        stakeholders: editStakeholders.length > 0 ? editStakeholders : undefined,
       });
       setIsEditing(false);
       refreshMilestone();
@@ -105,6 +124,76 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
                 placeholder="Description (optional)"
                 rows={2}
               />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Priority
+                </label>
+                <select
+                  value={editPriority}
+                  onChange={(e) => setEditPriority(e.target.value as MilestonePriority | '')}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 mb-2"
+                >
+                  <option value="">None</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  value={editDueDate}
+                  onChange={(e) => setEditDueDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 mb-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Stakeholders
+                </label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {editStakeholders.map((stakeholder, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md text-sm"
+                    >
+                      {stakeholder}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStakeholder(stakeholder)}
+                        className="ml-2 text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newStakeholder}
+                    onChange={(e) => setNewStakeholder(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddStakeholder(e);
+                      }
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="Enter stakeholder name"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddStakeholder}
+                    className="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={handleUpdateMilestone}
@@ -117,6 +206,9 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
                     setIsEditing(false);
                     setEditTitle(displayMilestone.title);
                     setEditDescription(displayMilestone.description || '');
+                    setEditPriority(displayMilestone.priority || '');
+                    setEditDueDate(displayMilestone.dueDate ? displayMilestone.dueDate.split('T')[0] : '');
+                    setEditStakeholders(displayMilestone.stakeholders || []);
                   }}
                   className="px-3 py-1 text-sm bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500"
                 >
@@ -126,19 +218,48 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
             </div>
           ) : (
             <>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                {displayMilestone.title}
-              </h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {displayMilestone.title}
+                </h3>
+                {displayMilestone.priority && (
+                  <span
+                    className={`px-2 py-1 text-xs rounded font-medium ${
+                      displayMilestone.priority === 'high'
+                        ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+                        : displayMilestone.priority === 'medium'
+                        ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
+                        : 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                    }`}
+                  >
+                    {displayMilestone.priority.toUpperCase()}
+                  </span>
+                )}
+              </div>
               {displayMilestone.description && (
                 <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
                   {displayMilestone.description}
                 </p>
               )}
-              {displayMilestone.dueDate && (
-                <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">
-                  Due: {new Date(displayMilestone.dueDate).toLocaleDateString()}
-                </p>
-              )}
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                {displayMilestone.dueDate && (
+                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                    Due: {new Date(displayMilestone.dueDate).toLocaleDateString()}
+                  </p>
+                )}
+                {displayMilestone.stakeholders && displayMilestone.stakeholders.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {displayMilestone.stakeholders.map((stakeholder, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded"
+                      >
+                        {stakeholder}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-gray-500 dark:text-gray-500">
                 {completedTasks}/{totalTasks} tasks completed
               </p>
@@ -154,7 +275,14 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
               {isExpanded ? 'Collapse' : 'Expand'}
             </button>
             <button
-              onClick={() => setIsEditing(true)}
+              onClick={() => {
+                setIsEditing(true);
+                setEditTitle(displayMilestone.title);
+                setEditDescription(displayMilestone.description || '');
+                setEditPriority(displayMilestone.priority || '');
+                setEditDueDate(displayMilestone.dueDate ? displayMilestone.dueDate.split('T')[0] : '');
+                setEditStakeholders(displayMilestone.stakeholders || []);
+              }}
               className="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800"
             >
               Edit

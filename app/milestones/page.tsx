@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Milestone, Project } from '@/types';
+import { Milestone, Project, MilestonePriority } from '@/types';
 import { getAllMilestones, getAllProjects, createMilestone } from '@/lib/storage-client';
 
 export default function MilestonesPage() {
@@ -11,6 +11,10 @@ export default function MilestonesPage() {
   const [showAddMilestone, setShowAddMilestone] = useState(false);
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [milestoneDescription, setMilestoneDescription] = useState('');
+  const [milestonePriority, setMilestonePriority] = useState<MilestonePriority | ''>('');
+  const [milestoneDueDate, setMilestoneDueDate] = useState('');
+  const [milestoneStakeholders, setMilestoneStakeholders] = useState<string[]>([]);
+  const [newStakeholder, setNewStakeholder] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
   const fetchData = () => {
@@ -30,6 +34,18 @@ export default function MilestonesPage() {
     fetchData();
   }, []);
 
+  const handleAddStakeholder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newStakeholder.trim() && !milestoneStakeholders.includes(newStakeholder.trim())) {
+      setMilestoneStakeholders([...milestoneStakeholders, newStakeholder.trim()]);
+      setNewStakeholder('');
+    }
+  };
+
+  const handleRemoveStakeholder = (name: string) => {
+    setMilestoneStakeholders(milestoneStakeholders.filter(s => s !== name));
+  };
+
   const handleAddMilestone = (e: React.FormEvent) => {
     e.preventDefault();
     if (!milestoneTitle.trim() || !selectedProjectId) return;
@@ -38,9 +54,16 @@ export default function MilestonesPage() {
       createMilestone(selectedProjectId, {
         title: milestoneTitle,
         description: milestoneDescription || undefined,
+        priority: milestonePriority || undefined,
+        dueDate: milestoneDueDate || undefined,
+        stakeholders: milestoneStakeholders.length > 0 ? milestoneStakeholders : undefined,
       });
       setMilestoneTitle('');
       setMilestoneDescription('');
+      setMilestonePriority('');
+      setMilestoneDueDate('');
+      setMilestoneStakeholders([]);
+      setNewStakeholder('');
       setSelectedProjectId('');
       setShowAddMilestone(false);
       fetchData();
@@ -130,6 +153,79 @@ export default function MilestonesPage() {
                     rows={3}
                   />
                 </div>
+                <div>
+                  <label htmlFor="milestone-priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Priority (optional)
+                  </label>
+                  <select
+                    id="milestone-priority"
+                    value={milestonePriority}
+                    onChange={(e) => setMilestonePriority(e.target.value as MilestonePriority | '')}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select priority</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="milestone-due-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Due Date (optional)
+                  </label>
+                  <input
+                    id="milestone-due-date"
+                    type="date"
+                    value={milestoneDueDate}
+                    onChange={(e) => setMilestoneDueDate(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="milestone-stakeholders" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Stakeholders (optional)
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {milestoneStakeholders.map((stakeholder, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md text-sm"
+                      >
+                        {stakeholder}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveStakeholder(stakeholder)}
+                          className="ml-2 text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      id="milestone-stakeholders"
+                      type="text"
+                      value={newStakeholder}
+                      onChange={(e) => setNewStakeholder(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddStakeholder(e);
+                        }
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter stakeholder name"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddStakeholder}
+                      className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 font-medium"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
                 <div className="flex gap-3">
                   <button
                     type="submit"
@@ -143,6 +239,10 @@ export default function MilestonesPage() {
                       setShowAddMilestone(false);
                       setMilestoneTitle('');
                       setMilestoneDescription('');
+                      setMilestonePriority('');
+                      setMilestoneDueDate('');
+                      setMilestoneStakeholders([]);
+                      setNewStakeholder('');
                       setSelectedProjectId('');
                     }}
                     className="px-6 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 font-medium"
@@ -186,11 +286,38 @@ export default function MilestonesPage() {
                         {milestone.description}
                       </p>
                     )}
-                    {milestone.dueDate && (
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">
-                        Due: {new Date(milestone.dueDate).toLocaleDateString()}
-                      </p>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      {milestone.priority && (
+                        <span
+                          className={`px-2 py-1 text-xs rounded font-medium ${
+                            milestone.priority === 'high'
+                              ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'
+                              : milestone.priority === 'medium'
+                              ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
+                              : 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                          }`}
+                        >
+                          {milestone.priority.toUpperCase()}
+                        </span>
+                      )}
+                      {milestone.dueDate && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                          Due: {new Date(milestone.dueDate).toLocaleDateString()}
+                        </p>
+                      )}
+                      {milestone.stakeholders && milestone.stakeholders.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {milestone.stakeholders.map((stakeholder, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded"
+                            >
+                              {stakeholder}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
                       {milestone.tasks.filter(t => t.status === 'completed').length}/{milestone.tasks.length} tasks completed
                     </p>

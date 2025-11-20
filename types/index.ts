@@ -1,6 +1,7 @@
 export type TaskStatus = 'not-started' | 'in-progress' | 'completed';
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 export type EffortLevel = 'small' | 'medium' | 'large' | 'x-large';
+export type MilestonePriority = 'low' | 'medium' | 'high';
 
 export interface Task {
   id: string;
@@ -23,7 +24,9 @@ export interface Milestone {
   projectId: string;
   title: string;
   description?: string;
+  priority?: MilestonePriority;
   dueDate?: string;
+  stakeholders?: string[];
   createdAt: string;
   updatedAt: string;
   tasks: Task[];
