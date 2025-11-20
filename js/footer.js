@@ -13,17 +13,22 @@ function initFooter() {
     return;
   }
 
-  // Try to fetch version.json
+  // Try to fetch version.json from root
   fetch('/version.json')
     .then(res => {
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Response is not JSON');
       }
       return res.json();
     })
     .then(data => {
       if (data && data.version) {
         versionElement.textContent = data.version;
+        console.log('Version loaded successfully:', data.version);
       } else {
         console.warn('Version data missing or invalid:', data);
       }
@@ -31,7 +36,7 @@ function initFooter() {
     .catch(err => {
       // Try alternative path
       console.warn('Failed to fetch /version.json, trying /public/version.json:', err);
-      return fetch('/public/version.json')
+      fetch('/public/version.json')
         .then(res => {
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           return res.json();
@@ -39,6 +44,7 @@ function initFooter() {
         .then(data => {
           if (data && data.version) {
             versionElement.textContent = data.version;
+            console.log('Version loaded from /public/version.json:', data.version);
           }
         })
         .catch(err2 => {
