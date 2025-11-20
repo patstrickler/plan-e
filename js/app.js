@@ -441,56 +441,76 @@ function setupEventListeners() {
     populateMilestoneSelect('edit-task-milestone', e.target.value);
   });
 
-  elements.newTaskForm?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const projectId = document.getElementById('task-project').value;
-    const milestoneId = document.getElementById('task-milestone').value;
-    const title = document.getElementById('task-title').value.trim();
-    const description = document.getElementById('task-description').value.trim();
-    const priority = document.getElementById('task-priority').value;
-    const effort = document.getElementById('task-effort').value;
-    const resource = document.getElementById('task-resource').value;
-    const dueDateInput = document.getElementById('task-due-date');
-    const dueDate = dueDateInput ? (dueDateInput.flatpickr ? dueDateInput.flatpickr.input.value : dueDateInput.value) : '';
-    
-    if (!title || !projectId || !milestoneId) return;
-    
-    try {
-      storage.createTask(projectId, milestoneId, {
-        title,
-        description: description || undefined,
-        priority: priority || undefined,
-        effortLevel: effort || undefined,
-        assignedResource: resource || undefined,
-        dueDate: dueDate || undefined,
-      });
-      document.getElementById('task-title').value = '';
-      document.getElementById('task-description').value = '';
-      document.getElementById('task-priority').value = '';
-      document.getElementById('task-effort').value = '';
-      document.getElementById('task-resource').value = '';
-      // Reset project and milestone selects
-      const projectSelect = document.getElementById('task-project');
-      if (projectSelect) {
-        projectSelect.value = '';
+  const newTaskForm = document.getElementById('new-task-form');
+  if (newTaskForm) {
+    newTaskForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const projectId = document.getElementById('task-project').value;
+      const milestoneId = document.getElementById('task-milestone').value;
+      const title = document.getElementById('task-title').value.trim();
+      const description = document.getElementById('task-description').value.trim();
+      const priority = document.getElementById('task-priority').value;
+      const effort = document.getElementById('task-effort').value;
+      const resource = document.getElementById('task-resource').value;
+      const dueDateInput = document.getElementById('task-due-date');
+      const dueDate = dueDateInput ? (dueDateInput.flatpickr ? dueDateInput.flatpickr.input.value : dueDateInput.value) : '';
+      
+      // Validate required fields and show user feedback
+      if (!title) {
+        alert('Please enter a task title');
+        document.getElementById('task-title').focus();
+        return;
       }
-      const milestoneSelect = document.getElementById('task-milestone');
-      if (milestoneSelect) {
-        milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
-        milestoneSelect.value = '';
+      if (!projectId) {
+        alert('Please select a project');
+        document.getElementById('task-project').focus();
+        return;
       }
-      // Clear due date
-      if (window.taskDueDatePicker) {
-        window.taskDueDatePicker.clear();
+      if (!milestoneId) {
+        alert('Please select a milestone');
+        document.getElementById('task-milestone').focus();
+        return;
       }
-      elements.newTaskForm.style.display = 'none';
-      elements.newTaskBtn.style.display = 'block';
-      renderTasks();
-    } catch (error) {
-      console.error('Failed to create task:', error);
-      alert('Failed to create task');
-    }
-  });
+      
+      try {
+        storage.createTask(projectId, milestoneId, {
+          title,
+          description: description || undefined,
+          priority: priority || undefined,
+          effortLevel: effort || undefined,
+          assignedResource: resource || undefined,
+          dueDate: dueDate || undefined,
+        });
+        document.getElementById('task-title').value = '';
+        document.getElementById('task-description').value = '';
+        document.getElementById('task-priority').value = '';
+        document.getElementById('task-effort').value = '';
+        document.getElementById('task-resource').value = '';
+        // Reset project and milestone selects
+        const projectSelect = document.getElementById('task-project');
+        if (projectSelect) {
+          projectSelect.value = '';
+        }
+        const milestoneSelect = document.getElementById('task-milestone');
+        if (milestoneSelect) {
+          milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
+          milestoneSelect.value = '';
+        }
+        // Clear due date
+        if (window.taskDueDatePicker) {
+          window.taskDueDatePicker.clear();
+        }
+        elements.newTaskForm.style.display = 'none';
+        elements.newTaskBtn.style.display = 'block';
+        renderTasks();
+      } catch (error) {
+        console.error('Failed to create task:', error);
+        alert('Failed to create task: ' + (error.message || 'Unknown error'));
+      }
+    });
+  } else {
+    console.error('new-task-form element not found');
+  }
 
   // Settings event listeners
   setupSettingsEventListeners();
