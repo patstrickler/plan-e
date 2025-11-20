@@ -152,6 +152,10 @@ function setupEventListeners() {
             clickOpens: true,
             allowInput: false,
           });
+          // Ensure calendar opens on focus
+          dateInput.addEventListener('focus', () => {
+            window.milestoneTargetDatePicker.open();
+          });
         }
       }
     }, 100);
@@ -1296,10 +1300,14 @@ function attachMilestoneListeners(projectId, milestone) {
     setTimeout(() => {
       const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
       if (targetDateInput && !targetDateInput.flatpickr) {
-        flatpickr(targetDateInput, {
+        const fp = flatpickr(targetDateInput, {
           dateFormat: 'Y-m-d',
           clickOpens: true,
           allowInput: false,
+        });
+        // Ensure calendar opens on focus
+        targetDateInput.addEventListener('focus', () => {
+          fp.open();
         });
       }
     }, 100);
@@ -1382,20 +1390,26 @@ function attachMilestoneListeners(projectId, milestone) {
     // Initialize milestone target date picker
     const milestoneDateInput = document.querySelector(`.milestone-target-date-input[data-project-id="${projectId}"]`);
     if (milestoneDateInput && !milestoneDateInput.flatpickr) {
-      flatpickr(milestoneDateInput, {
+      const fp = flatpickr(milestoneDateInput, {
         dateFormat: 'Y-m-d',
         clickOpens: true,
         allowInput: false,
+      });
+      milestoneDateInput.addEventListener('focus', () => {
+        fp.open();
       });
     }
     
     // Initialize task due date picker
     const taskDateInput = document.querySelector(`.task-due-date-input[data-milestone-id="${milestoneId}"]`);
     if (taskDateInput && !taskDateInput.flatpickr) {
-      flatpickr(taskDateInput, {
+      const fp = flatpickr(taskDateInput, {
         dateFormat: 'Y-m-d',
         clickOpens: true,
         allowInput: false,
+      });
+      taskDateInput.addEventListener('focus', () => {
+        fp.open();
       });
     }
   }, 100);
