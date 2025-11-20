@@ -1480,6 +1480,7 @@ function attachMilestoneViewListeners(milestone) {
         populateProjectSelectForMilestone(projectSelect.id, projectId);
       }
       
+      // Initialize date picker for milestone target date - same as add mode
       const targetDateInput = document.querySelector(`.edit-target-date-milestone-view[data-milestone-id="${milestoneId}"]`);
       if (targetDateInput && !targetDateInput.flatpickr) {
         const fp = flatpickr(targetDateInput, {
@@ -1487,7 +1488,7 @@ function attachMilestoneViewListeners(milestone) {
           clickOpens: true,
           allowInput: false,
         });
-        // Ensure calendar opens on focus
+        // Ensure calendar opens on focus - same as add mode
         targetDateInput.addEventListener('focus', () => {
           fp.open();
         });
