@@ -204,6 +204,22 @@ function setupEventListeners() {
     elements.newTaskForm.style.display = 'block';
     elements.newTaskBtn.style.display = 'none';
     document.getElementById('task-title').focus();
+    // Initialize date picker for task due date
+    setTimeout(() => {
+      if (!window.taskDueDatePicker) {
+        const dateInput = document.getElementById('task-due-date');
+        if (dateInput) {
+          window.taskDueDatePicker = flatpickr(dateInput, {
+            dateFormat: 'Y-m-d',
+            clickOpens: true,
+            allowInput: false,
+          });
+          dateInput.addEventListener('focus', () => {
+            window.taskDueDatePicker.open();
+          });
+        }
+      }
+    }, 100);
   });
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
@@ -215,6 +231,119 @@ function setupEventListeners() {
     elements.newTaskBtn.style.display = 'block';
     document.getElementById('task-title').value = '';
     document.getElementById('task-description').value = '';
+    document.getElementById('task-due-date').value = '';
+    if (window.taskDueDatePicker) {
+      window.taskDueDatePicker.clear();
+    }
+  });
+
+  // Edit task form
+  const editTaskForm = document.getElementById('edit-task-form');
+  const cancelEditTaskBtn = document.getElementById('cancel-edit-task-btn');
+  
+  cancelEditTaskBtn?.addEventListener('click', () => {
+    editTaskForm.style.display = 'none';
+    // Clear date picker if it exists
+    const editDueDateInput = document.getElementById('edit-task-due-date');
+    if (editDueDateInput && editDueDateInput.flatpickr) {
+      editDueDateInput.flatpickr.clear();
+    }
+  });
+
+  // Function to open edit task modal and populate it
+  window.openEditTaskModal = function(task) {
+    const editTaskForm = document.getElementById('edit-task-form');
+    if (!editTaskForm) return;
+
+    // Populate form fields
+    document.getElementById('edit-task-id').value = task.id;
+    document.getElementById('edit-task-project-id').value = task.projectId;
+    document.getElementById('edit-task-milestone-id').value = task.milestoneId;
+    document.getElementById('edit-task-title').value = task.title || '';
+    document.getElementById('edit-task-description').value = task.description || '';
+    
+    // Populate selects
+    populateProjectSelect('edit-task-project');
+    document.getElementById('edit-task-project').value = task.projectId;
+    populateMilestoneSelect('edit-task-milestone', task.projectId);
+    setTimeout(() => {
+      document.getElementById('edit-task-milestone').value = task.milestoneId;
+    }, 100);
+    
+    updateAllSelects(); // Populate priority, effort, and resource selects
+    setTimeout(() => {
+      const statusSelect = document.getElementById('edit-task-status');
+      const prioritySelect = document.getElementById('edit-task-priority');
+      const effortSelect = document.getElementById('edit-task-effort');
+      const resourceSelect = document.getElementById('edit-task-resource');
+      
+      if (statusSelect) statusSelect.value = task.status || '';
+      if (prioritySelect) prioritySelect.value = task.priority || '';
+      if (effortSelect) effortSelect.value = task.effortLevel || '';
+      if (resourceSelect) resourceSelect.value = task.assignedResource || '';
+      
+      // Set due date
+      const editDueDateInput = document.getElementById('edit-task-due-date');
+      if (editDueDateInput && task.dueDate) {
+        const dueDateValue = new Date(task.dueDate).toISOString().split('T')[0];
+        editDueDateInput.value = dueDateValue;
+      }
+      
+      // Initialize date picker for edit task form
+      if (editDueDateInput && !editDueDateInput.flatpickr) {
+        const fp = flatpickr(editDueDateInput, {
+          dateFormat: 'Y-m-d',
+          clickOpens: true,
+          allowInput: false,
+        });
+        editDueDateInput.addEventListener('focus', () => {
+          fp.open();
+        });
+      } else if (editDueDateInput && editDueDateInput.flatpickr && task.dueDate) {
+        editDueDateInput.flatpickr.setDate(task.dueDate);
+      }
+    }, 150);
+    
+    // Show modal
+    editTaskForm.style.display = 'block';
+  };
+
+  editTaskForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const taskId = document.getElementById('edit-task-id').value;
+    const projectId = document.getElementById('edit-task-project-id').value;
+    const milestoneId = document.getElementById('edit-task-milestone-id').value;
+    const title = document.getElementById('edit-task-title').value.trim();
+    const description = document.getElementById('edit-task-description').value.trim();
+    const status = document.getElementById('edit-task-status').value;
+    const priority = document.getElementById('edit-task-priority').value;
+    const effort = document.getElementById('edit-task-effort').value;
+    const resource = document.getElementById('edit-task-resource').value;
+    const editDueDateInput = document.getElementById('edit-task-due-date');
+    const dueDate = editDueDateInput ? (editDueDateInput.flatpickr ? editDueDateInput.flatpickr.input.value : editDueDateInput.value) : '';
+    
+    if (!title || !projectId || !milestoneId) return;
+    
+    try {
+      storage.updateTask(projectId, milestoneId, taskId, {
+        title,
+        description: description || undefined,
+        status,
+        priority: priority || undefined,
+        effortLevel: effort || undefined,
+        assignedResource: resource || undefined,
+        dueDate: dueDate || undefined,
+      });
+      editTaskForm.style.display = 'none';
+      renderTasks();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      alert('Failed to update task');
+    }
+  });
+
+  document.getElementById('edit-task-project')?.addEventListener('change', (e) => {
+    populateMilestoneSelect('edit-task-milestone', e.target.value);
   });
 
   elements.newTaskForm?.addEventListener('submit', (e) => {
@@ -1029,13 +1158,17 @@ function attachTaskListenersForView(task) {
     setTimeout(() => {
       const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
       if (dateInput && !dateInput.flatpickr) {
-        flatpickr(dateInput, {
+        const fp = flatpickr(dateInput, {
           dateFormat: 'Y-m-d',
           clickOpens: true,
           allowInput: false,
         });
+        // Ensure calendar opens on focus
+        dateInput.addEventListener('focus', () => {
+          fp.open();
+        });
       }
-    }, 0);
+    }, 100);
   });
   
   // Save task

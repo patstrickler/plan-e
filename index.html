@@ -9,6 +9,10 @@
   <style>
     .flatpickr-calendar {
       margin-top: 4px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      color: var(--text-primary);
     }
     .flatpickr-wrapper {
       position: relative;
@@ -16,10 +20,104 @@
     /* Ensure date inputs are clickable and open calendar */
     input.flatpickr-input {
       cursor: pointer;
+      background-color: var(--card-bg);
+      color: var(--text-primary);
+      border-color: var(--border);
     }
     input.flatpickr-input:focus {
       outline: none;
-      border-color: #4a90e2;
+      border-color: var(--primary);
+    }
+    input.flatpickr-input:hover {
+      border-color: var(--border-hover);
+    }
+    /* Dark theme for Flatpickr calendar */
+    .flatpickr-calendar.arrowTop:before {
+      border-bottom-color: var(--card-bg);
+    }
+    .flatpickr-calendar.arrowTop:after {
+      border-bottom-color: var(--border);
+    }
+    .flatpickr-calendar.arrowBottom:before {
+      border-top-color: var(--card-bg);
+    }
+    .flatpickr-calendar.arrowBottom:after {
+      border-top-color: var(--border);
+    }
+    .flatpickr-months {
+      background: var(--card-bg);
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border);
+    }
+    .flatpickr-month {
+      color: var(--text-primary);
+    }
+    .flatpickr-current-month {
+      color: var(--text-primary);
+    }
+    .flatpickr-prev-month,
+    .flatpickr-next-month {
+      color: var(--text-primary);
+      fill: var(--text-primary);
+    }
+    .flatpickr-prev-month:hover,
+    .flatpickr-next-month:hover {
+      color: var(--primary);
+      fill: var(--primary);
+    }
+    .flatpickr-weekdays {
+      background: var(--card-bg);
+    }
+    .flatpickr-weekday {
+      color: var(--text-secondary);
+    }
+    .flatpickr-days {
+      background: var(--card-bg);
+    }
+    .flatpickr-day {
+      color: var(--text-primary);
+      border: 1px solid transparent;
+    }
+    .flatpickr-day:hover {
+      background: var(--gray-100);
+      border-color: var(--border);
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+    .flatpickr-day.selected:hover,
+    .flatpickr-day.startRange:hover,
+    .flatpickr-day.endRange:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+    .flatpickr-day.today {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .flatpickr-day.today:hover {
+      background: var(--primary-light);
+    }
+    .flatpickr-day.flatpickr-disabled {
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+    .flatpickr-time {
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+    }
+    .flatpickr-time input {
+      color: var(--text-primary);
+    }
+    .flatpickr-time .flatpickr-time-separator {
+      color: var(--text-secondary);
+    }
+    .flatpickr-am-pm {
+      color: var(--text-primary);
     }
   </style>
 </head>
