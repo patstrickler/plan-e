@@ -46,7 +46,7 @@ export default function Navigation() {
                     px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200
                     ${active
                       ? 'bg-blue-600 text-white shadow-md dark:bg-blue-500 dark:text-white'
-                      : 'text-gray-700 dark:text-gray-300 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400'
+                      : 'text-gray-700 dark:text-gray-100 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 hover:text-blue-600 dark:hover:text-blue-300'
                     }
                   `}
                 >
