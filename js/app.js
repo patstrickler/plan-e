@@ -1451,6 +1451,76 @@ function attachProjectListeners(project) {
   
 }
 
+function attachMilestoneViewListeners(milestone) {
+  const milestoneId = milestone.id;
+  const projectId = milestone.projectId;
+  
+  // Edit milestone
+  document.querySelector(`.edit-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
+    state.editingMilestones.add(milestoneId);
+    renderMilestones();
+    // Initialize date picker for milestone target date after rendering
+    setTimeout(() => {
+      const targetDateInput = document.querySelector(`.edit-target-date-milestone-view[data-milestone-id="${milestoneId}"]`);
+      if (targetDateInput && !targetDateInput.flatpickr) {
+        const fp = flatpickr(targetDateInput, {
+          dateFormat: 'Y-m-d',
+          clickOpens: true,
+          allowInput: false,
+        });
+        // Ensure calendar opens on focus
+        targetDateInput.addEventListener('focus', () => {
+          fp.open();
+        });
+      }
+    }, 100);
+  });
+  
+  // Save milestone
+  document.querySelector(`.save-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
+    const title = document.querySelector(`.edit-title-milestone-view[data-milestone-id="${milestoneId}"]`).value.trim();
+    const description = document.querySelector(`.edit-description-milestone-view[data-milestone-id="${milestoneId}"]`).value.trim();
+    const targetDateInput = document.querySelector(`.edit-target-date-milestone-view[data-milestone-id="${milestoneId}"]`);
+    const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
+    
+    if (!title) return;
+    
+    try {
+      storage.updateMilestone(projectId, milestoneId, { 
+        title, 
+        description: description || undefined,
+        targetDate: targetDate || undefined
+      });
+      state.editingMilestones.delete(milestoneId);
+      renderMilestones();
+      renderProjects(); // Also update projects view if visible
+    } catch (error) {
+      console.error('Failed to update milestone:', error);
+      alert('Failed to update milestone');
+    }
+  });
+  
+  // Cancel edit milestone
+  document.querySelector(`.cancel-edit-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
+    state.editingMilestones.delete(milestoneId);
+    renderMilestones();
+  });
+  
+  // Delete milestone
+  document.querySelector(`.delete-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${milestone.title}"?`)) return;
+    
+    try {
+      storage.deleteMilestone(projectId, milestoneId);
+      renderMilestones();
+      renderProjects(); // Also update projects view if visible
+    } catch (error) {
+      console.error('Failed to delete milestone:', error);
+      alert('Failed to delete milestone');
+    }
+  });
+}
+
 function attachMilestoneListeners(projectId, milestone) {
   const milestoneId = milestone.id;
   
