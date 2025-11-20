@@ -510,14 +510,177 @@ function renderTasks() {
     return;
   }
   
-  elements.tasksList.innerHTML = tasks.map(t => `
-    <div class="task-card ${t.status === 'completed' ? 'task-completed' : ''}">
-      <h4>${escapeHtml(t.title)}</h4>
-      <p class="text-muted">Project: ${escapeHtml(t.project.title)} | Milestone: ${escapeHtml(t.milestone.title)}</p>
-      ${t.description ? `<p>${escapeHtml(t.description)}</p>` : ''}
-      <span class="badge ${t.status === 'completed' ? 'badge-green' : t.status === 'in-progress' ? 'badge-blue' : 'badge-gray'}">${t.status}</span>
+  elements.tasksList.innerHTML = tasks.map(t => renderTaskCardForView(t)).join('');
+  
+  // Re-attach event listeners
+  tasks.forEach(task => {
+    attachTaskListenersForView(task);
+  });
+}
+
+function renderTaskCardForView(task) {
+  const isEditing = state.editingTasks.has(task.id);
+  const isCompleted = task.status === 'completed';
+  const projectId = task.projectId;
+  const milestoneId = task.milestoneId;
+  
+  if (isEditing) {
+    return `
+      <div class="task-card ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
+        <input type="text" class="edit-title" value="${escapeHtml(task.title)}" data-task-id="${task.id}">
+        <textarea class="edit-description" data-task-id="${task.id}">${escapeHtml(task.description || '')}</textarea>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Status</label>
+            <select class="edit-status" data-task-id="${task.id}">
+              <option value="not-started" ${task.status === 'not-started' ? 'selected' : ''}>Not Started</option>
+              <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+              <option value="completed" ${task.status === 'completed' ? 'selected' : ''}>Completed</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select class="edit-priority" data-task-id="${task.id}">
+              <option value="">None</option>
+              <option value="low" ${task.priority === 'low' ? 'selected' : ''}>Low</option>
+              <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>Medium</option>
+              <option value="high" ${task.priority === 'high' ? 'selected' : ''}>High</option>
+              <option value="urgent" ${task.priority === 'urgent' ? 'selected' : ''}>Urgent</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Effort</label>
+            <select class="edit-effort" data-task-id="${task.id}">
+              <option value="">None</option>
+              <option value="small" ${task.effortLevel === 'small' ? 'selected' : ''}>Small</option>
+              <option value="medium" ${task.effortLevel === 'medium' ? 'selected' : ''}>Medium</option>
+              <option value="large" ${task.effortLevel === 'large' ? 'selected' : ''}>Large</option>
+              <option value="x-large" ${task.effortLevel === 'x-large' ? 'selected' : ''}>X-Large</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Resource</label>
+            <input type="text" class="edit-resource" value="${escapeHtml(task.assignedResource || '')}" data-task-id="${task.id}" placeholder="Assigned to">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary btn-sm save-task-view" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Save</button>
+          <button class="btn btn-secondary btn-sm cancel-edit-task-view" data-task-id="${task.id}">Cancel</button>
+        </div>
+      </div>
+    `;
+  }
+  
+  const statusColor = {
+    'completed': 'badge-green',
+    'in-progress': 'badge-blue',
+    'not-started': 'badge-gray',
+  }[task.status] || 'badge-gray';
+  
+  const priorityColor = {
+    'urgent': 'badge-red',
+    'high': 'badge-orange',
+    'medium': 'badge-yellow',
+    'low': 'badge-green',
+  }[task.priority] || '';
+  
+  return `
+    <div class="task-card ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
+      <div class="project-card-header">
+        <div class="project-card-content" style="flex: 1; min-width: 0;">
+          <select class="task-status-select-view ${statusColor}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
+            <option value="not-started" ${task.status === 'not-started' ? 'selected' : ''}>Not Started</option>
+            <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+            <option value="completed" ${task.status === 'completed' ? 'selected' : ''}>Completed</option>
+          </select>
+          ${task.priority ? `<span class="badge ${priorityColor}">${task.priority}</span>` : ''}
+          <h4>${escapeHtml(task.title)}</h4>
+          <p class="text-muted">Project: ${escapeHtml(task.project.title)} | Milestone: ${escapeHtml(task.milestone.title)}</p>
+          ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
+          <div class="task-meta">
+            ${task.effortLevel ? `<span>Effort: ${task.effortLevel}</span>` : ''}
+            ${task.assignedResource ? `<span>Assigned to: ${escapeHtml(task.assignedResource)}</span>` : ''}
+            ${task.startDate ? `<span>Started: ${new Date(task.startDate).toLocaleDateString()}</span>` : ''}
+            ${task.completedDate ? `<span>Completed: ${new Date(task.completedDate).toLocaleDateString()}</span>` : ''}
+          </div>
+        </div>
+        <div class="project-card-actions">
+          <button class="btn btn-blue btn-xs edit-task-view" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Edit</button>
+          <button class="btn btn-red btn-xs delete-task-view" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Delete</button>
+        </div>
+      </div>
     </div>
-  `).join('');
+  `;
+}
+
+function attachTaskListenersForView(task) {
+  const taskId = task.id;
+  const projectId = task.projectId;
+  const milestoneId = task.milestoneId;
+  
+  // Status change
+  document.querySelector(`.task-status-select-view[data-task-id="${taskId}"]`)?.addEventListener('change', (e) => {
+    try {
+      storage.updateTask(projectId, milestoneId, taskId, { status: e.target.value });
+      renderTasks();
+    } catch (error) {
+      console.error('Failed to update task status:', error);
+      alert('Failed to update task status');
+    }
+  });
+  
+  // Edit task
+  document.querySelector(`.edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
+    state.editingTasks.add(taskId);
+    renderTasks();
+  });
+  
+  // Save task
+  document.querySelector(`.save-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
+    const title = document.querySelector(`.edit-title[data-task-id="${taskId}"]`).value.trim();
+    const description = document.querySelector(`.edit-description[data-task-id="${taskId}"]`).value.trim();
+    const status = document.querySelector(`.edit-status[data-task-id="${taskId}"]`).value;
+    const priority = document.querySelector(`.edit-priority[data-task-id="${taskId}"]`).value;
+    const effort = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`).value;
+    const resource = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`).value.trim();
+    
+    if (!title) return;
+    
+    try {
+      storage.updateTask(projectId, milestoneId, taskId, {
+        title,
+        description: description || undefined,
+        status,
+        priority: priority || undefined,
+        effortLevel: effort || undefined,
+        assignedResource: resource || undefined,
+      });
+      state.editingTasks.delete(taskId);
+      renderTasks();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      alert('Failed to update task');
+    }
+  });
+  
+  // Cancel edit task
+  document.querySelector(`.cancel-edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
+    state.editingTasks.delete(taskId);
+    renderTasks();
+  });
+  
+  // Delete task
+  document.querySelector(`.delete-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${task.title}"?`)) return;
+    
+    try {
+      storage.deleteTask(projectId, milestoneId, taskId);
+      renderTasks();
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      alert('Failed to delete task');
+    }
+  });
 }
 
 // Helper functions
