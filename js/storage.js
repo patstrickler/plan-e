@@ -38,6 +38,7 @@ function migrateData(data) {
         ...milestone,
         tasks: milestone.tasks?.map((task) => migrateTask(task, project.id)) || [],
       })) || [],
+      requirements: project.requirements || [],
     })),
   };
   
@@ -97,6 +98,7 @@ export function createProject(project) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     milestones: [],
+    requirements: [],
   };
   data.projects.push(newProject);
   writeData(data);
@@ -286,6 +288,73 @@ export function getAllTasks() {
   });
   
   return tasks;
+}
+
+// Requirements
+export function getAllRequirements() {
+  const data = readData();
+  const requirements = [];
+  
+  data.projects.forEach(project => {
+    (project.requirements || []).forEach(requirement => {
+      requirements.push({ ...requirement, project });
+    });
+  });
+  
+  return requirements;
+}
+
+export function createRequirement(projectId, requirement) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project) throw new Error('Project not found');
+  
+  if (!project.requirements) {
+    project.requirements = [];
+  }
+  
+  const newRequirement = {
+    ...requirement,
+    id: `requirement-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    projectId,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  
+  project.requirements.push(newRequirement);
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return newRequirement;
+}
+
+export function updateRequirement(projectId, requirementId, updates) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project || !project.requirements) return null;
+  
+  const requirementIndex = project.requirements.findIndex(r => r.id === requirementId);
+  if (requirementIndex === -1) return null;
+  
+  project.requirements[requirementIndex] = {
+    ...project.requirements[requirementIndex],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return project.requirements[requirementIndex];
+}
+
+export function deleteRequirement(projectId, requirementId) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project || !project.requirements) return false;
+  
+  const initialLength = project.requirements.length;
+  project.requirements = project.requirements.filter(r => r.id !== requirementId);
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return project.requirements.length < initialLength;
 }
 
 // ============================================

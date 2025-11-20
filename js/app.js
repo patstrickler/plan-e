@@ -8,6 +8,7 @@ const state = {
   editingProjects: new Set(),
   editingMilestones: new Set(),
   editingTasks: new Set(),
+  editingRequirements: new Set(),
   showAddMilestone: new Map(),
   showAddTask: new Map(),
   editingMetadata: new Map(), // For editing metadata items in settings
@@ -24,16 +25,20 @@ const elements = {
   projectsView: document.getElementById('projects-view'),
   milestonesView: document.getElementById('milestones-view'),
   tasksView: document.getElementById('tasks-view'),
+  requirementsView: document.getElementById('requirements-view'),
   settingsView: document.getElementById('settings-view'),
   projectsList: document.getElementById('projects-list'),
   milestonesList: document.getElementById('milestones-list'),
   tasksList: document.getElementById('tasks-list'),
+  requirementsList: document.getElementById('requirements-list'),
   newProjectBtn: document.getElementById('new-project-btn'),
   newProjectForm: document.getElementById('new-project-form'),
   newMilestoneBtn: document.getElementById('new-milestone-btn'),
   newMilestoneForm: document.getElementById('new-milestone-form'),
   newTaskBtn: document.getElementById('new-task-btn'),
   newTaskForm: document.getElementById('new-task-form'),
+  newRequirementBtn: document.getElementById('new-requirement-btn'),
+  newRequirementForm: document.getElementById('new-requirement-form'),
   // Settings elements
   usersList: document.getElementById('users-list'),
   prioritiesList: document.getElementById('priorities-list'),
@@ -41,10 +46,31 @@ const elements = {
   effortLevelsList: document.getElementById('effort-levels-list'),
 };
 
+// Color palette matching the theme
+const THEME_COLORS = [
+  // Blues
+  '#3b82f6', '#2563eb', '#1d4ed8', '#60a5fa',
+  // Greens
+  '#10b981', '#059669', '#047857', '#34d399',
+  // Oranges/Yellows
+  '#f59e0b', '#eab308', '#d97706', '#fbbf24',
+  // Reds
+  '#ef4444', '#dc2626', '#b91c1c', '#f87171',
+  // Purples
+  '#8b5cf6', '#7c3aed', '#6d28d9', '#a78bfa',
+  // Teals
+  '#14b8a6', '#0d9488', '#0f766e', '#5eead4',
+  // Grays
+  '#71717a', '#52525b', '#3f3f46', '#a1a1aa',
+  // Pinks
+  '#ec4899', '#db2777', '#be185d', '#f472b6',
+];
+
 // Initialize app
 function init() {
   loadProjects();
   setupEventListeners();
+  initializeColorPickers();
   updateAllSelects(); // Initialize all selects with metadata
   hideLoading();
 }
@@ -53,6 +79,138 @@ function hideLoading() {
   if (elements.loading) {
     elements.loading.style.display = 'none';
   }
+}
+
+// Initialize color pickers with preset swatches
+function initializeColorPickers() {
+  // Initialize add forms
+  initColorPicker('priority-color-swatches', 'priority-color', 'priority-color-text');
+  initColorPicker('status-color-swatches', 'status-color', 'status-color-text');
+  initColorPicker('effort-color-swatches', 'effort-color', 'effort-color-text');
+}
+
+function initColorPicker(swatchesContainerId, hiddenInputId, textInputId) {
+  const container = document.getElementById(swatchesContainerId);
+  const hiddenInput = document.getElementById(hiddenInputId);
+  const textInput = document.getElementById(textInputId);
+  
+  if (!container || !hiddenInput || !textInput) return;
+  
+  // Clear existing swatches
+  container.innerHTML = '';
+  
+  // Create swatches for each color
+  THEME_COLORS.forEach(color => {
+    const swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'color-picker-swatch';
+    swatch.style.backgroundColor = color;
+    swatch.dataset.color = color;
+    swatch.setAttribute('aria-label', `Select color ${color}`);
+    
+    swatch.addEventListener('click', () => {
+      // Remove selected class from all swatches
+      container.querySelectorAll('.color-picker-swatch').forEach(s => {
+        s.classList.remove('selected');
+      });
+      
+      // Add selected class to clicked swatch
+      swatch.classList.add('selected');
+      
+      // Update hidden input and text input
+      hiddenInput.value = color;
+      textInput.value = color;
+      
+      // Trigger change event
+      hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+      textInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    
+    container.appendChild(swatch);
+  });
+  
+  // Sync text input changes to hidden input and swatches
+  textInput.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      hiddenInput.value = colorValue;
+      updateSelectedSwatch(container, colorValue);
+    }
+  });
+  
+  // Update selected swatch on initial load
+  const currentColor = hiddenInput.value || textInput.value || '#71717a';
+  if (/^#[0-9A-Fa-f]{6}$/.test(currentColor)) {
+    updateSelectedSwatch(container, currentColor);
+  }
+}
+
+function updateSelectedSwatch(container, color) {
+  // Remove selected from all
+  container.querySelectorAll('.color-picker-swatch').forEach(s => {
+    s.classList.remove('selected');
+  });
+  
+  // Find matching swatch and select it
+  const swatch = container.querySelector(`[data-color="${color.toLowerCase()}"]`);
+  if (swatch) {
+    swatch.classList.add('selected');
+  }
+}
+
+// Create color picker for edit forms
+function createEditColorPicker(containerId, hiddenInputId, textInputId, currentColor) {
+  const container = document.createElement('div');
+  container.className = 'color-picker-swatches';
+  container.id = containerId;
+  
+  const hiddenInput = document.createElement('input');
+  hiddenInput.type = 'hidden';
+  hiddenInput.id = hiddenInputId;
+  hiddenInput.value = currentColor || '#71717a';
+  
+  const textInput = document.createElement('input');
+  textInput.type = 'text';
+  textInput.className = 'color-text-input';
+  textInput.id = textInputId;
+  textInput.value = currentColor || '#71717a';
+  textInput.placeholder = '#71717a';
+  
+  // Create swatches
+  THEME_COLORS.forEach(color => {
+    const swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'color-picker-swatch';
+    swatch.style.backgroundColor = color;
+    swatch.dataset.color = color;
+    swatch.setAttribute('aria-label', `Select color ${color}`);
+    
+    if (color.toLowerCase() === (currentColor || '#71717a').toLowerCase()) {
+      swatch.classList.add('selected');
+    }
+    
+    swatch.addEventListener('click', () => {
+      container.querySelectorAll('.color-picker-swatch').forEach(s => {
+        s.classList.remove('selected');
+      });
+      swatch.classList.add('selected');
+      hiddenInput.value = color;
+      textInput.value = color;
+    });
+    
+    container.appendChild(swatch);
+  });
+  
+  // Sync text input
+  textInput.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      hiddenInput.value = colorValue;
+      updateSelectedSwatch(container, colorValue);
+    }
+  });
+  
+  return { container, hiddenInput, textInput };
 }
 
 function loadProjects() {
@@ -70,12 +228,15 @@ function showView(viewName) {
   elements.projectsView.style.display = viewName === 'projects' ? 'block' : 'none';
   elements.milestonesView.style.display = viewName === 'milestones' ? 'block' : 'none';
   elements.tasksView.style.display = viewName === 'tasks' ? 'block' : 'none';
+  elements.requirementsView.style.display = viewName === 'requirements' ? 'block' : 'none';
   elements.settingsView.style.display = viewName === 'settings' ? 'block' : 'none';
   
   if (viewName === 'milestones') {
     renderMilestones();
   } else if (viewName === 'tasks') {
     renderTasks();
+  } else if (viewName === 'requirements') {
+    renderRequirements();
   } else if (viewName === 'settings') {
     renderSettings();
   }
@@ -91,6 +252,7 @@ function setupEventListeners() {
       if (href === '#projects') showView('projects');
       if (href === '#milestones') showView('milestones');
       if (href === '#tasks') showView('tasks');
+      if (href === '#requirements') showView('requirements');
       if (href === '#settings') showView('settings');
     });
   });
@@ -194,6 +356,58 @@ function setupEventListeners() {
     } catch (error) {
       console.error('Failed to create milestone:', error);
       alert('Failed to create milestone');
+    }
+  });
+
+  // Requirement form
+  elements.newRequirementBtn?.addEventListener('click', () => {
+    populateProjectSelect('requirement-project');
+    updateAllSelects(); // Populate priority and status selects
+    elements.newRequirementForm.style.display = 'block';
+    elements.newRequirementBtn.style.display = 'none';
+    document.getElementById('requirement-title').focus();
+  });
+
+  document.getElementById('cancel-requirement-btn')?.addEventListener('click', () => {
+    elements.newRequirementForm.style.display = 'none';
+    elements.newRequirementBtn.style.display = 'block';
+    document.getElementById('requirement-title').value = '';
+    document.getElementById('requirement-description').value = '';
+    document.getElementById('requirement-category').value = '';
+    document.getElementById('requirement-priority').value = '';
+    document.getElementById('requirement-status').value = '';
+  });
+
+  elements.newRequirementForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const projectId = document.getElementById('requirement-project').value;
+    const title = document.getElementById('requirement-title').value.trim();
+    const description = document.getElementById('requirement-description').value.trim();
+    const category = document.getElementById('requirement-category').value.trim();
+    const priority = document.getElementById('requirement-priority').value;
+    const status = document.getElementById('requirement-status').value;
+    
+    if (!title || !projectId) return;
+    
+    try {
+      storage.createRequirement(projectId, { 
+        title, 
+        description: description || undefined,
+        category: category || undefined,
+        priority: priority || undefined,
+        status: status || undefined
+      });
+      document.getElementById('requirement-title').value = '';
+      document.getElementById('requirement-description').value = '';
+      document.getElementById('requirement-category').value = '';
+      document.getElementById('requirement-priority').value = '';
+      document.getElementById('requirement-status').value = '';
+      elements.newRequirementForm.style.display = 'none';
+      elements.newRequirementBtn.style.display = 'block';
+      renderRequirements();
+    } catch (error) {
+      console.error('Failed to create requirement:', error);
+      alert('Failed to create requirement');
     }
   });
 
@@ -784,6 +998,109 @@ function renderMilestones() {
   // Attach event listeners for milestones in the view
   milestones.forEach(milestone => {
     attachMilestoneViewListeners(milestone);
+  });
+}
+
+function renderRequirements() {
+  if (!elements.requirementsList) return;
+  
+  const requirements = storage.getAllRequirements();
+  
+  if (requirements.length === 0) {
+    elements.requirementsList.innerHTML = `
+      <div class="empty-state">
+        <p>No requirements yet</p>
+        <p class="empty-state-sub">Create your first requirement to get started!</p>
+      </div>
+    `;
+    return;
+  }
+  
+  elements.requirementsList.innerHTML = requirements.map(r => {
+    const isEditing = state.editingRequirements.has(r.id);
+    const priorities = storage.getPriorities();
+    const statuses = storage.getStatuses();
+    
+    if (isEditing) {
+      const priorityOptions = priorities.map(p => 
+        `<option value="${p.id}" ${r.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+      ).join('');
+      
+      const statusOptions = statuses.map(s => 
+        `<option value="${s.id}" ${r.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
+      ).join('');
+      
+      return `
+        <div class="form-card" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
+          <h2>Edit Requirement</h2>
+          <div class="form-group">
+            <label for="edit-requirement-view-project-${r.id}">Project *</label>
+            <select id="edit-requirement-view-project-${r.id}" class="edit-requirement-view-project" data-requirement-id="${r.id}" required></select>
+          </div>
+          <div class="form-group">
+            <label for="edit-requirement-view-title-${r.id}">Requirement Title *</label>
+            <input type="text" id="edit-requirement-view-title-${r.id}" class="edit-title-requirement-view" value="${escapeHtml(r.title)}" data-requirement-id="${r.id}" required placeholder="Enter requirement title">
+          </div>
+          <div class="form-group">
+            <label for="edit-requirement-view-description-${r.id}">Description (optional)</label>
+            <textarea id="edit-requirement-view-description-${r.id}" class="edit-description-requirement-view" data-requirement-id="${r.id}" rows="4" placeholder="Enter requirement description">${escapeHtml(r.description || '')}</textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-requirement-view-priority-${r.id}">Priority</label>
+              <select id="edit-requirement-view-priority-${r.id}" class="edit-priority-requirement-view" data-requirement-id="${r.id}">
+                <option value="">None</option>
+                ${priorityOptions}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit-requirement-view-status-${r.id}">Status</label>
+              <select id="edit-requirement-view-status-${r.id}" class="edit-status-requirement-view" data-requirement-id="${r.id}">
+                <option value="">None</option>
+                ${statusOptions}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="edit-requirement-view-category-${r.id}">Category (optional)</label>
+            <input type="text" id="edit-requirement-view-category-${r.id}" class="edit-category-requirement-view" value="${escapeHtml(r.category || '')}" data-requirement-id="${r.id}" placeholder="e.g., Functional, Non-functional, UI/UX">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary save-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Save Requirement</button>
+            <button type="button" class="btn btn-secondary cancel-edit-requirement-view" data-requirement-id="${r.id}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+    
+    const priority = priorities.find(p => p.id === r.priority);
+    const status = statuses.find(s => s.id === r.status);
+    
+    return `
+      <div class="milestone-card" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
+        <div class="project-card-header">
+          <div class="project-card-content">
+            <h3>${escapeHtml(r.title)}</h3>
+            <p class="text-muted">Project: ${escapeHtml(r.project.title)}</p>
+            ${r.description ? `<p>${escapeHtml(r.description)}</p>` : ''}
+            ${r.category ? `<p class="text-xs text-muted">Category: ${escapeHtml(r.category)}</p>` : ''}
+            <div class="task-meta">
+              ${priority ? `<span class="badge" style="background: ${priority.color}15; color: ${priority.color}; border-color: ${priority.color}40;">Priority: ${escapeHtml(priority.label)}</span>` : ''}
+              ${status ? `<span class="badge" style="background: ${status.color}15; color: ${status.color}; border-color: ${status.color}40;">Status: ${escapeHtml(status.label)}</span>` : ''}
+            </div>
+          </div>
+          <div class="project-card-actions">
+            <button class="btn btn-blue btn-xs edit-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Edit</button>
+            <button class="btn btn-red btn-xs delete-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Attach event listeners for requirements in the view
+  requirements.forEach(requirement => {
+    attachRequirementViewListeners(requirement);
   });
 }
 
@@ -1481,19 +1798,31 @@ function attachMilestoneViewListeners(milestone) {
       }
       
       // Initialize date picker for milestone target date - same as add mode
-      const targetDateInput = document.querySelector(`.edit-target-date-milestone-view[data-milestone-id="${milestoneId}"]`);
-      if (targetDateInput && !targetDateInput.flatpickr) {
+      const targetDateInput = document.querySelector(`#edit-milestone-view-target-date-${milestoneId}`);
+      if (targetDateInput) {
+        // Destroy existing flatpickr instance if it exists
+        if (targetDateInput.flatpickr) {
+          targetDateInput.flatpickr.destroy();
+        }
+        
+        // Create new flatpickr instance - same as add mode
         const fp = flatpickr(targetDateInput, {
           dateFormat: 'Y-m-d',
           clickOpens: true,
           allowInput: false,
         });
+        
         // Ensure calendar opens on focus - same as add mode
         targetDateInput.addEventListener('focus', () => {
           fp.open();
         });
+        
+        // Also open on click
+        targetDateInput.addEventListener('click', () => {
+          fp.open();
+        });
       }
-    }, 100);
+    }, 150);
   });
   
   // Save milestone
@@ -1549,6 +1878,87 @@ function attachMilestoneViewListeners(milestone) {
 }
 
 function populateProjectSelectForMilestone(selectId, selectedProjectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  
+  select.innerHTML = '<option value="">Select a project</option>' +
+    state.projects.map(p => `<option value="${p.id}" ${p.id === selectedProjectId ? 'selected' : ''}>${escapeHtml(p.title)}</option>`).join('');
+}
+
+function attachRequirementViewListeners(requirement) {
+  const requirementId = requirement.id;
+  const projectId = requirement.projectId;
+  
+  // Edit requirement
+  document.querySelector(`.edit-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
+    state.editingRequirements.add(requirementId);
+    renderRequirements();
+    // Populate project select after rendering
+    setTimeout(() => {
+      const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
+      if (projectSelect) {
+        populateProjectSelectForRequirement(projectSelect.id, projectId);
+      }
+    }, 100);
+  });
+  
+  // Save requirement
+  document.querySelector(`.save-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
+    const titleInput = document.querySelector(`.edit-title-requirement-view[data-requirement-id="${requirementId}"]`);
+    const descriptionInput = document.querySelector(`.edit-description-requirement-view[data-requirement-id="${requirementId}"]`);
+    const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
+    const prioritySelect = document.querySelector(`.edit-priority-requirement-view[data-requirement-id="${requirementId}"]`);
+    const statusSelect = document.querySelector(`.edit-status-requirement-view[data-requirement-id="${requirementId}"]`);
+    const categoryInput = document.querySelector(`.edit-category-requirement-view[data-requirement-id="${requirementId}"]`);
+    
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const newProjectId = projectSelect ? projectSelect.value : projectId;
+    const priority = prioritySelect ? prioritySelect.value : '';
+    const status = statusSelect ? statusSelect.value : '';
+    const category = categoryInput ? categoryInput.value.trim() : '';
+    
+    if (!title || !newProjectId) return;
+    
+    try {
+      storage.updateRequirement(newProjectId, requirementId, { 
+        title, 
+        description: description || undefined,
+        category: category || undefined,
+        priority: priority || undefined,
+        status: status || undefined
+      });
+      state.editingRequirements.delete(requirementId);
+      renderRequirements();
+      renderProjects(); // Also update projects view if visible
+    } catch (error) {
+      console.error('Failed to update requirement:', error);
+      alert('Failed to update requirement');
+    }
+  });
+  
+  // Cancel edit requirement
+  document.querySelector(`.cancel-edit-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
+    state.editingRequirements.delete(requirementId);
+    renderRequirements();
+  });
+  
+  // Delete requirement
+  document.querySelector(`.delete-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${requirement.title}"?`)) return;
+    
+    try {
+      storage.deleteRequirement(projectId, requirementId);
+      renderRequirements();
+      renderProjects(); // Also update projects view if visible
+    } catch (error) {
+      console.error('Failed to delete requirement:', error);
+      alert('Failed to delete requirement');
+    }
+  });
+}
+
+function populateProjectSelectForRequirement(selectId, selectedProjectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
   
@@ -1843,14 +2253,18 @@ function renderPriorities() {
     
     if (isEditing) {
       const currentColor = priority.color || '#71717a';
+      const swatchId = `edit-priority-swatches-${priority.id}`;
+      const hiddenInputId = `edit-priority-color-${priority.id}`;
+      const textInputId = `edit-priority-color-text-${priority.id}`;
       return `
         <div class="metadata-item-editing" data-priority-id="${priority.id}">
           <input type="text" class="edit-priority-label" value="${escapeHtml(priority.label)}" data-priority-id="${priority.id}" placeholder="Label">
           <div class="form-group">
             <label>Color</label>
-            <div class="color-input-group">
-              <input type="color" class="edit-priority-color" value="${currentColor}" data-priority-id="${priority.id}">
-              <input type="text" class="edit-priority-color-text" value="${currentColor}" placeholder="#71717a" class="color-text-input" data-priority-id="${priority.id}">
+            <div class="color-picker-container">
+              <div class="color-picker-swatches" id="${swatchId}"></div>
+              <input type="hidden" class="edit-priority-color" id="${hiddenInputId}" value="${currentColor}" data-priority-id="${priority.id}">
+              <input type="text" class="edit-priority-color-text color-text-input" id="${textInputId}" value="${currentColor}" placeholder="#71717a" data-priority-id="${priority.id}">
             </div>
           </div>
           <div class="metadata-item-editing-actions">
@@ -1903,14 +2317,18 @@ function renderStatuses() {
     
     if (isEditing) {
       const currentColor = status.color || '#71717a';
+      const swatchId = `edit-status-swatches-${status.id}`;
+      const hiddenInputId = `edit-status-color-${status.id}`;
+      const textInputId = `edit-status-color-text-${status.id}`;
       return `
         <div class="metadata-item-editing" data-status-id="${status.id}">
           <input type="text" class="edit-status-label" value="${escapeHtml(status.label)}" data-status-id="${status.id}" placeholder="Label">
           <div class="form-group">
             <label>Color</label>
-            <div class="color-input-group">
-              <input type="color" class="edit-status-color" value="${currentColor}" data-status-id="${status.id}">
-              <input type="text" class="edit-status-color-text" value="${currentColor}" placeholder="#71717a" class="color-text-input" data-status-id="${status.id}">
+            <div class="color-picker-container">
+              <div class="color-picker-swatches" id="${swatchId}"></div>
+              <input type="hidden" class="edit-status-color" id="${hiddenInputId}" value="${currentColor}" data-status-id="${status.id}">
+              <input type="text" class="edit-status-color-text color-text-input" id="${textInputId}" value="${currentColor}" placeholder="#71717a" data-status-id="${status.id}">
             </div>
           </div>
           <div class="metadata-item-editing-actions">
@@ -1963,14 +2381,18 @@ function renderEffortLevels() {
     
     if (isEditing) {
       const currentColor = effort.color || '#71717a';
+      const swatchId = `edit-effort-swatches-${effort.id}`;
+      const hiddenInputId = `edit-effort-color-${effort.id}`;
+      const textInputId = `edit-effort-color-text-${effort.id}`;
       return `
         <div class="metadata-item-editing" data-effort-id="${effort.id}">
           <input type="text" class="edit-effort-label" value="${escapeHtml(effort.label)}" data-effort-id="${effort.id}" placeholder="Label">
           <div class="form-group">
             <label>Color</label>
-            <div class="color-input-group">
-              <input type="color" class="edit-effort-color" value="${currentColor}" data-effort-id="${effort.id}">
-              <input type="text" class="edit-effort-color-text" value="${currentColor}" placeholder="#71717a" class="color-text-input" data-effort-id="${effort.id}">
+            <div class="color-picker-container">
+              <div class="color-picker-swatches" id="${swatchId}"></div>
+              <input type="hidden" class="edit-effort-color" id="${hiddenInputId}" value="${currentColor}" data-effort-id="${effort.id}">
+              <input type="text" class="edit-effort-color-text color-text-input" id="${textInputId}" value="${currentColor}" placeholder="#71717a" data-effort-id="${effort.id}">
             </div>
           </div>
           <div class="metadata-item-editing-actions">
@@ -2147,6 +2569,9 @@ function setupSettingsEventListeners() {
     document.getElementById('add-priority-form').style.display = 'none';
     document.getElementById('add-priority-btn').style.display = 'block';
     document.getElementById('priority-label').value = '';
+    document.getElementById('priority-color').value = '#71717a';
+    document.getElementById('priority-color-text').value = '#71717a';
+    updateSelectedSwatch(document.getElementById('priority-color-swatches'), '#71717a');
   });
 
   document.getElementById('add-priority-form')?.addEventListener('submit', (e) => {
@@ -2213,45 +2638,7 @@ function setupSettingsEventListeners() {
     document.getElementById('effort-label').focus();
   });
   
-  // Color picker sync for add forms
-  // Priority color sync
-  document.getElementById('priority-color')?.addEventListener('input', (e) => {
-    const textInput = document.getElementById('priority-color-text');
-    if (textInput) textInput.value = e.target.value;
-  });
-  document.getElementById('priority-color-text')?.addEventListener('input', (e) => {
-    const colorValue = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-      const colorInput = document.getElementById('priority-color');
-      if (colorInput) colorInput.value = colorValue;
-    }
-  });
-  
-  // Status color sync
-  document.getElementById('status-color')?.addEventListener('input', (e) => {
-    const textInput = document.getElementById('status-color-text');
-    if (textInput) textInput.value = e.target.value;
-  });
-  document.getElementById('status-color-text')?.addEventListener('input', (e) => {
-    const colorValue = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-      const colorInput = document.getElementById('status-color');
-      if (colorInput) colorInput.value = colorValue;
-    }
-  });
-  
-  // Effort color sync
-  document.getElementById('effort-color')?.addEventListener('input', (e) => {
-    const textInput = document.getElementById('effort-color-text');
-    if (textInput) textInput.value = e.target.value;
-  });
-  document.getElementById('effort-color-text')?.addEventListener('input', (e) => {
-    const colorValue = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-      const colorInput = document.getElementById('effort-color');
-      if (colorInput) colorInput.value = colorValue;
-    }
-  });
+  // Color pickers are initialized in initializeColorPickers()
 
   document.getElementById('cancel-effort-btn')?.addEventListener('click', () => {
     document.getElementById('add-effort-form').style.display = 'none';
@@ -2331,11 +2718,18 @@ function attachPriorityListeners(priority) {
   document.querySelector(`.edit-priority-item[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
     state.editingMetadata.set(`priority-${priorityId}`, true);
     renderSettings();
+    // Initialize color picker after rendering
+    setTimeout(() => {
+      const swatchId = `edit-priority-swatches-${priorityId}`;
+      const hiddenInputId = `edit-priority-color-${priorityId}`;
+      const textInputId = `edit-priority-color-text-${priorityId}`;
+      initColorPicker(swatchId, hiddenInputId, textInputId);
+    }, 0);
   });
   
   document.querySelector(`.save-priority[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-priority-label[data-priority-id="${priorityId}"]`).value.trim();
-    const colorInput = document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`);
+    const colorInput = document.getElementById(`edit-priority-color-${priorityId}`);
     const color = colorInput ? colorInput.value : (priority.color || '#71717a');
     
     if (!label) return;
@@ -2348,19 +2742,6 @@ function attachPriorityListeners(priority) {
     } catch (error) {
       console.error('Failed to update priority:', error);
       alert('Failed to update priority');
-    }
-  });
-  
-  // Sync color picker and text input in edit mode
-  document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`)?.addEventListener('input', (e) => {
-    const textInput = document.querySelector(`.edit-priority-color-text[data-priority-id="${priorityId}"]`);
-    if (textInput) textInput.value = e.target.value;
-  });
-  document.querySelector(`.edit-priority-color-text[data-priority-id="${priorityId}"]`)?.addEventListener('input', (e) => {
-    const colorValue = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-      const colorInput = document.querySelector(`.edit-priority-color[data-priority-id="${priorityId}"]`);
-      if (colorInput) colorInput.value = colorValue;
     }
   });
   
@@ -2389,11 +2770,18 @@ function attachStatusListeners(status) {
   document.querySelector(`.edit-status-item[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
     state.editingMetadata.set(`status-${statusId}`, true);
     renderSettings();
+    // Initialize color picker after rendering
+    setTimeout(() => {
+      const swatchId = `edit-status-swatches-${statusId}`;
+      const hiddenInputId = `edit-status-color-${statusId}`;
+      const textInputId = `edit-status-color-text-${statusId}`;
+      initColorPicker(swatchId, hiddenInputId, textInputId);
+    }, 0);
   });
   
   document.querySelector(`.save-status[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-status-label[data-status-id="${statusId}"]`).value.trim();
-    const colorInput = document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`);
+    const colorInput = document.getElementById(`edit-status-color-${statusId}`);
     const color = colorInput ? colorInput.value : (status.color || '#71717a');
     
     if (!label) return;
@@ -2406,19 +2794,6 @@ function attachStatusListeners(status) {
     } catch (error) {
       console.error('Failed to update status:', error);
       alert('Failed to update status');
-    }
-  });
-  
-  // Sync color picker and text input in edit mode
-  document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`)?.addEventListener('input', (e) => {
-    const textInput = document.querySelector(`.edit-status-color-text[data-status-id="${statusId}"]`);
-    if (textInput) textInput.value = e.target.value;
-  });
-  document.querySelector(`.edit-status-color-text[data-status-id="${statusId}"]`)?.addEventListener('input', (e) => {
-    const colorValue = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-      const colorInput = document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`);
-      if (colorInput) colorInput.value = colorValue;
     }
   });
   
@@ -2447,11 +2822,18 @@ function attachEffortListeners(effort) {
   document.querySelector(`.edit-effort-item[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
     state.editingMetadata.set(`effort-${effortId}`, true);
     renderSettings();
+    // Initialize color picker after rendering
+    setTimeout(() => {
+      const swatchId = `edit-effort-swatches-${effortId}`;
+      const hiddenInputId = `edit-effort-color-${effortId}`;
+      const textInputId = `edit-effort-color-text-${effortId}`;
+      initColorPicker(swatchId, hiddenInputId, textInputId);
+    }, 0);
   });
   
   document.querySelector(`.save-effort[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-effort-label[data-effort-id="${effortId}"]`).value.trim();
-    const colorInput = document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`);
+    const colorInput = document.getElementById(`edit-effort-color-${effortId}`);
     const color = colorInput ? colorInput.value : (effort.color || '#71717a');
     
     if (!label) return;
@@ -2464,19 +2846,6 @@ function attachEffortListeners(effort) {
     } catch (error) {
       console.error('Failed to update effort level:', error);
       alert('Failed to update effort level');
-    }
-  });
-  
-  // Sync color picker and text input in edit mode
-  document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`)?.addEventListener('input', (e) => {
-    const textInput = document.querySelector(`.edit-effort-color-text[data-effort-id="${effortId}"]`);
-    if (textInput) textInput.value = e.target.value;
-  });
-  document.querySelector(`.edit-effort-color-text[data-effort-id="${effortId}"]`)?.addEventListener('input', (e) => {
-    const colorValue = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
-      const colorInput = document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`);
-      if (colorInput) colorInput.value = colorValue;
     }
   });
   
