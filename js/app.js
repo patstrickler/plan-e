@@ -1961,9 +1961,17 @@ function renderEffortLevels() {
     const isEditing = state.editingMetadata.get(`effort-${effort.id}`);
     
     if (isEditing) {
+      const currentColor = effort.color || '#71717a';
       return `
         <div class="metadata-item-editing" data-effort-id="${effort.id}">
           <input type="text" class="edit-effort-label" value="${escapeHtml(effort.label)}" data-effort-id="${effort.id}" placeholder="Label">
+          <div class="form-group">
+            <label>Color</label>
+            <div class="color-input-group">
+              <input type="color" class="edit-effort-color" value="${currentColor}" data-effort-id="${effort.id}">
+              <input type="text" class="edit-effort-color-text" value="${currentColor}" placeholder="#71717a" class="color-text-input" data-effort-id="${effort.id}">
+            </div>
+          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-effort" data-effort-id="${effort.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-effort" data-effort-id="${effort.id}">Cancel</button>
@@ -1972,9 +1980,11 @@ function renderEffortLevels() {
       `;
     }
     
+    const colorStyle = effort.color ? `style="background-color: ${effort.color};"` : '';
     return `
       <div class="metadata-item" data-effort-id="${effort.id}">
         <div class="metadata-item-content">
+          <span class="metadata-item-color-swatch" ${colorStyle}></span>
           <span class="metadata-item-label">${escapeHtml(effort.label)}</span>
         </div>
         <div class="metadata-item-actions">

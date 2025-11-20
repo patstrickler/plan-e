@@ -982,6 +982,15 @@ body {
   vertical-align: middle;
 }
 
+.metadata-item-color-swatch {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
 /* ============================================
    Footer
    ============================================ */
