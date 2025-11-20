@@ -7,20 +7,43 @@ function initFooter() {
   }
 
   // Load and display version
+  const versionElement = document.getElementById('footer-version');
+  if (!versionElement) {
+    console.warn('Footer version element not found');
+    return;
+  }
+
+  // Try to fetch version.json
   fetch('/version.json')
     .then(res => {
-      if (!res.ok) throw new Error('Failed to fetch version');
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       return res.json();
     })
     .then(data => {
-      const versionElement = document.getElementById('footer-version');
-      if (versionElement && data.version) {
+      if (data && data.version) {
         versionElement.textContent = data.version;
+      } else {
+        console.warn('Version data missing or invalid:', data);
       }
     })
-    .catch(() => {
-      // Silently fail if version.json doesn't exist or can't be read
-      // Version will just not be displayed
+    .catch(err => {
+      // Try alternative path
+      console.warn('Failed to fetch /version.json, trying /public/version.json:', err);
+      return fetch('/public/version.json')
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          return res.json();
+        })
+        .then(data => {
+          if (data && data.version) {
+            versionElement.textContent = data.version;
+          }
+        })
+        .catch(err2 => {
+          console.error('Could not load version from any path:', err2);
+        });
     });
 }
 
