@@ -1091,12 +1091,22 @@ function escapeHtml(text) {
 
 function getStatusSelectStyle(color) {
   if (!color) return '';
-  return `background-color: ${color}20; border-color: ${color}60; color: ${color};`;
+  // Convert hex to rgba with transparency
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `background-color: rgba(${r}, ${g}, ${b}, 0.15); border-color: rgba(${r}, ${g}, ${b}, 0.4); color: ${color};`;
 }
 
 function getBadgeStyle(color) {
   if (!color) return '';
-  return `background-color: ${color}20; border-color: ${color}60; color: ${color};`;
+  // Convert hex to rgba with transparency
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `background-color: rgba(${r}, ${g}, ${b}, 0.15); border-color: rgba(${r}, ${g}, ${b}, 0.4); color: ${color};`;
 }
 
 function populateProjectSelect(selectId) {
