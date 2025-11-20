@@ -471,13 +471,28 @@ function renderMilestones() {
     return;
   }
   
-  elements.milestonesList.innerHTML = milestones.map(m => `
-    <div class="milestone-card">
-      <h3>${escapeHtml(m.title)}</h3>
-      <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
-      ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
-    </div>
-  `).join('');
+  elements.milestonesList.innerHTML = milestones.map(m => {
+    const totalTasks = m.tasks ? m.tasks.length : 0;
+    const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
+    const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    return `
+      <div class="milestone-card">
+        <h3>${escapeHtml(m.title)}</h3>
+        <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
+        ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
+        <div class="milestone-progress">
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="width: ${progressPercentage}%"></div>
+          </div>
+          <div class="progress-text">
+            <span>${completedTasks} of ${totalTasks} tasks completed</span>
+            <span class="progress-percentage">${progressPercentage}%</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 function renderTasks() {
