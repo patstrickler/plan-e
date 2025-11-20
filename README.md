@@ -43,14 +43,32 @@ This creates a static export in the `out` directory that can be deployed to any 
 
 ### GitHub Pages
 
+**Option 1: Using GitHub Actions (Recommended)**
+
+1. Push your code to GitHub
+2. Go to your repository Settings > Pages
+3. Set Source to "GitHub Actions"
+4. The workflow (`.github/workflows/deploy-pages.yml`) will automatically deploy on every push to `main`
+
+**Option 2: Manual Deploy**
+
 1. Build the static export:
 ```bash
 npm run build
 ```
 
-2. The `out` directory contains the static site that can be deployed to GitHub Pages.
+2. If your repository name is NOT the same as your username (e.g., `username.github.io`), you need to set the `basePath` in `next.config.js`:
+   - Uncomment the `basePath` line and set it to your repository name
 
-3. In your GitHub repository settings, enable GitHub Pages and point it to the `out` directory.
+3. Deploy the `out` directory:
+   - Option A: Use GitHub Actions (automatically handles this)
+   - Option B: Use the `gh-pages` package:
+     ```bash
+     npm install -D gh-pages
+     npx gh-pages -d out
+     ```
+
+4. In GitHub repository Settings > Pages, set the source to the `gh-pages` branch (if using Option B) or GitHub Actions (if using Option A)
 
 ### Vercel (Recommended)
 
