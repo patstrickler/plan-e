@@ -2137,17 +2137,32 @@ function attachStatusListeners(status) {
   
   document.querySelector(`.save-status[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-status-label[data-status-id="${statusId}"]`).value.trim();
+    const colorInput = document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`);
+    const color = colorInput ? colorInput.value : (status.color || '#71717a');
     
     if (!label) return;
     
     try {
-      storage.updateStatus(statusId, { label });
+      storage.updateStatus(statusId, { label, color });
       state.editingMetadata.delete(`status-${statusId}`);
       renderSettings();
       updateAllSelects();
     } catch (error) {
       console.error('Failed to update status:', error);
       alert('Failed to update status');
+    }
+  });
+  
+  // Sync color picker and text input in edit mode
+  document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`)?.addEventListener('input', (e) => {
+    const textInput = document.querySelector(`.edit-status-color-text[data-status-id="${statusId}"]`);
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.querySelector(`.edit-status-color-text[data-status-id="${statusId}"]`)?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.querySelector(`.edit-status-color[data-status-id="${statusId}"]`);
+      if (colorInput) colorInput.value = colorValue;
     }
   });
   
@@ -2180,17 +2195,32 @@ function attachEffortListeners(effort) {
   
   document.querySelector(`.save-effort[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
     const label = document.querySelector(`.edit-effort-label[data-effort-id="${effortId}"]`).value.trim();
+    const colorInput = document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`);
+    const color = colorInput ? colorInput.value : (effort.color || '#71717a');
     
     if (!label) return;
     
     try {
-      storage.updateEffortLevel(effortId, { label });
+      storage.updateEffortLevel(effortId, { label, color });
       state.editingMetadata.delete(`effort-${effortId}`);
       renderSettings();
       updateAllSelects();
     } catch (error) {
       console.error('Failed to update effort level:', error);
       alert('Failed to update effort level');
+    }
+  });
+  
+  // Sync color picker and text input in edit mode
+  document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`)?.addEventListener('input', (e) => {
+    const textInput = document.querySelector(`.edit-effort-color-text[data-effort-id="${effortId}"]`);
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.querySelector(`.edit-effort-color-text[data-effort-id="${effortId}"]`)?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`);
+      if (colorInput) colorInput.value = colorValue;
     }
   });
   
