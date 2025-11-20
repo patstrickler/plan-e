@@ -142,14 +142,6 @@ function setupEventListeners() {
     elements.newMilestoneForm.style.display = 'block';
     elements.newMilestoneBtn.style.display = 'none';
     document.getElementById('milestone-title').focus();
-    // Initialize date picker for milestone target date
-    if (!window.milestoneTargetDatePicker) {
-      window.milestoneTargetDatePicker = flatpickr('#milestone-target-date', {
-        dateFormat: 'Y-m-d',
-        clickOpens: true,
-        allowInput: false,
-      });
-    }
   });
 
   document.getElementById('cancel-milestone-btn')?.addEventListener('click', () => {
@@ -158,9 +150,6 @@ function setupEventListeners() {
     document.getElementById('milestone-title').value = '';
     document.getElementById('milestone-description').value = '';
     document.getElementById('milestone-target-date').value = '';
-    if (window.milestoneTargetDatePicker) {
-      window.milestoneTargetDatePicker.clear();
-    }
   });
 
   elements.newMilestoneForm?.addEventListener('submit', (e) => {
@@ -168,7 +157,7 @@ function setupEventListeners() {
     const projectId = document.getElementById('milestone-project').value;
     const title = document.getElementById('milestone-title').value.trim();
     const description = document.getElementById('milestone-description').value.trim();
-    const targetDate = window.milestoneTargetDatePicker ? window.milestoneTargetDatePicker.input.value : document.getElementById('milestone-target-date').value;
+    const targetDate = document.getElementById('milestone-target-date').value;
     
     if (!title || !projectId) return;
     
@@ -181,9 +170,6 @@ function setupEventListeners() {
       document.getElementById('milestone-title').value = '';
       document.getElementById('milestone-description').value = '';
       document.getElementById('milestone-target-date').value = '';
-      if (window.milestoneTargetDatePicker) {
-        window.milestoneTargetDatePicker.clear();
-      }
       elements.newMilestoneForm.style.display = 'none';
       elements.newMilestoneBtn.style.display = 'block';
       renderMilestones();
@@ -200,14 +186,6 @@ function setupEventListeners() {
     elements.newTaskForm.style.display = 'block';
     elements.newTaskBtn.style.display = 'none';
     document.getElementById('task-title').focus();
-    // Initialize date picker for task due date
-    if (!window.taskDueDatePicker) {
-      window.taskDueDatePicker = flatpickr('#task-due-date', {
-        dateFormat: 'Y-m-d',
-        clickOpens: true,
-        allowInput: false,
-      });
-    }
   });
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
@@ -219,56 +197,6 @@ function setupEventListeners() {
     elements.newTaskBtn.style.display = 'block';
     document.getElementById('task-title').value = '';
     document.getElementById('task-description').value = '';
-    document.getElementById('task-due-date').value = '';
-    if (window.taskDueDatePicker) {
-      window.taskDueDatePicker.clear();
-    }
-  });
-
-  // Edit task form
-  const editTaskForm = document.getElementById('edit-task-form');
-  const cancelEditTaskBtn = document.getElementById('cancel-edit-task-btn');
-  
-  cancelEditTaskBtn?.addEventListener('click', () => {
-    editTaskForm.style.display = 'none';
-  });
-
-  editTaskForm?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const taskId = document.getElementById('edit-task-id').value;
-    const projectId = document.getElementById('edit-task-project-id').value;
-    const milestoneId = document.getElementById('edit-task-milestone-id').value;
-    const title = document.getElementById('edit-task-title').value.trim();
-    const description = document.getElementById('edit-task-description').value.trim();
-    const status = document.getElementById('edit-task-status').value;
-    const priority = document.getElementById('edit-task-priority').value;
-    const effort = document.getElementById('edit-task-effort').value;
-    const resource = document.getElementById('edit-task-resource').value;
-    const editDueDateInput = document.getElementById('edit-task-due-date');
-    const dueDate = editDueDateInput ? (editDueDateInput.flatpickr ? editDueDateInput.flatpickr.input.value : editDueDateInput.value) : '';
-    
-    if (!title || !projectId || !milestoneId) return;
-    
-    try {
-      storage.updateTask(projectId, milestoneId, taskId, {
-        title,
-        description: description || undefined,
-        status,
-        priority: priority || undefined,
-        effortLevel: effort || undefined,
-        assignedResource: resource || undefined,
-        dueDate: dueDate || undefined,
-      });
-      editTaskForm.style.display = 'none';
-      renderTasks();
-    } catch (error) {
-      console.error('Failed to update task:', error);
-      alert('Failed to update task');
-    }
-  });
-
-  document.getElementById('edit-task-project')?.addEventListener('change', (e) => {
-    populateMilestoneSelect('edit-task-milestone', e.target.value);
   });
 
   elements.newTaskForm?.addEventListener('submit', (e) => {
@@ -280,8 +208,6 @@ function setupEventListeners() {
     const priority = document.getElementById('task-priority').value;
     const effort = document.getElementById('task-effort').value;
     const resource = document.getElementById('task-resource').value;
-    const dueDateInput = document.getElementById('task-due-date');
-    const dueDate = dueDateInput ? (dueDateInput.flatpickr ? dueDateInput.flatpickr.input.value : dueDateInput.value) : '';
     
     if (!title || !projectId || !milestoneId) return;
     
@@ -292,17 +218,12 @@ function setupEventListeners() {
         priority: priority || undefined,
         effortLevel: effort || undefined,
         assignedResource: resource || undefined,
-        dueDate: dueDate || undefined,
       });
       document.getElementById('task-title').value = '';
       document.getElementById('task-description').value = '';
       document.getElementById('task-priority').value = '';
       document.getElementById('task-effort').value = '';
       document.getElementById('task-resource').value = '';
-      document.getElementById('task-due-date').value = '';
-      if (window.taskDueDatePicker) {
-        window.taskDueDatePicker.clear();
-      }
       elements.newTaskForm.style.display = 'none';
       elements.newTaskBtn.style.display = 'block';
       renderTasks();
@@ -473,51 +394,14 @@ function renderMilestoneCard(milestone, projectId) {
   
   if (isEditing) {
     const targetDateValue = milestone.targetDate ? new Date(milestone.targetDate).toISOString().split('T')[0] : '';
-    const stakeholdersList = milestone.stakeholders || [];
-    const stakeholdersHtml = stakeholdersList.map((stakeholder, idx) => `
-      <span class="stakeholder-tag" data-milestone-id="${milestone.id}" data-index="${idx}">
-        ${escapeHtml(stakeholder)}
-        <button type="button" class="stakeholder-remove" data-milestone-id="${milestone.id}" data-index="${idx}">×</button>
-      </span>
-    `).join('');
-    
     return `
       <div class="milestone-card" data-milestone-id="${milestone.id}" data-project-id="${projectId}">
-        <div class="milestone-edit-form">
-          <input type="text" class="edit-title" value="${escapeHtml(milestone.title)}" data-milestone-id="${milestone.id}" placeholder="Milestone title" required>
-          <textarea class="edit-description" data-milestone-id="${milestone.id}" placeholder="Description (optional)" rows="2">${escapeHtml(milestone.description || '')}</textarea>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label>Priority</label>
-              <select class="edit-priority" data-milestone-id="${milestone.id}">
-                <option value="">None</option>
-                <option value="low" ${milestone.priority === 'low' ? 'selected' : ''}>Low</option>
-                <option value="medium" ${milestone.priority === 'medium' ? 'selected' : ''}>Medium</option>
-                <option value="high" ${milestone.priority === 'high' ? 'selected' : ''}>High</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Target Date</label>
-              <input type="text" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${milestone.id}" placeholder="Select target date" readonly>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label>Stakeholders</label>
-            <div class="stakeholders-list" data-milestone-id="${milestone.id}">
-              ${stakeholdersHtml}
-            </div>
-            <div class="stakeholder-input-row">
-              <input type="text" class="edit-stakeholder-input" data-milestone-id="${milestone.id}" placeholder="Enter stakeholder name">
-              <button type="button" class="btn btn-secondary btn-sm add-stakeholder-btn" data-milestone-id="${milestone.id}">Add</button>
-            </div>
-          </div>
-          
-          <div class="form-actions">
-            <button class="btn btn-primary btn-sm save-milestone" data-milestone-id="${milestone.id}" data-project-id="${projectId}">Save</button>
-            <button class="btn btn-secondary btn-sm cancel-edit-milestone" data-milestone-id="${milestone.id}">Cancel</button>
-          </div>
+        <input type="text" class="edit-title" value="${escapeHtml(milestone.title)}" data-milestone-id="${milestone.id}">
+        <textarea class="edit-description" data-milestone-id="${milestone.id}">${escapeHtml(milestone.description || '')}</textarea>
+        <input type="date" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${milestone.id}" placeholder="Target Date (optional)">
+        <div class="form-actions">
+          <button class="btn btn-primary btn-sm save-milestone" data-milestone-id="${milestone.id}" data-project-id="${projectId}">Save</button>
+          <button class="btn btn-secondary btn-sm cancel-edit-milestone" data-milestone-id="${milestone.id}">Cancel</button>
         </div>
       </div>
     `;
@@ -543,9 +427,8 @@ function renderMilestoneCard(milestone, projectId) {
         <div class="project-card-content">
           <h3>${escapeHtml(milestone.title)}</h3>
           ${milestone.description ? `<p>${escapeHtml(milestone.description)}</p>` : ''}
-          ${milestone.priority ? `<span class="badge ${milestone.priority === 'high' ? 'badge-red' : milestone.priority === 'medium' ? 'badge-yellow' : 'badge-green'}">${milestone.priority.toUpperCase()}</span>` : ''}
           ${milestone.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(milestone.targetDate).toLocaleDateString()}</p>` : ''}
-          ${milestone.stakeholders && milestone.stakeholders.length > 0 ? `<div class="stakeholders-display">${milestone.stakeholders.map(s => `<span class="badge badge-gray">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
+          ${milestone.dueDate ? `<p class="text-xs text-muted">Due: ${new Date(milestone.dueDate).toLocaleDateString()}</p>` : ''}
           <p class="text-xs text-muted">${completedTasks}/${totalTasks} tasks completed</p>
         </div>
         <div class="project-card-actions">
@@ -585,8 +468,6 @@ function renderTaskCard(task, projectId, milestoneId) {
       `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
     ).join('');
     
-    const dueDateValue = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
-    
     return `
       <div class="task-card ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
         <input type="text" class="edit-title" value="${escapeHtml(task.title)}" data-task-id="${task.id}">
@@ -620,10 +501,6 @@ function renderTaskCard(task, projectId, milestoneId) {
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label>Due Date (optional)</label>
-          <input type="date" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}">
-        </div>
         <div class="form-actions">
           <button class="btn btn-primary btn-sm save-task" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Save</button>
           <button class="btn btn-secondary btn-sm cancel-edit-task" data-task-id="${task.id}">Cancel</button>
@@ -634,15 +511,11 @@ function renderTaskCard(task, projectId, milestoneId) {
   
   const statuses = storage.getStatuses();
   const status = statuses.find(s => s.id === task.status);
-  const statusColor = status?.id === 'completed' ? 'badge-green' : 
-                     status?.id === 'in-progress' ? 'badge-blue' : 'badge-gray';
+  const statusColorStyle = status?.color ? getStatusSelectStyle(status.color) : '';
   
   const priorities = storage.getPriorities();
   const priority = priorities.find(p => p.id === task.priority);
-  const priorityColor = priority?.id === 'urgent' ? 'badge-red' :
-                       priority?.id === 'high' ? 'badge-orange' :
-                       priority?.id === 'medium' ? 'badge-yellow' :
-                       priority?.id === 'low' ? 'badge-green' : '';
+  const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
   
   const statusOptions = statuses.map(s => 
     `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
@@ -652,17 +525,18 @@ function renderTaskCard(task, projectId, milestoneId) {
     <div class="task-card ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
       <div class="project-card-header">
         <div class="project-card-content" style="flex: 1; min-width: 0;">
-          <select class="task-status-select ${statusColor}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
+          <select class="task-status-select" style="${statusColorStyle}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
             ${statusOptions}
           </select>
-          ${task.priority && priority ? `<span class="badge ${priorityColor}">${escapeHtml(priority.label)}</span>` : ''}
+          ${task.priority && priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : ''}
           <h4>${escapeHtml(task.title)}</h4>
           ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
           <div class="task-meta">
             ${(() => {
               const effortLevels = storage.getEffortLevels();
               const effort = effortLevels.find(e => e.id === task.effortLevel);
-              return effort ? `<span>Effort: ${escapeHtml(effort.label)}</span>` : '';
+              const effortBadgeStyle = effort?.color ? getBadgeStyle(effort.color) : '';
+              return effort ? `<span class="badge" style="${effortBadgeStyle}">Effort: ${escapeHtml(effort.label)}</span>` : '';
             })()}
             ${task.assignedResource ? `<span>Assigned to: ${escapeHtml(task.assignedResource)}</span>` : ''}
             ${task.startDate ? `<span>Started: ${new Date(task.startDate).toLocaleDateString()}</span>` : ''}
@@ -683,7 +557,7 @@ function renderAddMilestoneForm(projectId) {
     <form class="add-milestone-form" data-project-id="${projectId}">
       <input type="text" class="milestone-title-input" placeholder="Milestone title" required>
       <textarea class="milestone-description-input" placeholder="Description (optional)" rows="2"></textarea>
-      <input type="text" class="milestone-target-date-input" placeholder="Target Date (optional)">
+      <input type="date" class="milestone-target-date-input" placeholder="Target Date (optional)">
       <div class="form-actions">
         <button type="submit" class="btn btn-green btn-sm">Add Milestone</button>
         <button type="button" class="btn btn-secondary btn-sm cancel-add-milestone" data-project-id="${projectId}">Cancel</button>
@@ -697,7 +571,6 @@ function renderAddTaskForm(projectId, milestoneId) {
     <form class="add-task-form" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
       <input type="text" class="task-title-input" placeholder="Task title" required>
       <textarea class="task-description-input" placeholder="Description (optional)" rows="2"></textarea>
-      <input type="text" class="task-due-date-input" placeholder="Due Date (optional)">
       <div class="form-actions">
         <button type="submit" class="btn btn-green btn-sm">Add Task</button>
         <button type="button" class="btn btn-secondary btn-sm cancel-add-task" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Cancel</button>
@@ -722,7 +595,6 @@ function renderMilestones() {
   }
   
   elements.milestonesList.innerHTML = milestones.map(m => {
-    const isEditing = state.editingMilestones.has(m.id);
     const totalTasks = m.tasks ? m.tasks.length : 0;
     const notStartedTasks = m.tasks ? m.tasks.filter(t => t.status === 'not-started' || !t.status).length : 0;
     const inProgressTasks = m.tasks ? m.tasks.filter(t => t.status === 'in-progress').length : 0;
@@ -732,225 +604,26 @@ function renderMilestones() {
     const inProgressPercent = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
     const completedPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     
-    if (isEditing) {
-      const targetDateValue = m.targetDate ? new Date(m.targetDate).toISOString().split('T')[0] : '';
-      const stakeholdersList = m.stakeholders || [];
-      const stakeholdersHtml = stakeholdersList.map((stakeholder, idx) => `
-        <span class="stakeholder-tag" data-milestone-id="${m.id}" data-index="${idx}">
-          ${escapeHtml(stakeholder)}
-          <button type="button" class="stakeholder-remove" data-milestone-id="${m.id}" data-index="${idx}">×</button>
-        </span>
-      `).join('');
-      
-      return `
-        <div class="milestone-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
-          <div class="milestone-edit-form">
-            <input type="text" class="edit-title" value="${escapeHtml(m.title)}" data-milestone-id="${m.id}" placeholder="Milestone title" required>
-            <textarea class="edit-description" data-milestone-id="${m.id}" placeholder="Description (optional)" rows="2">${escapeHtml(m.description || '')}</textarea>
-            
-            <div class="form-row">
-              <div class="form-group">
-                <label>Priority</label>
-                <select class="edit-priority" data-milestone-id="${m.id}">
-                  <option value="">None</option>
-                  <option value="low" ${m.priority === 'low' ? 'selected' : ''}>Low</option>
-                  <option value="medium" ${m.priority === 'medium' ? 'selected' : ''}>Medium</option>
-                  <option value="high" ${m.priority === 'high' ? 'selected' : ''}>High</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Target Date</label>
-                <input type="text" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${m.id}" placeholder="Select target date" readonly>
-              </div>
-            </div>
-            
-            <div class="form-group">
-              <label>Stakeholders</label>
-              <div class="stakeholders-list" data-milestone-id="${m.id}">
-                ${stakeholdersHtml}
-              </div>
-              <div class="stakeholder-input-row">
-                <input type="text" class="edit-stakeholder-input" data-milestone-id="${m.id}" placeholder="Enter stakeholder name">
-                <button type="button" class="btn btn-secondary btn-sm add-stakeholder-btn" data-milestone-id="${m.id}">Add</button>
-              </div>
-            </div>
-            
-            <div class="form-actions">
-              <button class="btn btn-primary btn-sm save-milestone" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Save</button>
-              <button class="btn btn-secondary btn-sm cancel-edit-milestone" data-milestone-id="${m.id}">Cancel</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    
     return `
-      <div class="milestone-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
-        <div class="project-card-header">
-          <div class="project-card-content">
-            <h3>${escapeHtml(m.title)}</h3>
-            <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
-            ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
-            ${m.priority ? `<span class="badge ${m.priority === 'high' ? 'badge-red' : m.priority === 'medium' ? 'badge-yellow' : 'badge-green'}">${m.priority.toUpperCase()}</span>` : ''}
-            ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
-            ${m.dueDate ? `<p class="text-xs text-muted">Due: ${new Date(m.dueDate).toLocaleDateString()}</p>` : ''}
-            ${m.stakeholders && m.stakeholders.length > 0 ? `<div class="stakeholders-display">${m.stakeholders.map(s => `<span class="badge badge-gray">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
-            <div class="milestone-progress">
-              <div class="progress-bar-container">
-                ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
-                ${inProgressPercent > 0 ? `<div class="progress-bar-segment progress-bar-in-progress" style="width: ${inProgressPercent}%"></div>` : ''}
-                ${completedPercent > 0 ? `<div class="progress-bar-segment progress-bar-completed" style="width: ${completedPercent}%"></div>` : ''}
-              </div>
-              <div class="progress-text">
-                <span>${completedTasks} complete, ${inProgressTasks} in progress, ${notStartedTasks} not started</span>
-                <span class="progress-percentage">${completedPercent}%</span>
-              </div>
-            </div>
+      <div class="milestone-card">
+        <h3>${escapeHtml(m.title)}</h3>
+        <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
+        ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
+        ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
+        <div class="milestone-progress">
+          <div class="progress-bar-container">
+            ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
+            ${inProgressPercent > 0 ? `<div class="progress-bar-segment progress-bar-in-progress" style="width: ${inProgressPercent}%"></div>` : ''}
+            ${completedPercent > 0 ? `<div class="progress-bar-segment progress-bar-completed" style="width: ${completedPercent}%"></div>` : ''}
           </div>
-          <div class="project-card-actions">
-            <button class="btn btn-blue btn-xs edit-milestone" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Edit</button>
-            <button class="btn btn-red btn-xs delete-milestone" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Delete</button>
+          <div class="progress-text">
+            <span>${completedTasks} complete, ${inProgressTasks} in progress, ${notStartedTasks} not started</span>
+            <span class="progress-percentage">${completedPercent}%</span>
           </div>
         </div>
       </div>
     `;
   }).join('');
-  
-  // Attach listeners for milestones in list view
-  milestones.forEach(m => {
-    attachMilestoneListenersForView(m);
-  });
-}
-
-function attachMilestoneListenersForView(milestone) {
-  const milestoneId = milestone.id;
-  const projectId = milestone.projectId;
-  
-  // Edit milestone
-  document.querySelector(`.edit-milestone[data-milestone-id="${milestoneId}"][data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    state.editingMilestones.add(milestoneId);
-    renderMilestones();
-    // Initialize date picker for milestone target date after rendering
-    setTimeout(() => {
-      const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
-      if (targetDateInput && !targetDateInput.flatpickr) {
-        flatpickr(targetDateInput, {
-          dateFormat: 'Y-m-d',
-          clickOpens: true,
-          allowInput: false,
-        });
-      }
-    }, 0);
-  });
-  
-  // Save milestone
-  document.querySelector(`.save-milestone[data-milestone-id="${milestoneId}"][data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    const title = document.querySelector(`.edit-title[data-milestone-id="${milestoneId}"]`).value.trim();
-    const description = document.querySelector(`.edit-description[data-milestone-id="${milestoneId}"]`).value.trim();
-    const priority = document.querySelector(`.edit-priority[data-milestone-id="${milestoneId}"]`)?.value || '';
-    const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
-    const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
-    
-    // Get stakeholders from the DOM
-    const stakeholderTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
-    const stakeholders = Array.from(stakeholderTags).map(tag => tag.textContent.replace('×', '').trim()).filter(s => s);
-    
-    if (!title) return;
-    
-    try {
-      storage.updateMilestone(projectId, milestoneId, { 
-        title, 
-        description: description || undefined,
-        priority: priority || undefined,
-        targetDate: targetDate || undefined,
-        stakeholders: stakeholders.length > 0 ? stakeholders : undefined
-      });
-      state.editingMilestones.delete(milestoneId);
-      renderMilestones();
-    } catch (error) {
-      console.error('Failed to update milestone:', error);
-      alert('Failed to update milestone');
-    }
-  });
-  
-  // Cancel edit milestone
-  document.querySelector(`.cancel-edit-milestone[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    state.editingMilestones.delete(milestoneId);
-    renderMilestones();
-  });
-  
-  // Delete milestone
-  document.querySelector(`.delete-milestone[data-milestone-id="${milestoneId}"][data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    if (!confirm(`Are you sure you want to delete "${milestone.title}"?`)) return;
-    
-    try {
-      storage.deleteMilestone(projectId, milestoneId);
-      renderMilestones();
-    } catch (error) {
-      console.error('Failed to delete milestone:', error);
-      alert('Failed to delete milestone');
-    }
-  });
-  
-  // Add stakeholder button
-  document.querySelector(`.add-stakeholder-btn[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    const input = document.querySelector(`.edit-stakeholder-input[data-milestone-id="${milestoneId}"]`);
-    const stakeholderName = input?.value.trim();
-    if (!stakeholderName) return;
-    
-    // Check if already exists
-    const existingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
-    const existingNames = Array.from(existingTags).map(tag => tag.textContent.replace('×', '').trim());
-    if (existingNames.includes(stakeholderName)) {
-      alert('Stakeholder already added');
-      return;
-    }
-    
-    // Add stakeholder tag
-    const stakeholdersList = document.querySelector(`.stakeholders-list[data-milestone-id="${milestoneId}"]`);
-    if (stakeholdersList) {
-      const tag = document.createElement('span');
-      tag.className = 'stakeholder-tag';
-      tag.setAttribute('data-milestone-id', milestoneId);
-      tag.setAttribute('data-index', existingTags.length);
-      tag.innerHTML = `
-        ${escapeHtml(stakeholderName)}
-        <button type="button" class="stakeholder-remove" data-milestone-id="${milestoneId}" data-index="${existingTags.length}">×</button>
-      `;
-      stakeholdersList.appendChild(tag);
-      
-      // Add remove listener
-      tag.querySelector('.stakeholder-remove')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        tag.remove();
-        // Update indices
-        const remainingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
-        remainingTags.forEach((t, idx) => {
-          t.setAttribute('data-index', idx);
-          t.querySelector('.stakeholder-remove')?.setAttribute('data-index', idx);
-        });
-      });
-    }
-    
-    input.value = '';
-  });
-  
-  // Remove stakeholder button (for existing tags)
-  document.querySelectorAll(`.stakeholder-remove[data-milestone-id="${milestoneId}"]`).forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const tag = btn.closest('.stakeholder-tag');
-      if (tag) {
-        tag.remove();
-        // Update indices
-        const remainingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
-        remainingTags.forEach((t, idx) => {
-          t.setAttribute('data-index', idx);
-          t.querySelector('.stakeholder-remove')?.setAttribute('data-index', idx);
-        });
-      }
-    });
-  });
 }
 
 function renderTasks() {
@@ -1027,19 +700,21 @@ function renderTasksTable(tasks) {
   const effortLevels = storage.getEffortLevels();
   
   const rows = tasks.map(task => {
+    const isEditing = state.editingTasks.has(task.id);
     const isCompleted = task.status === 'completed';
     
+    if (isEditing) {
+      return renderTaskTableRowEdit(task, statuses, priorities, effortLevels);
+    }
+    
     const status = statuses.find(s => s.id === task.status);
-    const statusColor = status?.id === 'completed' ? 'badge-green' : 
-                       status?.id === 'in-progress' ? 'badge-blue' : 'badge-gray';
+    const statusColorStyle = status?.color ? getStatusSelectStyle(status.color) : '';
     
     const priority = priorities.find(p => p.id === task.priority);
-    const priorityColor = priority?.id === 'urgent' ? 'badge-red' :
-                         priority?.id === 'high' ? 'badge-orange' :
-                         priority?.id === 'medium' ? 'badge-yellow' :
-                         priority?.id === 'low' ? 'badge-green' : '';
+    const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
     
     const effort = effortLevels.find(e => e.id === task.effortLevel);
+    const effortBadgeStyle = effort?.color ? getBadgeStyle(effort.color) : '';
     
     const statusOptions = statuses.map(s => 
       `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
@@ -1048,12 +723,12 @@ function renderTasksTable(tasks) {
     return `
       <tr class="task-table-row ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
         <td>
-          <select class="task-status-select-view ${statusColor}" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
+          <select class="task-status-select-view" style="${statusColorStyle}" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
             ${statusOptions}
           </select>
         </td>
         <td>
-          ${task.priority && priority ? `<span class="badge ${priorityColor}">${escapeHtml(priority.label)}</span>` : '<span class="text-muted">—</span>'}
+          ${task.priority && priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : '<span class="text-muted">—</span>'}
         </td>
         <td class="task-title-cell">
           <strong>${escapeHtml(task.title)}</strong>
@@ -1061,9 +736,13 @@ function renderTasksTable(tasks) {
         </td>
         <td class="task-project-cell">${escapeHtml(task.project.title)}</td>
         <td class="task-milestone-cell">${escapeHtml(task.milestone.title)}</td>
-        <td>${effort ? escapeHtml(effort.label) : '<span class="text-muted">—</span>'}</td>
+        <td>${effort ? `<span class="badge" style="${effortBadgeStyle}">${escapeHtml(effort.label)}</span>` : '<span class="text-muted">—</span>'}</td>
         <td>${task.assignedResource ? escapeHtml(task.assignedResource) : '<span class="text-muted">—</span>'}</td>
-        <td>${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '<span class="text-muted">—</span>'}</td>
+        <td class="task-dates-cell">
+          ${task.startDate ? `<div class="task-date-small">Started: ${new Date(task.startDate).toLocaleDateString()}</div>` : ''}
+          ${task.completedDate ? `<div class="task-date-small">Completed: ${new Date(task.completedDate).toLocaleDateString()}</div>` : ''}
+          ${!task.startDate && !task.completedDate ? '<span class="text-muted">—</span>' : ''}
+        </td>
         <td class="task-actions-cell">
           <button class="btn btn-blue btn-xs edit-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Edit</button>
           <button class="btn btn-red btn-xs delete-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Delete</button>
@@ -1083,7 +762,7 @@ function renderTasksTable(tasks) {
           <th>Milestone</th>
           <th>Effort</th>
           <th>Assigned</th>
-          <th>Due Date</th>
+          <th>Dates</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -1094,6 +773,59 @@ function renderTasksTable(tasks) {
   `;
 }
 
+function renderTaskTableRowEdit(task, statuses, priorities, effortLevels, users) {
+  const usersList = storage.getUsers();
+  
+  const statusOptions = statuses.map(s => 
+    `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
+  ).join('');
+  
+  const priorityOptions = priorities.map(p => 
+    `<option value="${p.id}" ${task.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+  ).join('');
+  
+  const effortOptions = effortLevels.map(e => 
+    `<option value="${e.id}" ${task.effortLevel === e.id ? 'selected' : ''}>${escapeHtml(e.label)}</option>`
+  ).join('');
+  
+  const userOptions = usersList.map(u => 
+    `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
+  ).join('');
+  
+  return `
+    <tr class="task-table-row task-table-row-edit" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
+      <td colspan="9">
+        <div class="task-edit-form-inline">
+          <div class="task-edit-row">
+            <input type="text" class="edit-title" value="${escapeHtml(task.title)}" data-task-id="${task.id}" placeholder="Task title">
+            <textarea class="edit-description-small" data-task-id="${task.id}" placeholder="Description (optional)">${escapeHtml(task.description || '')}</textarea>
+          </div>
+          <div class="task-edit-row">
+            <select class="edit-status" data-task-id="${task.id}">
+              ${statusOptions}
+            </select>
+            <select class="edit-priority" data-task-id="${task.id}">
+              <option value="">None</option>
+              ${priorityOptions}
+            </select>
+            <select class="edit-effort" data-task-id="${task.id}">
+              <option value="">None</option>
+              ${effortOptions}
+            </select>
+            <select class="edit-resource" data-task-id="${task.id}">
+              <option value="">None</option>
+              ${userOptions}
+            </select>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm save-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-task-view" data-task-id="${task.id}">Cancel</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
 
 function populateTaskFilters() {
   const statuses = storage.getStatuses();
@@ -1174,8 +906,6 @@ function renderTaskCardForView(task) {
       `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
     ).join('');
     
-    const dueDateValue = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
-    
     return `
       <div class="task-card ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
         <input type="text" class="edit-title" value="${escapeHtml(task.title)}" data-task-id="${task.id}">
@@ -1209,10 +939,6 @@ function renderTaskCardForView(task) {
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label>Due Date (optional)</label>
-          <input type="date" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}">
-        </div>
         <div class="form-actions">
           <button class="btn btn-primary btn-sm save-task-view" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Save</button>
           <button class="btn btn-secondary btn-sm cancel-edit-task-view" data-task-id="${task.id}">Cancel</button>
@@ -1223,15 +949,11 @@ function renderTaskCardForView(task) {
   
   const statuses = storage.getStatuses();
   const status = statuses.find(s => s.id === task.status);
-  const statusColor = status?.id === 'completed' ? 'badge-green' : 
-                     status?.id === 'in-progress' ? 'badge-blue' : 'badge-gray';
+  const statusColorStyle = status?.color ? getStatusSelectStyle(status.color) : '';
   
   const priorities = storage.getPriorities();
   const priority = priorities.find(p => p.id === task.priority);
-  const priorityColor = priority?.id === 'urgent' ? 'badge-red' :
-                       priority?.id === 'high' ? 'badge-orange' :
-                       priority?.id === 'medium' ? 'badge-yellow' :
-                       priority?.id === 'low' ? 'badge-green' : '';
+  const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
   
   const statusOptions = statuses.map(s => 
     `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
@@ -1241,10 +963,10 @@ function renderTaskCardForView(task) {
     <div class="task-card ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
       <div class="project-card-header">
         <div class="project-card-content" style="flex: 1; min-width: 0;">
-          <select class="task-status-select-view ${statusColor}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
+          <select class="task-status-select-view" style="${statusColorStyle}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
             ${statusOptions}
           </select>
-          ${task.priority && priority ? `<span class="badge ${priorityColor}">${escapeHtml(priority.label)}</span>` : ''}
+          ${task.priority && priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : ''}
           <h4>${escapeHtml(task.title)}</h4>
           <p class="text-muted">Project: ${escapeHtml(task.project.title)} | Milestone: ${escapeHtml(task.milestone.title)}</p>
           ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
@@ -1255,7 +977,6 @@ function renderTaskCardForView(task) {
               return effort ? `<span>Effort: ${escapeHtml(effort.label)}</span>` : '';
             })()}
             ${task.assignedResource ? `<span>Assigned to: ${escapeHtml(task.assignedResource)}</span>` : ''}
-            ${task.dueDate ? `<span>Due: ${new Date(task.dueDate).toLocaleDateString()}</span>` : ''}
             ${task.startDate ? `<span>Started: ${new Date(task.startDate).toLocaleDateString()}</span>` : ''}
             ${task.completedDate ? `<span>Completed: ${new Date(task.completedDate).toLocaleDateString()}</span>` : ''}
           </div>
@@ -1285,9 +1006,54 @@ function attachTaskListenersForView(task) {
     }
   });
   
-  // Edit task - open modal
+  // Edit task
   document.querySelector(`.edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
-    openEditTaskModal(task);
+    state.editingTasks.add(taskId);
+    renderTasks();
+    // Initialize date picker for task due date after rendering
+    setTimeout(() => {
+      const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
+      if (dateInput && !dateInput.flatpickr) {
+        flatpickr(dateInput, {
+          dateFormat: 'Y-m-d',
+          clickOpens: true,
+        });
+      }
+    }, 0);
+  });
+  
+  // Save task
+  document.querySelector(`.save-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
+    const title = document.querySelector(`.edit-title[data-task-id="${taskId}"]`).value.trim();
+    const description = document.querySelector(`.edit-description[data-task-id="${taskId}"]`).value.trim();
+    const status = document.querySelector(`.edit-status[data-task-id="${taskId}"]`).value;
+    const priority = document.querySelector(`.edit-priority[data-task-id="${taskId}"]`).value;
+    const effort = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`).value;
+    const resource = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`).value;
+    
+    if (!title) return;
+    
+    try {
+      storage.updateTask(projectId, milestoneId, taskId, {
+        title,
+        description: description || undefined,
+        status,
+        priority: priority || undefined,
+        effortLevel: effort || undefined,
+        assignedResource: resource || undefined,
+      });
+      state.editingTasks.delete(taskId);
+      renderTasks();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      alert('Failed to update task');
+    }
+  });
+  
+  // Cancel edit task
+  document.querySelector(`.cancel-edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
+    state.editingTasks.delete(taskId);
+    renderTasks();
   });
   
   // Delete task
@@ -1309,76 +1075,6 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
-}
-
-function openEditTaskModal(task) {
-  const editTaskForm = document.getElementById('edit-task-form');
-  if (!editTaskForm) return;
-  
-  // Set hidden fields
-  document.getElementById('edit-task-id').value = task.id;
-  document.getElementById('edit-task-project-id').value = task.projectId;
-  document.getElementById('edit-task-milestone-id').value = task.milestoneId;
-  
-  // Populate form fields
-  populateProjectSelect('edit-task-project');
-  document.getElementById('edit-task-project').value = task.projectId;
-  populateMilestoneSelect('edit-task-milestone', task.projectId);
-  document.getElementById('edit-task-milestone').value = task.milestoneId;
-  document.getElementById('edit-task-title').value = task.title;
-  document.getElementById('edit-task-description').value = task.description || '';
-  
-  // Populate status, priority, effort, resource selects
-  const statuses = storage.getStatuses();
-  const priorities = storage.getPriorities();
-  const effortLevels = storage.getEffortLevels();
-  const users = storage.getUsers();
-  
-  const statusSelect = document.getElementById('edit-task-status');
-  statusSelect.innerHTML = statuses.map(s => 
-    `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
-  ).join('');
-  
-  const prioritySelect = document.getElementById('edit-task-priority');
-  prioritySelect.innerHTML = '<option value="">None</option>' + priorities.map(p => 
-    `<option value="${p.id}" ${task.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
-  ).join('');
-  
-  const effortSelect = document.getElementById('edit-task-effort');
-  effortSelect.innerHTML = '<option value="">None</option>' + effortLevels.map(e => 
-    `<option value="${e.id}" ${task.effortLevel === e.id ? 'selected' : ''}>${escapeHtml(e.label)}</option>`
-  ).join('');
-  
-  const resourceSelect = document.getElementById('edit-task-resource');
-  resourceSelect.innerHTML = '<option value="">None</option>' + users.map(u => 
-    `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
-  ).join('');
-  
-  // Populate due date
-  const dueDateInput = document.getElementById('edit-task-due-date');
-  if (dueDateInput && task.dueDate) {
-    const dueDate = new Date(task.dueDate);
-    dueDateInput.value = dueDate.toISOString().split('T')[0];
-  } else if (dueDateInput) {
-    dueDateInput.value = '';
-  }
-  
-  // Initialize date picker for edit task due date if not already initialized
-  if (dueDateInput && !dueDateInput.flatpickr) {
-    flatpickr(dueDateInput, {
-      dateFormat: 'Y-m-d',
-      clickOpens: true,
-      allowInput: false,
-    });
-  } else if (dueDateInput && dueDateInput.flatpickr && task.dueDate) {
-    // Update existing picker with new date
-    const dueDate = new Date(task.dueDate);
-    dueDateInput.flatpickr.setDate(dueDate, false);
-  }
-  
-  // Show form
-  editTaskForm.style.display = 'block';
-  document.getElementById('edit-task-title').focus();
 }
 
 function populateProjectSelect(selectId) {
@@ -1514,17 +1210,6 @@ function attachProjectListeners(project) {
   document.querySelector(`.add-milestone-btn[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
     state.showAddMilestone.set(projectId, true);
     renderProjects();
-    // Initialize date picker for inline milestone target date after rendering
-    setTimeout(() => {
-      const dateInput = document.querySelector(`.milestone-target-date-input[data-project-id="${projectId}"]`);
-      if (dateInput && !dateInput.flatpickr) {
-        flatpickr(dateInput, {
-          dateFormat: 'Y-m-d',
-          clickOpens: true,
-          allowInput: false,
-        });
-      }
-    }, 0);
   });
   
   // Cancel add milestone
@@ -1538,8 +1223,7 @@ function attachProjectListeners(project) {
     e.preventDefault();
     const title = e.target.querySelector('.milestone-title-input').value.trim();
     const description = e.target.querySelector('.milestone-description-input').value.trim();
-    const targetDateInput = e.target.querySelector('.milestone-target-date-input');
-    const targetDate = targetDateInput ? targetDateInput.value : '';
+    const targetDate = e.target.querySelector('.milestone-target-date-input')?.value || '';
     
     if (!title) return;
     
@@ -1556,7 +1240,6 @@ function attachProjectListeners(project) {
       alert('Failed to create milestone');
     }
   });
-  
   
   // Milestone listeners
   project.milestones.forEach(milestone => {
@@ -1584,12 +1267,11 @@ function attachMilestoneListeners(projectId, milestone) {
     renderProjects();
     // Initialize date picker for milestone target date after rendering
     setTimeout(() => {
-      const dateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
-      if (dateInput && !dateInput.flatpickr) {
-        flatpickr(dateInput, {
+      const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
+      if (targetDateInput && !targetDateInput.flatpickr) {
+        flatpickr(targetDateInput, {
           dateFormat: 'Y-m-d',
           clickOpens: true,
-          allowInput: false,
         });
       }
     }, 0);
@@ -1599,13 +1281,8 @@ function attachMilestoneListeners(projectId, milestone) {
   document.querySelector(`.save-milestone[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
     const title = document.querySelector(`.edit-title[data-milestone-id="${milestoneId}"]`).value.trim();
     const description = document.querySelector(`.edit-description[data-milestone-id="${milestoneId}"]`).value.trim();
-    const priority = document.querySelector(`.edit-priority[data-milestone-id="${milestoneId}"]`)?.value || '';
     const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
     const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
-    
-    // Get stakeholders from the DOM
-    const stakeholderTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
-    const stakeholders = Array.from(stakeholderTags).map(tag => tag.textContent.replace('×', '').trim()).filter(s => s);
     
     if (!title) return;
     
@@ -1613,9 +1290,7 @@ function attachMilestoneListeners(projectId, milestone) {
       storage.updateMilestone(projectId, milestoneId, { 
         title, 
         description: description || undefined,
-        priority: priority || undefined,
-        targetDate: targetDate || undefined,
-        stakeholders: stakeholders.length > 0 ? stakeholders : undefined
+        targetDate: targetDate || undefined
       });
       state.editingMilestones.delete(milestoneId);
       loadProjects();
@@ -1623,66 +1298,6 @@ function attachMilestoneListeners(projectId, milestone) {
       console.error('Failed to update milestone:', error);
       alert('Failed to update milestone');
     }
-  });
-  
-  // Add stakeholder button
-  document.querySelector(`.add-stakeholder-btn[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    const input = document.querySelector(`.edit-stakeholder-input[data-milestone-id="${milestoneId}"]`);
-    const stakeholderName = input?.value.trim();
-    if (!stakeholderName) return;
-    
-    // Check if already exists
-    const existingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
-    const existingNames = Array.from(existingTags).map(tag => tag.textContent.replace('×', '').trim());
-    if (existingNames.includes(stakeholderName)) {
-      alert('Stakeholder already added');
-      return;
-    }
-    
-    // Add stakeholder tag
-    const stakeholdersList = document.querySelector(`.stakeholders-list[data-milestone-id="${milestoneId}"]`);
-    if (stakeholdersList) {
-      const tag = document.createElement('span');
-      tag.className = 'stakeholder-tag';
-      tag.setAttribute('data-milestone-id', milestoneId);
-      tag.setAttribute('data-index', existingTags.length);
-      tag.innerHTML = `
-        ${escapeHtml(stakeholderName)}
-        <button type="button" class="stakeholder-remove" data-milestone-id="${milestoneId}" data-index="${existingTags.length}">×</button>
-      `;
-      stakeholdersList.appendChild(tag);
-      
-      // Add remove listener
-      tag.querySelector('.stakeholder-remove')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        tag.remove();
-        // Update indices
-        const remainingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
-        remainingTags.forEach((t, idx) => {
-          t.setAttribute('data-index', idx);
-          t.querySelector('.stakeholder-remove')?.setAttribute('data-index', idx);
-        });
-      });
-    }
-    
-    input.value = '';
-  });
-  
-  // Remove stakeholder button (for existing tags)
-  document.querySelectorAll(`.stakeholder-remove[data-milestone-id="${milestoneId}"]`).forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const tag = btn.closest('.stakeholder-tag');
-      if (tag) {
-        tag.remove();
-        // Update indices
-        const remainingTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
-        remainingTags.forEach((t, idx) => {
-          t.setAttribute('data-index', idx);
-          t.querySelector('.stakeholder-remove')?.setAttribute('data-index', idx);
-        });
-      }
-    });
   });
   
   // Cancel edit milestone
@@ -1708,17 +1323,6 @@ function attachMilestoneListeners(projectId, milestone) {
   document.querySelector(`.add-task-btn[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
     state.showAddTask.set(milestoneId, true);
     renderProjects();
-    // Initialize date picker for inline task due date after rendering
-    setTimeout(() => {
-      const dateInput = document.querySelector(`.task-due-date-input[data-milestone-id="${milestoneId}"]`);
-      if (dateInput && !dateInput.flatpickr) {
-        flatpickr(dateInput, {
-          dateFormat: 'Y-m-d',
-          clickOpens: true,
-          allowInput: false,
-        });
-      }
-    }, 0);
   });
   
   // Cancel add task
@@ -1732,17 +1336,11 @@ function attachMilestoneListeners(projectId, milestone) {
     e.preventDefault();
     const title = e.target.querySelector('.task-title-input').value.trim();
     const description = e.target.querySelector('.task-description-input').value.trim();
-    const dueDateInput = e.target.querySelector('.task-due-date-input');
-    const dueDate = dueDateInput ? dueDateInput.value : '';
     
     if (!title) return;
     
     try {
-      storage.createTask(projectId, milestoneId, { 
-        title, 
-        description: description || undefined,
-        dueDate: dueDate || undefined
-      });
+      storage.createTask(projectId, milestoneId, { title, description: description || undefined });
       state.showAddTask.delete(milestoneId);
       loadProjects();
     } catch (error) {
@@ -1775,6 +1373,16 @@ function attachTaskListeners(projectId, milestoneId, task) {
   document.querySelector(`.edit-task[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
     state.editingTasks.add(taskId);
     renderProjects();
+    // Initialize date picker for task due date after rendering
+    setTimeout(() => {
+      const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
+      if (dateInput && !dateInput.flatpickr) {
+        flatpickr(dateInput, {
+          dateFormat: 'Y-m-d',
+          clickOpens: true,
+        });
+      }
+    }, 0);
   });
   
   // Save task
@@ -1786,7 +1394,7 @@ function attachTaskListeners(projectId, milestoneId, task) {
     const effort = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`).value;
     const resource = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`).value;
     const dueDateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
-    const dueDate = dueDateInput ? dueDateInput.value : '';
+    const dueDate = dueDateInput ? (dueDateInput.flatpickr ? dueDateInput.flatpickr.input.value : dueDateInput.value) : '';
     
     if (!title) return;
     
@@ -1897,14 +1505,9 @@ function renderPriorities() {
     const isEditing = state.editingMetadata.get(`priority-${priority.id}`);
     
     if (isEditing) {
-      const color = priority.color || '#71717a';
       return `
         <div class="metadata-item-editing" data-priority-id="${priority.id}">
           <input type="text" class="edit-priority-label" value="${escapeHtml(priority.label)}" data-priority-id="${priority.id}" placeholder="Label">
-          <div class="color-input-group">
-            <input type="color" class="edit-priority-color" value="${color}" data-priority-id="${priority.id}">
-            <input type="text" class="edit-priority-color-text color-text-input" value="${color}" data-priority-id="${priority.id}" placeholder="#71717a">
-          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-priority" data-priority-id="${priority.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-priority" data-priority-id="${priority.id}">Cancel</button>
@@ -1913,11 +1516,9 @@ function renderPriorities() {
       `;
     }
     
-    const color = priority.color || '#71717a';
     return `
       <div class="metadata-item" data-priority-id="${priority.id}">
         <div class="metadata-item-content">
-          <span class="metadata-item-color" style="background-color: ${color}"></span>
           <span class="metadata-item-label">${escapeHtml(priority.label)}</span>
         </div>
         <div class="metadata-item-actions">
@@ -1954,14 +1555,9 @@ function renderStatuses() {
     const isEditing = state.editingMetadata.get(`status-${status.id}`);
     
     if (isEditing) {
-      const color = status.color || '#71717a';
       return `
         <div class="metadata-item-editing" data-status-id="${status.id}">
           <input type="text" class="edit-status-label" value="${escapeHtml(status.label)}" data-status-id="${status.id}" placeholder="Label">
-          <div class="color-input-group">
-            <input type="color" class="edit-status-color" value="${color}" data-status-id="${status.id}">
-            <input type="text" class="edit-status-color-text color-text-input" value="${color}" data-status-id="${status.id}" placeholder="#71717a">
-          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-status" data-status-id="${status.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-status" data-status-id="${status.id}">Cancel</button>
@@ -1970,11 +1566,9 @@ function renderStatuses() {
       `;
     }
     
-    const color = status.color || '#71717a';
     return `
       <div class="metadata-item" data-status-id="${status.id}">
         <div class="metadata-item-content">
-          <span class="metadata-item-color" style="background-color: ${color}"></span>
           <span class="metadata-item-label">${escapeHtml(status.label)}</span>
         </div>
         <div class="metadata-item-actions">
@@ -2011,14 +1605,9 @@ function renderEffortLevels() {
     const isEditing = state.editingMetadata.get(`effort-${effort.id}`);
     
     if (isEditing) {
-      const color = effort.color || '#71717a';
       return `
         <div class="metadata-item-editing" data-effort-id="${effort.id}">
           <input type="text" class="edit-effort-label" value="${escapeHtml(effort.label)}" data-effort-id="${effort.id}" placeholder="Label">
-          <div class="color-input-group">
-            <input type="color" class="edit-effort-color" value="${color}" data-effort-id="${effort.id}">
-            <input type="text" class="edit-effort-color-text color-text-input" value="${color}" data-effort-id="${effort.id}" placeholder="#71717a">
-          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-effort" data-effort-id="${effort.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-effort" data-effort-id="${effort.id}">Cancel</button>
@@ -2027,11 +1616,9 @@ function renderEffortLevels() {
       `;
     }
     
-    const color = effort.color || '#71717a';
     return `
       <div class="metadata-item" data-effort-id="${effort.id}">
         <div class="metadata-item-content">
-          <span class="metadata-item-color" style="background-color: ${color}"></span>
           <span class="metadata-item-label">${escapeHtml(effort.label)}</span>
         </div>
         <div class="metadata-item-actions">
