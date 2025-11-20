@@ -296,21 +296,21 @@ function getDefaultMetadata() {
   return {
     users: [],
     priorities: [
-      { id: 'low', label: 'Low', order: 1 },
-      { id: 'medium', label: 'Medium', order: 2 },
-      { id: 'high', label: 'High', order: 3 },
-      { id: 'urgent', label: 'Urgent', order: 4 },
+      { id: 'low', label: 'Low', order: 1, color: '#10b981' },
+      { id: 'medium', label: 'Medium', order: 2, color: '#eab308' },
+      { id: 'high', label: 'High', order: 3, color: '#f59e0b' },
+      { id: 'urgent', label: 'Urgent', order: 4, color: '#ef4444' },
     ],
     statuses: [
-      { id: 'not-started', label: 'Not Started', order: 1 },
-      { id: 'in-progress', label: 'In Progress', order: 2 },
-      { id: 'completed', label: 'Completed', order: 3 },
+      { id: 'not-started', label: 'Not Started', order: 1, color: '#71717a' },
+      { id: 'in-progress', label: 'In Progress', order: 2, color: '#3b82f6' },
+      { id: 'completed', label: 'Completed', order: 3, color: '#10b981' },
     ],
     effortLevels: [
-      { id: 'small', label: 'Small', order: 1 },
-      { id: 'medium', label: 'Medium', order: 2 },
-      { id: 'large', label: 'Large', order: 3 },
-      { id: 'x-large', label: 'X-Large', order: 4 },
+      { id: 'small', label: 'Small', order: 1, color: '#10b981' },
+      { id: 'medium', label: 'Medium', order: 2, color: '#3b82f6' },
+      { id: 'large', label: 'Large', order: 3, color: '#f59e0b' },
+      { id: 'x-large', label: 'X-Large', order: 4, color: '#ef4444' },
     ],
   };
 }
@@ -323,7 +323,13 @@ function readMetadata() {
   try {
     const metadata = localStorage.getItem(METADATA_KEY);
     if (metadata) {
-      return JSON.parse(metadata);
+      const parsed = JSON.parse(metadata);
+      // Migrate old metadata to include colors if missing
+      const migrated = migrateMetadata(parsed);
+      if (JSON.stringify(parsed) !== JSON.stringify(migrated)) {
+        writeMetadata(migrated);
+      }
+      return migrated;
     }
   } catch (error) {
     console.error('Error reading metadata from localStorage:', error);
@@ -333,6 +339,46 @@ function readMetadata() {
   const defaultMetadata = getDefaultMetadata();
   writeMetadata(defaultMetadata);
   return defaultMetadata;
+}
+
+function migrateMetadata(metadata) {
+  const defaultMetadata = getDefaultMetadata();
+  const migrated = { ...metadata };
+  
+  // Migrate priorities
+  if (migrated.priorities) {
+    migrated.priorities = migrated.priorities.map(p => {
+      if (!p.color) {
+        const defaultPriority = defaultMetadata.priorities.find(dp => dp.id === p.id);
+        return { ...p, color: defaultPriority?.color || '#71717a' };
+      }
+      return p;
+    });
+  }
+  
+  // Migrate statuses
+  if (migrated.statuses) {
+    migrated.statuses = migrated.statuses.map(s => {
+      if (!s.color) {
+        const defaultStatus = defaultMetadata.statuses.find(ds => ds.id === s.id);
+        return { ...s, color: defaultStatus?.color || '#71717a' };
+      }
+      return s;
+    });
+  }
+  
+  // Migrate effort levels
+  if (migrated.effortLevels) {
+    migrated.effortLevels = migrated.effortLevels.map(e => {
+      if (!e.color) {
+        const defaultEffort = defaultMetadata.effortLevels.find(de => de.id === e.id);
+        return { ...e, color: defaultEffort?.color || '#71717a' };
+      }
+      return e;
+    });
+  }
+  
+  return migrated;
 }
 
 function writeMetadata(metadata) {
@@ -409,7 +455,7 @@ export function getPriorities() {
   return (metadata.priorities || []).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-export function addPriority(label) {
+export function addPriority(label, color = '#71717a') {
   const metadata = readMetadata();
   if (!metadata.priorities) {
     metadata.priorities = [];
@@ -419,6 +465,7 @@ export function addPriority(label) {
     id,
     label: label.trim(),
     order: metadata.priorities.length + 1,
+    color: color || '#71717a',
     createdAt: new Date().toISOString(),
   };
   metadata.priorities.push(newPriority);
@@ -483,7 +530,7 @@ export function getStatuses() {
   return (metadata.statuses || []).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-export function addStatus(label) {
+export function addStatus(label, color = '#71717a') {
   const metadata = readMetadata();
   if (!metadata.statuses) {
     metadata.statuses = [];
@@ -493,6 +540,7 @@ export function addStatus(label) {
     id,
     label: label.trim(),
     order: metadata.statuses.length + 1,
+    color: color || '#71717a',
     createdAt: new Date().toISOString(),
   };
   metadata.statuses.push(newStatus);
@@ -557,7 +605,7 @@ export function getEffortLevels() {
   return (metadata.effortLevels || []).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-export function addEffortLevel(label) {
+export function addEffortLevel(label, color = '#71717a') {
   const metadata = readMetadata();
   if (!metadata.effortLevels) {
     metadata.effortLevels = [];
@@ -567,6 +615,7 @@ export function addEffortLevel(label) {
     id,
     label: label.trim(),
     order: metadata.effortLevels.length + 1,
+    color: color || '#71717a',
     createdAt: new Date().toISOString(),
   };
   metadata.effortLevels.push(newEffortLevel);

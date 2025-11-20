@@ -16,8 +16,13 @@
     .flatpickr-wrapper .flatpickr-input[readonly] {
       cursor: pointer;
     }
-    /* Hide the calendar icon - we'll open on focus instead */
-    .flatpickr-wrapper input {
+    /* Hide the calendar icon - we'll open on click/focus instead */
+    .flatpickr-input[readonly] {
+      cursor: pointer;
+      background-color: white;
+    }
+    /* Ensure inputs look normal */
+    input[type="text"][readonly].flatpickr-input {
       padding-right: 12px;
     }
   </style>
@@ -275,6 +280,13 @@
                 <label for="priority-label">Priority Label *</label>
                 <input type="text" id="priority-label" required placeholder="e.g., Critical">
               </div>
+              <div class="form-group">
+                <label for="priority-color">Color *</label>
+                <div class="color-input-group">
+                  <input type="color" id="priority-color" value="#71717a" required>
+                  <input type="text" id="priority-color-text" value="#71717a" placeholder="#71717a" class="color-text-input">
+                </div>
+              </div>
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-sm">Add Priority</button>
                 <button type="button" id="cancel-priority-btn" class="btn btn-secondary btn-sm">Cancel</button>
@@ -294,6 +306,13 @@
                 <label for="status-label">Status Label *</label>
                 <input type="text" id="status-label" required placeholder="e.g., On Hold">
               </div>
+              <div class="form-group">
+                <label for="status-color">Color *</label>
+                <div class="color-input-group">
+                  <input type="color" id="status-color" value="#71717a" required>
+                  <input type="text" id="status-color-text" value="#71717a" placeholder="#71717a" class="color-text-input">
+                </div>
+              </div>
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-sm">Add Status</button>
                 <button type="button" id="cancel-status-btn" class="btn btn-secondary btn-sm">Cancel</button>
@@ -312,6 +331,13 @@
               <div class="form-group">
                 <label for="effort-label">Effort Label *</label>
                 <input type="text" id="effort-label" required placeholder="e.g., Extra Large">
+              </div>
+              <div class="form-group">
+                <label for="effort-color">Color *</label>
+                <div class="color-input-group">
+                  <input type="color" id="effort-color" value="#71717a" required>
+                  <input type="text" id="effort-color-text" value="#71717a" placeholder="#71717a" class="color-text-input">
+                </div>
               </div>
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-sm">Add Effort Level</button>

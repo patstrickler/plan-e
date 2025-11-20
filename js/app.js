@@ -146,7 +146,8 @@ function setupEventListeners() {
     if (!window.milestoneTargetDatePicker) {
       window.milestoneTargetDatePicker = flatpickr('#milestone-target-date', {
         dateFormat: 'Y-m-d',
-        allowInput: true,
+        clickOpens: true,
+        allowInput: false,
       });
     }
   });
@@ -199,6 +200,14 @@ function setupEventListeners() {
     elements.newTaskForm.style.display = 'block';
     elements.newTaskBtn.style.display = 'none';
     document.getElementById('task-title').focus();
+    // Initialize date picker for task due date
+    if (!window.taskDueDatePicker) {
+      window.taskDueDatePicker = flatpickr('#task-due-date', {
+        dateFormat: 'Y-m-d',
+        clickOpens: true,
+        allowInput: false,
+      });
+    }
   });
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
@@ -211,6 +220,9 @@ function setupEventListeners() {
     document.getElementById('task-title').value = '';
     document.getElementById('task-description').value = '';
     document.getElementById('task-due-date').value = '';
+    if (window.taskDueDatePicker) {
+      window.taskDueDatePicker.clear();
+    }
   });
 
   // Edit task form
@@ -232,7 +244,8 @@ function setupEventListeners() {
     const priority = document.getElementById('edit-task-priority').value;
     const effort = document.getElementById('edit-task-effort').value;
     const resource = document.getElementById('edit-task-resource').value;
-    const dueDate = document.getElementById('edit-task-due-date').value;
+    const editDueDateInput = document.getElementById('edit-task-due-date');
+    const dueDate = editDueDateInput ? (editDueDateInput.flatpickr ? editDueDateInput.flatpickr.input.value : editDueDateInput.value) : '';
     
     if (!title || !projectId || !milestoneId) return;
     
@@ -267,7 +280,8 @@ function setupEventListeners() {
     const priority = document.getElementById('task-priority').value;
     const effort = document.getElementById('task-effort').value;
     const resource = document.getElementById('task-resource').value;
-    const dueDate = document.getElementById('task-due-date').value;
+    const dueDateInput = document.getElementById('task-due-date');
+    const dueDate = dueDateInput ? (dueDateInput.flatpickr ? dueDateInput.flatpickr.input.value : dueDateInput.value) : '';
     
     if (!title || !projectId || !milestoneId) return;
     
@@ -286,6 +300,9 @@ function setupEventListeners() {
       document.getElementById('task-effort').value = '';
       document.getElementById('task-resource').value = '';
       document.getElementById('task-due-date').value = '';
+      if (window.taskDueDatePicker) {
+        window.taskDueDatePicker.clear();
+      }
       elements.newTaskForm.style.display = 'none';
       elements.newTaskBtn.style.display = 'block';
       renderTasks();
@@ -1346,6 +1363,19 @@ function openEditTaskModal(task) {
     dueDateInput.value = '';
   }
   
+  // Initialize date picker for edit task due date if not already initialized
+  if (dueDateInput && !dueDateInput.flatpickr) {
+    flatpickr(dueDateInput, {
+      dateFormat: 'Y-m-d',
+      clickOpens: true,
+      allowInput: false,
+    });
+  } else if (dueDateInput && dueDateInput.flatpickr && task.dueDate) {
+    // Update existing picker with new date
+    const dueDate = new Date(task.dueDate);
+    dueDateInput.flatpickr.setDate(dueDate, false);
+  }
+  
   // Show form
   editTaskForm.style.display = 'block';
   document.getElementById('edit-task-title').focus();
@@ -1490,7 +1520,8 @@ function attachProjectListeners(project) {
       if (dateInput && !dateInput.flatpickr) {
         flatpickr(dateInput, {
           dateFormat: 'Y-m-d',
-          allowInput: true,
+          clickOpens: true,
+          allowInput: false,
         });
       }
     }, 0);
@@ -1557,7 +1588,8 @@ function attachMilestoneListeners(projectId, milestone) {
       if (dateInput && !dateInput.flatpickr) {
         flatpickr(dateInput, {
           dateFormat: 'Y-m-d',
-          allowInput: true,
+          clickOpens: true,
+          allowInput: false,
         });
       }
     }, 0);
@@ -1568,8 +1600,8 @@ function attachMilestoneListeners(projectId, milestone) {
     const title = document.querySelector(`.edit-title[data-milestone-id="${milestoneId}"]`).value.trim();
     const description = document.querySelector(`.edit-description[data-milestone-id="${milestoneId}"]`).value.trim();
     const priority = document.querySelector(`.edit-priority[data-milestone-id="${milestoneId}"]`)?.value || '';
-    const targetDate = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`)?.value || '';
-    const dueDate = document.querySelector(`.edit-due-date[data-milestone-id="${milestoneId}"]`)?.value || '';
+    const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
+    const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
     
     // Get stakeholders from the DOM
     const stakeholderTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
@@ -1682,7 +1714,8 @@ function attachMilestoneListeners(projectId, milestone) {
       if (dateInput && !dateInput.flatpickr) {
         flatpickr(dateInput, {
           dateFormat: 'Y-m-d',
-          allowInput: true,
+          clickOpens: true,
+          allowInput: false,
         });
       }
     }, 0);
@@ -1864,9 +1897,14 @@ function renderPriorities() {
     const isEditing = state.editingMetadata.get(`priority-${priority.id}`);
     
     if (isEditing) {
+      const color = priority.color || '#71717a';
       return `
         <div class="metadata-item-editing" data-priority-id="${priority.id}">
           <input type="text" class="edit-priority-label" value="${escapeHtml(priority.label)}" data-priority-id="${priority.id}" placeholder="Label">
+          <div class="color-input-group">
+            <input type="color" class="edit-priority-color" value="${color}" data-priority-id="${priority.id}">
+            <input type="text" class="edit-priority-color-text color-text-input" value="${color}" data-priority-id="${priority.id}" placeholder="#71717a">
+          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-priority" data-priority-id="${priority.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-priority" data-priority-id="${priority.id}">Cancel</button>
@@ -1875,9 +1913,11 @@ function renderPriorities() {
       `;
     }
     
+    const color = priority.color || '#71717a';
     return `
       <div class="metadata-item" data-priority-id="${priority.id}">
         <div class="metadata-item-content">
+          <span class="metadata-item-color" style="background-color: ${color}"></span>
           <span class="metadata-item-label">${escapeHtml(priority.label)}</span>
         </div>
         <div class="metadata-item-actions">
@@ -1914,9 +1954,14 @@ function renderStatuses() {
     const isEditing = state.editingMetadata.get(`status-${status.id}`);
     
     if (isEditing) {
+      const color = status.color || '#71717a';
       return `
         <div class="metadata-item-editing" data-status-id="${status.id}">
           <input type="text" class="edit-status-label" value="${escapeHtml(status.label)}" data-status-id="${status.id}" placeholder="Label">
+          <div class="color-input-group">
+            <input type="color" class="edit-status-color" value="${color}" data-status-id="${status.id}">
+            <input type="text" class="edit-status-color-text color-text-input" value="${color}" data-status-id="${status.id}" placeholder="#71717a">
+          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-status" data-status-id="${status.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-status" data-status-id="${status.id}">Cancel</button>
@@ -1925,9 +1970,11 @@ function renderStatuses() {
       `;
     }
     
+    const color = status.color || '#71717a';
     return `
       <div class="metadata-item" data-status-id="${status.id}">
         <div class="metadata-item-content">
+          <span class="metadata-item-color" style="background-color: ${color}"></span>
           <span class="metadata-item-label">${escapeHtml(status.label)}</span>
         </div>
         <div class="metadata-item-actions">
