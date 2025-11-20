@@ -69,10 +69,17 @@ body {
    Layout
    ============================================ */
 .container {
+  width: 100%;
   max-width: 1024px;
   margin: 0 auto;
   padding: 2rem 1rem;
-  flex: 1;
+  box-sizing: border-box;
+}
+
+@media (min-width: 1024px) {
+  .container {
+    width: 1024px;
+  }
 }
 
 .header {
@@ -367,6 +374,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .project-card,
@@ -690,6 +699,8 @@ body {
 
 .view {
   display: block;
+  width: 100%;
+  min-width: 0;
 }
 
 .mb-6 {
@@ -719,6 +730,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .settings-section {
@@ -850,20 +863,16 @@ body {
    Footer
    ============================================ */
 .footer {
-  margin-top: 4rem;
-  padding-top: 2rem;
+  margin-top: auto;
+  padding: 2rem 1rem;
   border-top: 1px solid var(--border);
+  width: 100%;
 }
 
 .footer-content {
   max-width: 1024px;
   margin: 0 auto;
-  padding: 0 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+  text-align: center;
 }
 
 .footer-text {
@@ -939,16 +948,20 @@ body {
 }
 
 .tasks-table-container {
+  width: 100%;
   overflow-x: auto;
+  box-sizing: border-box;
 }
 
 .tasks-table {
   width: 100%;
+  min-width: 100%;
   border-collapse: collapse;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   overflow: hidden;
+  table-layout: fixed;
 }
 
 .tasks-table thead {
@@ -965,7 +978,19 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.tasks-table th:nth-child(1) { width: 10%; } /* Status */
+.tasks-table th:nth-child(2) { width: 10%; } /* Priority */
+.tasks-table th:nth-child(3) { width: 25%; } /* Task */
+.tasks-table th:nth-child(4) { width: 12%; } /* Project */
+.tasks-table th:nth-child(5) { width: 12%; } /* Milestone */
+.tasks-table th:nth-child(6) { width: 8%; }  /* Effort */
+.tasks-table th:nth-child(7) { width: 10%; }  /* Assigned */
+.tasks-table th:nth-child(8) { width: 10%; }  /* Dates */
+.tasks-table th:nth-child(9) { width: 13%; }  /* Actions */
 
 .tasks-table td {
   padding: 0.5rem 0.75rem;
@@ -992,8 +1017,8 @@ body {
 }
 
 .task-title-cell {
-  max-width: 250px;
-  min-width: 200px;
+  width: 25%;
+  overflow: hidden;
 }
 
 .task-description-small {
@@ -1007,9 +1032,15 @@ body {
   overflow: hidden;
 }
 
-.task-project-cell,
+.task-project-cell {
+  width: 12%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .task-milestone-cell {
-  max-width: 150px;
+  width: 12%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1131,5 +1162,49 @@ body {
   .project-card-actions {
     margin-left: 0;
     margin-top: 1rem;
+  }
+
+  .container {
+    min-width: 100%;
+    max-width: 100%;
+    padding: 1rem 0.5rem;
+  }
+
+  .tasks-search-filter {
+    flex-direction: column;
+  }
+
+  .task-search-input,
+  .task-filter-select {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .tasks-table {
+    font-size: 0.75rem;
+    table-layout: auto;
+  }
+
+  .tasks-table th,
+  .tasks-table td {
+    padding: 0.5rem 0.5rem;
+  }
+
+  .tasks-table th:nth-child(1),
+  .tasks-table th:nth-child(2),
+  .tasks-table th:nth-child(3),
+  .tasks-table th:nth-child(4),
+  .tasks-table th:nth-child(5),
+  .tasks-table th:nth-child(6),
+  .tasks-table th:nth-child(7),
+  .tasks-table th:nth-child(8),
+  .tasks-table th:nth-child(9) {
+    width: auto;
+  }
+
+  .task-title-cell,
+  .task-project-cell,
+  .task-milestone-cell {
+    max-width: 120px;
   }
 }
