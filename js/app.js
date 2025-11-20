@@ -440,17 +440,34 @@ function setupEventListeners() {
 
   editTaskForm?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const taskId = document.getElementById('edit-task-id').value;
-    const projectId = document.getElementById('edit-task-project-id').value;
-    const milestoneId = document.getElementById('edit-task-milestone-id').value;
-    const title = document.getElementById('edit-task-title').value.trim();
-    const description = document.getElementById('edit-task-description').value.trim();
-    const status = document.getElementById('edit-task-status').value;
-    const priority = document.getElementById('edit-task-priority').value;
-    const effort = document.getElementById('edit-task-effort').value;
-    const resource = document.getElementById('edit-task-resource').value;
+    const taskIdInput = document.getElementById('edit-task-id');
+    const projectIdInput = document.getElementById('edit-task-project-id');
+    const milestoneIdInput = document.getElementById('edit-task-milestone-id');
+    const titleInput = document.getElementById('edit-task-title');
+    const descriptionInput = document.getElementById('edit-task-description');
+    const statusSelect = document.getElementById('edit-task-status');
+    const prioritySelect = document.getElementById('edit-task-priority');
+    const effortSelect = document.getElementById('edit-task-effort');
+    const resourceSelect = document.getElementById('edit-task-resource');
     const editDueDateInput = document.getElementById('edit-task-due-date');
-    const dueDate = editDueDateInput ? (editDueDateInput.flatpickr ? editDueDateInput.flatpickr.input.value : editDueDateInput.value) : '';
+    
+    const taskId = taskIdInput ? taskIdInput.value : '';
+    const projectId = projectIdInput ? projectIdInput.value : '';
+    const milestoneId = milestoneIdInput ? milestoneIdInput.value : '';
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const status = statusSelect ? statusSelect.value : '';
+    const priority = prioritySelect ? prioritySelect.value : '';
+    const effort = effortSelect ? effortSelect.value : '';
+    const resource = resourceSelect ? resourceSelect.value : '';
+    let dueDate = '';
+    if (editDueDateInput) {
+      if (editDueDateInput.flatpickr && editDueDateInput.flatpickr.input) {
+        dueDate = editDueDateInput.flatpickr.input.value;
+      } else {
+        dueDate = editDueDateInput.value || '';
+      }
+    }
     
     if (!title || !projectId || !milestoneId) return;
     
@@ -498,7 +515,14 @@ function setupEventListeners() {
       const priority = prioritySelect ? prioritySelect.value : '';
       const effort = effortSelect ? effortSelect.value : '';
       const resource = resourceSelect ? resourceSelect.value : '';
-      const dueDate = dueDateInput ? (dueDateInput.flatpickr ? dueDateInput.flatpickr.input.value : dueDateInput.value) : '';
+      let dueDate = '';
+      if (dueDateInput) {
+        if (dueDateInput.flatpickr && dueDateInput.flatpickr.input) {
+          dueDate = dueDateInput.flatpickr.input.value;
+        } else {
+          dueDate = dueDateInput.value || '';
+        }
+      }
       
       // Validate required fields and show user feedback
       if (!title) {
