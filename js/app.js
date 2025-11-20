@@ -352,12 +352,9 @@ function renderProjectCard(project) {
   
   const milestonesHtml = isExpanded ? `
     <div class="expanded-content">
-      <div class="mb-4">
-        ${showAddMilestone ? renderAddMilestoneForm(project.id) : `<button class="btn btn-green btn-sm add-milestone-btn" data-project-id="${project.id}">+ Add Milestone</button>`}
-      </div>
       <div class="milestones-list">
         ${project.milestones.length === 0 
-          ? '<p class="text-muted">No milestones yet. Add one above!</p>'
+          ? '<p class="text-muted">No milestones yet.</p>'
           : project.milestones.map(m => renderMilestoneCard(m, project.id)).join('')
         }
       </div>
@@ -409,12 +406,9 @@ function renderMilestoneCard(milestone, projectId) {
   
   const tasksHtml = isExpanded ? `
     <div class="expanded-content">
-      <div class="mb-4">
-        ${showAddTask ? renderAddTaskForm(projectId, milestone.id) : `<button class="btn btn-green btn-sm add-task-btn" data-project-id="${projectId}" data-milestone-id="${milestone.id}">+ Add Task</button>`}
-      </div>
       <div class="tasks-list">
         ${milestone.tasks.length === 0 
-          ? '<p class="text-muted">No tasks yet. Add one above!</p>'
+          ? '<p class="text-muted">No tasks yet.</p>'
           : milestone.tasks.map(t => renderTaskCard(t, projectId, milestone.id)).join('')
         }
       </div>
@@ -1206,12 +1200,6 @@ function attachProjectListeners(project) {
     }
   });
   
-  // Add milestone button
-  document.querySelector(`.add-milestone-btn[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    state.showAddMilestone.set(projectId, true);
-    renderProjects();
-  });
-  
   // Cancel add milestone
   document.querySelector(`.cancel-add-milestone[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
     state.showAddMilestone.delete(projectId);
@@ -1317,12 +1305,6 @@ function attachMilestoneListeners(projectId, milestone) {
       console.error('Failed to delete milestone:', error);
       alert('Failed to delete milestone');
     }
-  });
-  
-  // Add task button
-  document.querySelector(`.add-task-btn[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    state.showAddTask.set(milestoneId, true);
-    renderProjects();
   });
   
   // Cancel add task
