@@ -70,16 +70,16 @@ body {
    ============================================ */
 .container {
   width: 100%;
-  max-width: 1024px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 2rem 1rem;
   box-sizing: border-box;
   flex: 1;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1400px) {
   .container {
-    width: 1024px;
+    width: 1400px;
   }
 }
 
@@ -993,7 +993,7 @@ body {
 }
 
 .footer-content {
-  max-width: 1024px;
+  max-width: 1400px;
   margin: 0 auto;
   text-align: center;
 }
