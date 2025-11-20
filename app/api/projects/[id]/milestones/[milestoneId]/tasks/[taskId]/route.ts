@@ -3,11 +3,11 @@ import { updateTask, deleteTask } from '@/lib/storage';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { projectId: string; milestoneId: string; taskId: string } }
+  { params }: { params: { id: string; milestoneId: string; taskId: string } }
 ) {
   try {
     const body = await request.json();
-    const task = updateTask(params.projectId, params.milestoneId, params.taskId, body);
+    const task = updateTask(params.id, params.milestoneId, params.taskId, body);
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
@@ -19,10 +19,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { projectId: string; milestoneId: string; taskId: string } }
+  { params }: { params: { id: string; milestoneId: string; taskId: string } }
 ) {
   try {
-    const deleted = deleteTask(params.projectId, params.milestoneId, params.taskId);
+    const deleted = deleteTask(params.id, params.milestoneId, params.taskId);
     if (!deleted) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }

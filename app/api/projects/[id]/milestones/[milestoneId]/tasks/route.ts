@@ -3,7 +3,7 @@ import { createTask } from '@/lib/storage';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { projectId: string; milestoneId: string } }
+  { params }: { params: { id: string; milestoneId: string } }
 ) {
   try {
     const body = await request.json();
@@ -13,7 +13,7 @@ export async function POST(
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
     
-    const task = createTask(params.projectId, params.milestoneId, { title, description });
+    const task = createTask(params.id, params.milestoneId, { title, description });
     return NextResponse.json(task, { status: 201 });
   } catch (error: any) {
     if (error.message === 'Project not found' || error.message === 'Milestone not found') {
