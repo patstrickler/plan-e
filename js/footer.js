@@ -15,15 +15,12 @@ function initFooter() {
     .then(data => {
       const versionElement = document.getElementById('footer-version');
       if (versionElement && data.version) {
-        versionElement.textContent = `v${data.version}`;
+        versionElement.textContent = data.version;
       }
     })
     .catch(() => {
-      // Fallback if version.json doesn't exist or can't be read
-      const versionElement = document.getElementById('footer-version');
-      if (versionElement) {
-        versionElement.textContent = 'vdev';
-      }
+      // Silently fail if version.json doesn't exist or can't be read
+      // Version will just not be displayed
     });
 }
 

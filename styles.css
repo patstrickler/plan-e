@@ -74,6 +74,7 @@ body {
   margin: 0 auto;
   padding: 2rem 1rem;
   box-sizing: border-box;
+  flex: 1;
 }
 
 @media (min-width: 1024px) {

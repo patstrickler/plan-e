@@ -43,13 +43,13 @@ try {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1; // getMonth() returns 0-11
 
-  // Determine new version
+  // Determine new version - always use current year and month
   let newVersion;
   if (year === currentYear && month === currentMonth) {
-    // Same month - increment build number
+    // Same month - increment version number
     newVersion = `${currentYear}.${String(currentMonth).padStart(2, '0')}.${build + 1}`;
   } else {
-    // Different month - reset to 1
+    // Different month or year - start at version 1 for the new month
     newVersion = `${currentYear}.${String(currentMonth).padStart(2, '0')}.1`;
   }
 
