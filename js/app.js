@@ -201,6 +201,17 @@ function setupEventListeners() {
   elements.newTaskBtn?.addEventListener('click', () => {
     populateProjectSelect('task-project');
     updateAllSelects(); // Populate priority, effort, and resource selects
+    // Clear and reset milestone select
+    const milestoneSelect = document.getElementById('task-milestone');
+    if (milestoneSelect) {
+      milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
+      milestoneSelect.value = '';
+    }
+    // Reset project select
+    const projectSelect = document.getElementById('task-project');
+    if (projectSelect) {
+      projectSelect.value = '';
+    }
     elements.newTaskForm.style.display = 'block';
     elements.newTaskBtn.style.display = 'none';
     document.getElementById('task-title').focus();
@@ -232,6 +243,20 @@ function setupEventListeners() {
     document.getElementById('task-title').value = '';
     document.getElementById('task-description').value = '';
     document.getElementById('task-due-date').value = '';
+    // Reset project and milestone selects
+    const projectSelect = document.getElementById('task-project');
+    if (projectSelect) {
+      projectSelect.value = '';
+    }
+    const milestoneSelect = document.getElementById('task-milestone');
+    if (milestoneSelect) {
+      milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
+      milestoneSelect.value = '';
+    }
+    // Reset other selects
+    document.getElementById('task-priority').value = '';
+    document.getElementById('task-effort').value = '';
+    document.getElementById('task-resource').value = '';
     if (window.taskDueDatePicker) {
       window.taskDueDatePicker.clear();
     }
@@ -374,6 +399,20 @@ function setupEventListeners() {
       document.getElementById('task-priority').value = '';
       document.getElementById('task-effort').value = '';
       document.getElementById('task-resource').value = '';
+      // Reset project and milestone selects
+      const projectSelect = document.getElementById('task-project');
+      if (projectSelect) {
+        projectSelect.value = '';
+      }
+      const milestoneSelect = document.getElementById('task-milestone');
+      if (milestoneSelect) {
+        milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
+        milestoneSelect.value = '';
+      }
+      // Clear due date
+      if (window.taskDueDatePicker) {
+        window.taskDueDatePicker.clear();
+      }
       elements.newTaskForm.style.display = 'none';
       elements.newTaskBtn.style.display = 'block';
       renderTasks();
