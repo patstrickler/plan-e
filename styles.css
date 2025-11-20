@@ -1020,12 +1020,13 @@ body {
 .tasks-table {
   width: 100%;
   min-width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   overflow: hidden;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .tasks-table thead {
@@ -1044,24 +1045,72 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: relative;
 }
 
-.tasks-table th:nth-child(1) { width: 10%; } /* Status */
-.tasks-table th:nth-child(2) { width: 10%; } /* Priority */
-.tasks-table th:nth-child(3) { width: 25%; } /* Task */
-.tasks-table th:nth-child(4) { width: 12%; } /* Project */
-.tasks-table th:nth-child(5) { width: 12%; } /* Milestone */
-.tasks-table th:nth-child(6) { width: 8%; }  /* Effort */
-.tasks-table th:nth-child(7) { width: 10%; }  /* Assigned */
-.tasks-table th:nth-child(8) { width: 10%; }  /* Dates */
-.tasks-table th:nth-child(9) { width: 13%; }  /* Actions */
+.tasks-table th:nth-child(1),
+.tasks-table td:nth-child(1) { 
+  width: 10%;
+  min-width: 100px;
+  max-width: 120px;
+} /* Status */
+.tasks-table th:nth-child(2),
+.tasks-table td:nth-child(2) { 
+  width: 10%;
+  min-width: 100px;
+  max-width: 120px;
+} /* Priority */
+.tasks-table th:nth-child(3),
+.tasks-table td:nth-child(3) { 
+  width: 25%;
+  min-width: 200px;
+} /* Task */
+.tasks-table th:nth-child(4),
+.tasks-table td:nth-child(4) { 
+  width: 12%;
+  min-width: 120px;
+  max-width: 150px;
+} /* Project */
+.tasks-table th:nth-child(5),
+.tasks-table td:nth-child(5) { 
+  width: 12%;
+  min-width: 120px;
+  max-width: 150px;
+} /* Milestone */
+.tasks-table th:nth-child(6),
+.tasks-table td:nth-child(6) { 
+  width: 8%;
+  min-width: 80px;
+  max-width: 100px;
+} /* Effort */
+.tasks-table th:nth-child(7),
+.tasks-table td:nth-child(7) { 
+  width: 10%;
+  min-width: 100px;
+  max-width: 120px;
+} /* Assigned */
+.tasks-table th:nth-child(8),
+.tasks-table td:nth-child(8) { 
+  width: 10%;
+  min-width: 120px;
+  max-width: 150px;
+} /* Dates */
+.tasks-table th:nth-child(9),
+.tasks-table td:nth-child(9) { 
+  width: 13%;
+  min-width: 140px;
+  max-width: 180px;
+} /* Actions */
 
 .tasks-table td {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .tasks-table tbody tr:hover {
@@ -1082,7 +1131,10 @@ body {
 
 .task-title-cell {
   width: 25%;
+  max-width: 25%;
   overflow: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .task-description-small {
@@ -1098,6 +1150,7 @@ body {
 
 .task-project-cell {
   width: 12%;
+  max-width: 150px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1105,6 +1158,7 @@ body {
 
 .task-milestone-cell {
   width: 12%;
+  max-width: 150px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
