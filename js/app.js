@@ -473,37 +473,47 @@ function setupEventListeners() {
   });
 
   document.getElementById('edit-task-project')?.addEventListener('change', (e) => {
-    populateMilestoneSelect('edit-task-milestone', e.target.value);
+    if (e && e.target && e.target.value !== undefined) {
+      populateMilestoneSelect('edit-task-milestone', e.target.value);
+    }
   });
 
   // Use the newTaskForm variable declared earlier
   if (newTaskForm) {
     newTaskForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      const projectId = document.getElementById('task-project').value;
-      const milestoneId = document.getElementById('task-milestone').value;
-      const title = document.getElementById('task-title').value.trim();
-      const description = document.getElementById('task-description').value.trim();
-      const priority = document.getElementById('task-priority').value;
-      const effort = document.getElementById('task-effort').value;
-      const resource = document.getElementById('task-resource').value;
+      const projectSelect = document.getElementById('task-project');
+      const milestoneSelect = document.getElementById('task-milestone');
+      const titleInput = document.getElementById('task-title');
+      const descriptionInput = document.getElementById('task-description');
+      const prioritySelect = document.getElementById('task-priority');
+      const effortSelect = document.getElementById('task-effort');
+      const resourceSelect = document.getElementById('task-resource');
       const dueDateInput = document.getElementById('task-due-date');
+      
+      const projectId = projectSelect ? projectSelect.value : '';
+      const milestoneId = milestoneSelect ? milestoneSelect.value : '';
+      const title = titleInput ? titleInput.value.trim() : '';
+      const description = descriptionInput ? descriptionInput.value.trim() : '';
+      const priority = prioritySelect ? prioritySelect.value : '';
+      const effort = effortSelect ? effortSelect.value : '';
+      const resource = resourceSelect ? resourceSelect.value : '';
       const dueDate = dueDateInput ? (dueDateInput.flatpickr ? dueDateInput.flatpickr.input.value : dueDateInput.value) : '';
       
       // Validate required fields and show user feedback
       if (!title) {
         alert('Please enter a task title');
-        document.getElementById('task-title').focus();
+        if (titleInput) titleInput.focus();
         return;
       }
       if (!projectId) {
         alert('Please select a project');
-        document.getElementById('task-project').focus();
+        if (projectSelect) projectSelect.focus();
         return;
       }
       if (!milestoneId) {
         alert('Please select a milestone');
-        document.getElementById('task-milestone').focus();
+        if (milestoneSelect) milestoneSelect.focus();
         return;
       }
       
@@ -516,17 +526,16 @@ function setupEventListeners() {
           assignedResource: resource || undefined,
           dueDate: dueDate || undefined,
         });
-        document.getElementById('task-title').value = '';
-        document.getElementById('task-description').value = '';
-        document.getElementById('task-priority').value = '';
-        document.getElementById('task-effort').value = '';
-        document.getElementById('task-resource').value = '';
+        // Reset form fields using cached references
+        if (titleInput) titleInput.value = '';
+        if (descriptionInput) descriptionInput.value = '';
+        if (prioritySelect) prioritySelect.value = '';
+        if (effortSelect) effortSelect.value = '';
+        if (resourceSelect) resourceSelect.value = '';
         // Reset project and milestone selects
-        const projectSelect = document.getElementById('task-project');
         if (projectSelect) {
           projectSelect.value = '';
         }
-        const milestoneSelect = document.getElementById('task-milestone');
         if (milestoneSelect) {
           milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
           milestoneSelect.value = '';
