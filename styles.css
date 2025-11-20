@@ -539,6 +539,8 @@ body {
   overflow: hidden;
   margin-bottom: 0.5rem;
   border: 1px solid var(--border);
+  display: flex;
+  flex-direction: row;
 }
 
 .progress-bar {
@@ -547,6 +549,34 @@ body {
   border-radius: 0.75rem;
   transition: width 0.3s ease;
   min-width: 0;
+}
+
+.progress-bar-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+  min-width: 0;
+}
+
+.progress-bar-segment:first-child {
+  border-top-left-radius: 0.75rem;
+  border-bottom-left-radius: 0.75rem;
+}
+
+.progress-bar-segment:last-child {
+  border-top-right-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+}
+
+.progress-bar-not-started {
+  background: var(--gray-200);
+}
+
+.progress-bar-in-progress {
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-hover) 100%);
+}
+
+.progress-bar-completed {
+  background: linear-gradient(90deg, var(--success) 0%, var(--success-hover) 100%);
 }
 
 .progress-text {
@@ -611,6 +641,16 @@ body {
 
 .milestone-progress-item .progress-bar {
   height: 100%;
+}
+
+.milestone-progress-item .progress-bar-segment:first-child {
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+
+.milestone-progress-item .progress-bar-segment:last-child {
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
 }
 
 /* ============================================

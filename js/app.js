@@ -272,17 +272,24 @@ function renderProjectCard(project) {
       <div class="milestones-progress-list">
         ${project.milestones.map(m => {
           const totalTasks = m.tasks ? m.tasks.length : 0;
+          const notStartedTasks = m.tasks ? m.tasks.filter(t => t.status === 'not-started' || !t.status).length : 0;
+          const inProgressTasks = m.tasks ? m.tasks.filter(t => t.status === 'in-progress').length : 0;
           const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
-          const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+          
+          const notStartedPercent = totalTasks > 0 ? Math.round((notStartedTasks / totalTasks) * 100) : 0;
+          const inProgressPercent = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
+          const completedPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
           
           return `
             <div class="milestone-progress-item">
               <div class="milestone-progress-header">
                 <span class="milestone-progress-title">${escapeHtml(m.title)}</span>
-                <span class="milestone-progress-stats">${completedTasks}/${totalTasks} tasks</span>
+                <span class="milestone-progress-stats">${completedTasks} complete, ${inProgressTasks} in progress, ${notStartedTasks} not started</span>
               </div>
               <div class="progress-bar-container">
-                <div class="progress-bar" style="width: ${progressPercentage}%"></div>
+                ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
+                ${inProgressPercent > 0 ? `<div class="progress-bar-segment progress-bar-in-progress" style="width: ${inProgressPercent}%"></div>` : ''}
+                ${completedPercent > 0 ? `<div class="progress-bar-segment progress-bar-completed" style="width: ${completedPercent}%"></div>` : ''}
               </div>
             </div>
           `;
@@ -515,8 +522,13 @@ function renderMilestones() {
   
   elements.milestonesList.innerHTML = milestones.map(m => {
     const totalTasks = m.tasks ? m.tasks.length : 0;
+    const notStartedTasks = m.tasks ? m.tasks.filter(t => t.status === 'not-started' || !t.status).length : 0;
+    const inProgressTasks = m.tasks ? m.tasks.filter(t => t.status === 'in-progress').length : 0;
     const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
-    const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    const notStartedPercent = totalTasks > 0 ? Math.round((notStartedTasks / totalTasks) * 100) : 0;
+    const inProgressPercent = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
+    const completedPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     
     return `
       <div class="milestone-card">
@@ -525,11 +537,13 @@ function renderMilestones() {
         ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
         <div class="milestone-progress">
           <div class="progress-bar-container">
-            <div class="progress-bar" style="width: ${progressPercentage}%"></div>
+            ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
+            ${inProgressPercent > 0 ? `<div class="progress-bar-segment progress-bar-in-progress" style="width: ${inProgressPercent}%"></div>` : ''}
+            ${completedPercent > 0 ? `<div class="progress-bar-segment progress-bar-completed" style="width: ${completedPercent}%"></div>` : ''}
           </div>
           <div class="progress-text">
-            <span>${completedTasks} of ${totalTasks} tasks completed</span>
-            <span class="progress-percentage">${progressPercentage}%</span>
+            <span>${completedTasks} complete, ${inProgressTasks} in progress, ${notStartedTasks} not started</span>
+            <span class="progress-percentage">${completedPercent}%</span>
           </div>
         </div>
       </div>
@@ -1002,6 +1016,513 @@ function attachTaskListeners(projectId, milestoneId, task) {
     } catch (error) {
       console.error('Failed to delete task:', error);
       alert('Failed to delete task');
+    }
+  });
+}
+
+// ============================================
+// Settings Page Functions
+// ============================================
+
+function renderSettings() {
+  renderUsers();
+  renderPriorities();
+  renderStatuses();
+  renderEffortLevels();
+}
+
+function renderUsers() {
+  if (!elements.usersList) return;
+  
+  const users = storage.getUsers();
+  
+  if (users.length === 0) {
+    elements.usersList.innerHTML = '<p class="text-muted">No users yet. Add one above!</p>';
+    return;
+  }
+  
+  elements.usersList.innerHTML = users.map(user => {
+    const isEditing = state.editingMetadata.get(`user-${user.id}`);
+    
+    if (isEditing) {
+      return `
+        <div class="metadata-item-editing" data-user-id="${user.id}">
+          <input type="text" class="edit-user-name" value="${escapeHtml(user.name)}" data-user-id="${user.id}">
+          <div class="metadata-item-editing-actions">
+            <button class="btn btn-primary btn-sm save-user" data-user-id="${user.id}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-user" data-user-id="${user.id}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="metadata-item" data-user-id="${user.id}">
+        <div class="metadata-item-content">
+          <span class="metadata-item-label">${escapeHtml(user.name)}</span>
+        </div>
+        <div class="metadata-item-actions">
+          <button class="btn btn-blue btn-xs edit-user" data-user-id="${user.id}">Edit</button>
+          <button class="btn btn-red btn-xs delete-user" data-user-id="${user.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Attach event listeners
+  users.forEach(user => {
+    attachUserListeners(user);
+  });
+}
+
+function renderPriorities() {
+  if (!elements.prioritiesList) return;
+  
+  const priorities = storage.getPriorities();
+  
+  if (priorities.length === 0) {
+    elements.prioritiesList.innerHTML = '<p class="text-muted">No priorities yet. Add one above!</p>';
+    return;
+  }
+  
+  elements.prioritiesList.innerHTML = priorities.map(priority => {
+    const isEditing = state.editingMetadata.get(`priority-${priority.id}`);
+    
+    if (isEditing) {
+      return `
+        <div class="metadata-item-editing" data-priority-id="${priority.id}">
+          <input type="text" class="edit-priority-label" value="${escapeHtml(priority.label)}" data-priority-id="${priority.id}" placeholder="Label">
+          <input type="number" class="edit-priority-order" value="${priority.order || ''}" data-priority-id="${priority.id}" placeholder="Order">
+          <div class="metadata-item-editing-actions">
+            <button class="btn btn-primary btn-sm save-priority" data-priority-id="${priority.id}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-priority" data-priority-id="${priority.id}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="metadata-item" data-priority-id="${priority.id}">
+        <div class="metadata-item-content">
+          <span class="metadata-item-label">${escapeHtml(priority.label)}</span>
+          <span class="metadata-item-order">Order: ${priority.order || 0}</span>
+        </div>
+        <div class="metadata-item-actions">
+          <button class="btn btn-blue btn-xs edit-priority-item" data-priority-id="${priority.id}">Edit</button>
+          <button class="btn btn-red btn-xs delete-priority-item" data-priority-id="${priority.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Attach event listeners
+  priorities.forEach(priority => {
+    attachPriorityListeners(priority);
+  });
+}
+
+function renderStatuses() {
+  if (!elements.statusesList) return;
+  
+  const statuses = storage.getStatuses();
+  
+  if (statuses.length === 0) {
+    elements.statusesList.innerHTML = '<p class="text-muted">No statuses yet. Add one above!</p>';
+    return;
+  }
+  
+  elements.statusesList.innerHTML = statuses.map(status => {
+    const isEditing = state.editingMetadata.get(`status-${status.id}`);
+    
+    if (isEditing) {
+      return `
+        <div class="metadata-item-editing" data-status-id="${status.id}">
+          <input type="text" class="edit-status-label" value="${escapeHtml(status.label)}" data-status-id="${status.id}" placeholder="Label">
+          <input type="number" class="edit-status-order" value="${status.order || ''}" data-status-id="${status.id}" placeholder="Order">
+          <div class="metadata-item-editing-actions">
+            <button class="btn btn-primary btn-sm save-status" data-status-id="${status.id}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-status" data-status-id="${status.id}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="metadata-item" data-status-id="${status.id}">
+        <div class="metadata-item-content">
+          <span class="metadata-item-label">${escapeHtml(status.label)}</span>
+          <span class="metadata-item-order">Order: ${status.order || 0}</span>
+        </div>
+        <div class="metadata-item-actions">
+          <button class="btn btn-blue btn-xs edit-status-item" data-status-id="${status.id}">Edit</button>
+          <button class="btn btn-red btn-xs delete-status-item" data-status-id="${status.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Attach event listeners
+  statuses.forEach(status => {
+    attachStatusListeners(status);
+  });
+}
+
+function renderEffortLevels() {
+  if (!elements.effortLevelsList) return;
+  
+  const effortLevels = storage.getEffortLevels();
+  
+  if (effortLevels.length === 0) {
+    elements.effortLevelsList.innerHTML = '<p class="text-muted">No effort levels yet. Add one above!</p>';
+    return;
+  }
+  
+  elements.effortLevelsList.innerHTML = effortLevels.map(effort => {
+    const isEditing = state.editingMetadata.get(`effort-${effort.id}`);
+    
+    if (isEditing) {
+      return `
+        <div class="metadata-item-editing" data-effort-id="${effort.id}">
+          <input type="text" class="edit-effort-label" value="${escapeHtml(effort.label)}" data-effort-id="${effort.id}" placeholder="Label">
+          <input type="number" class="edit-effort-order" value="${effort.order || ''}" data-effort-id="${effort.id}" placeholder="Order">
+          <div class="metadata-item-editing-actions">
+            <button class="btn btn-primary btn-sm save-effort" data-effort-id="${effort.id}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-effort" data-effort-id="${effort.id}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="metadata-item" data-effort-id="${effort.id}">
+        <div class="metadata-item-content">
+          <span class="metadata-item-label">${escapeHtml(effort.label)}</span>
+          <span class="metadata-item-order">Order: ${effort.order || 0}</span>
+        </div>
+        <div class="metadata-item-actions">
+          <button class="btn btn-blue btn-xs edit-effort-item" data-effort-id="${effort.id}">Edit</button>
+          <button class="btn btn-red btn-xs delete-effort-item" data-effort-id="${effort.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Attach event listeners
+  effortLevels.forEach(effort => {
+    attachEffortListeners(effort);
+  });
+}
+
+function setupSettingsEventListeners() {
+  // Users
+  document.getElementById('add-user-btn')?.addEventListener('click', () => {
+    document.getElementById('add-user-form').style.display = 'block';
+    document.getElementById('add-user-btn').style.display = 'none';
+    document.getElementById('user-name').focus();
+  });
+
+  document.getElementById('cancel-user-btn')?.addEventListener('click', () => {
+    document.getElementById('add-user-form').style.display = 'none';
+    document.getElementById('add-user-btn').style.display = 'block';
+    document.getElementById('user-name').value = '';
+  });
+
+  document.getElementById('add-user-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('user-name').value.trim();
+    
+    if (!name) return;
+    
+    try {
+      storage.addUser(name);
+      document.getElementById('user-name').value = '';
+      document.getElementById('add-user-form').style.display = 'none';
+      document.getElementById('add-user-btn').style.display = 'block';
+      renderSettings();
+      updateAllSelects(); // Update all selects with new metadata
+    } catch (error) {
+      console.error('Failed to add user:', error);
+      alert('Failed to add user');
+    }
+  });
+
+  // Priorities
+  document.getElementById('add-priority-btn')?.addEventListener('click', () => {
+    document.getElementById('add-priority-form').style.display = 'block';
+    document.getElementById('add-priority-btn').style.display = 'none';
+    document.getElementById('priority-label').focus();
+  });
+
+  document.getElementById('cancel-priority-btn')?.addEventListener('click', () => {
+    document.getElementById('add-priority-form').style.display = 'none';
+    document.getElementById('add-priority-btn').style.display = 'block';
+    document.getElementById('priority-label').value = '';
+    document.getElementById('priority-order').value = '';
+  });
+
+  document.getElementById('add-priority-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const label = document.getElementById('priority-label').value.trim();
+    const order = parseInt(document.getElementById('priority-order').value) || undefined;
+    
+    if (!label) return;
+    
+    try {
+      storage.addPriority(label, order);
+      document.getElementById('priority-label').value = '';
+      document.getElementById('priority-order').value = '';
+      document.getElementById('add-priority-form').style.display = 'none';
+      document.getElementById('add-priority-btn').style.display = 'block';
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to add priority:', error);
+      alert('Failed to add priority');
+    }
+  });
+
+  // Statuses
+  document.getElementById('add-status-btn')?.addEventListener('click', () => {
+    document.getElementById('add-status-form').style.display = 'block';
+    document.getElementById('add-status-btn').style.display = 'none';
+    document.getElementById('status-label').focus();
+  });
+
+  document.getElementById('cancel-status-btn')?.addEventListener('click', () => {
+    document.getElementById('add-status-form').style.display = 'none';
+    document.getElementById('add-status-btn').style.display = 'block';
+    document.getElementById('status-label').value = '';
+    document.getElementById('status-order').value = '';
+  });
+
+  document.getElementById('add-status-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const label = document.getElementById('status-label').value.trim();
+    const order = parseInt(document.getElementById('status-order').value) || undefined;
+    
+    if (!label) return;
+    
+    try {
+      storage.addStatus(label, order);
+      document.getElementById('status-label').value = '';
+      document.getElementById('status-order').value = '';
+      document.getElementById('add-status-form').style.display = 'none';
+      document.getElementById('add-status-btn').style.display = 'block';
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to add status:', error);
+      alert('Failed to add status');
+    }
+  });
+
+  // Effort Levels
+  document.getElementById('add-effort-btn')?.addEventListener('click', () => {
+    document.getElementById('add-effort-form').style.display = 'block';
+    document.getElementById('add-effort-btn').style.display = 'none';
+    document.getElementById('effort-label').focus();
+  });
+
+  document.getElementById('cancel-effort-btn')?.addEventListener('click', () => {
+    document.getElementById('add-effort-form').style.display = 'none';
+    document.getElementById('add-effort-btn').style.display = 'block';
+    document.getElementById('effort-label').value = '';
+    document.getElementById('effort-order').value = '';
+  });
+
+  document.getElementById('add-effort-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const label = document.getElementById('effort-label').value.trim();
+    const order = parseInt(document.getElementById('effort-order').value) || undefined;
+    
+    if (!label) return;
+    
+    try {
+      storage.addEffortLevel(label, order);
+      document.getElementById('effort-label').value = '';
+      document.getElementById('effort-order').value = '';
+      document.getElementById('add-effort-form').style.display = 'none';
+      document.getElementById('add-effort-btn').style.display = 'block';
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to add effort level:', error);
+      alert('Failed to add effort level');
+    }
+  });
+}
+
+function attachUserListeners(user) {
+  const userId = user.id;
+  
+  document.querySelector(`.edit-user[data-user-id="${userId}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.set(`user-${userId}`, true);
+    renderSettings();
+  });
+  
+  document.querySelector(`.save-user[data-user-id="${userId}"]`)?.addEventListener('click', () => {
+    const name = document.querySelector(`.edit-user-name[data-user-id="${userId}"]`).value.trim();
+    
+    if (!name) return;
+    
+    try {
+      storage.updateUser(userId, { name });
+      state.editingMetadata.delete(`user-${userId}`);
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      alert('Failed to update user');
+    }
+  });
+  
+  document.querySelector(`.cancel-edit-user[data-user-id="${userId}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.delete(`user-${userId}`);
+    renderSettings();
+  });
+  
+  document.querySelector(`.delete-user[data-user-id="${userId}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${user.name}"?`)) return;
+    
+    try {
+      storage.deleteUser(userId);
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      alert('Failed to delete user');
+    }
+  });
+}
+
+function attachPriorityListeners(priority) {
+  const priorityId = priority.id;
+  
+  document.querySelector(`.edit-priority-item[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.set(`priority-${priorityId}`, true);
+    renderSettings();
+  });
+  
+  document.querySelector(`.save-priority[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
+    const label = document.querySelector(`.edit-priority-label[data-priority-id="${priorityId}"]`).value.trim();
+    const order = parseInt(document.querySelector(`.edit-priority-order[data-priority-id="${priorityId}"]`).value) || priority.order;
+    
+    if (!label) return;
+    
+    try {
+      storage.updatePriority(priorityId, { label, order });
+      state.editingMetadata.delete(`priority-${priorityId}`);
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to update priority:', error);
+      alert('Failed to update priority');
+    }
+  });
+  
+  document.querySelector(`.cancel-edit-priority[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.delete(`priority-${priorityId}`);
+    renderSettings();
+  });
+  
+  document.querySelector(`.delete-priority-item[data-priority-id="${priorityId}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${priority.label}"?`)) return;
+    
+    try {
+      storage.deletePriority(priorityId);
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to delete priority:', error);
+      alert('Failed to delete priority');
+    }
+  });
+}
+
+function attachStatusListeners(status) {
+  const statusId = status.id;
+  
+  document.querySelector(`.edit-status-item[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.set(`status-${statusId}`, true);
+    renderSettings();
+  });
+  
+  document.querySelector(`.save-status[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
+    const label = document.querySelector(`.edit-status-label[data-status-id="${statusId}"]`).value.trim();
+    const order = parseInt(document.querySelector(`.edit-status-order[data-status-id="${statusId}"]`).value) || status.order;
+    
+    if (!label) return;
+    
+    try {
+      storage.updateStatus(statusId, { label, order });
+      state.editingMetadata.delete(`status-${statusId}`);
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      alert('Failed to update status');
+    }
+  });
+  
+  document.querySelector(`.cancel-edit-status[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.delete(`status-${statusId}`);
+    renderSettings();
+  });
+  
+  document.querySelector(`.delete-status-item[data-status-id="${statusId}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${status.label}"?`)) return;
+    
+    try {
+      storage.deleteStatus(statusId);
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to delete status:', error);
+      alert('Failed to delete status');
+    }
+  });
+}
+
+function attachEffortListeners(effort) {
+  const effortId = effort.id;
+  
+  document.querySelector(`.edit-effort-item[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.set(`effort-${effortId}`, true);
+    renderSettings();
+  });
+  
+  document.querySelector(`.save-effort[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
+    const label = document.querySelector(`.edit-effort-label[data-effort-id="${effortId}"]`).value.trim();
+    const order = parseInt(document.querySelector(`.edit-effort-order[data-effort-id="${effortId}"]`).value) || effort.order;
+    
+    if (!label) return;
+    
+    try {
+      storage.updateEffortLevel(effortId, { label, order });
+      state.editingMetadata.delete(`effort-${effortId}`);
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to update effort level:', error);
+      alert('Failed to update effort level');
+    }
+  });
+  
+  document.querySelector(`.cancel-edit-effort[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.delete(`effort-${effortId}`);
+    renderSettings();
+  });
+  
+  document.querySelector(`.delete-effort-item[data-effort-id="${effortId}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${effort.label}"?`)) return;
+    
+    try {
+      storage.deleteEffortLevel(effortId);
+      renderSettings();
+      updateAllSelects();
+    } catch (error) {
+      console.error('Failed to delete effort level:', error);
+      alert('Failed to delete effort level');
     }
   });
 }
