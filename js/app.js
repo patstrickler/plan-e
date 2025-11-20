@@ -784,7 +784,7 @@ function renderTasksTable(tasks) {
   `;
 }
 
-function renderTaskTableRowEdit(task, statuses, priorities, effortLevels, users) {
+function renderTaskTableRowEdit(task, statuses, priorities, effortLevels) {
   const usersList = storage.getUsers();
   
   const statusOptions = statuses.map(s => 
@@ -1087,6 +1087,16 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function getStatusSelectStyle(color) {
+  if (!color) return '';
+  return `background-color: ${color}20; border-color: ${color}60; color: ${color};`;
+}
+
+function getBadgeStyle(color) {
+  if (!color) return '';
+  return `background-color: ${color}20; border-color: ${color}60; color: ${color};`;
 }
 
 function populateProjectSelect(selectId) {

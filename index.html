@@ -13,17 +13,13 @@
     .flatpickr-wrapper {
       position: relative;
     }
-    .flatpickr-wrapper .flatpickr-input[readonly] {
+    /* Ensure date inputs are clickable and open calendar */
+    input.flatpickr-input {
       cursor: pointer;
     }
-    /* Hide the calendar icon - we'll open on click/focus instead */
-    .flatpickr-input[readonly] {
-      cursor: pointer;
-      background-color: white;
-    }
-    /* Ensure inputs look normal */
-    input[type="text"][readonly].flatpickr-input {
-      padding-right: 12px;
+    input.flatpickr-input:focus {
+      outline: none;
+      border-color: #4a90e2;
     }
   </style>
 </head>
