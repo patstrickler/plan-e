@@ -1575,13 +1575,17 @@ function attachTaskListeners(projectId, milestoneId, task) {
     setTimeout(() => {
       const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
       if (dateInput && !dateInput.flatpickr) {
-        flatpickr(dateInput, {
+        const fp = flatpickr(dateInput, {
           dateFormat: 'Y-m-d',
           clickOpens: true,
           allowInput: false,
         });
+        // Ensure calendar opens on focus
+        dateInput.addEventListener('focus', () => {
+          fp.open();
+        });
       }
-    }, 0);
+    }, 100);
   });
   
   // Save task
