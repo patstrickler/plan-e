@@ -717,7 +717,6 @@ function renderMilestones() {
     
     if (isEditing) {
       const targetDateValue = m.targetDate ? new Date(m.targetDate).toISOString().split('T')[0] : '';
-      const dueDateValue = m.dueDate ? new Date(m.dueDate).toISOString().split('T')[0] : '';
       const stakeholdersList = m.stakeholders || [];
       const stakeholdersHtml = stakeholdersList.map((stakeholder, idx) => `
         <span class="stakeholder-tag" data-milestone-id="${m.id}" data-index="${idx}">
@@ -744,11 +743,7 @@ function renderMilestones() {
               </div>
               <div class="form-group">
                 <label>Target Date</label>
-                <input type="date" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${m.id}">
-              </div>
-              <div class="form-group">
-                <label>Due Date</label>
-                <input type="date" class="edit-due-date" value="${dueDateValue}" data-milestone-id="${m.id}">
+                <input type="text" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${m.id}" placeholder="Select target date" readonly>
               </div>
             </div>
             
@@ -818,20 +813,14 @@ function attachMilestoneListenersForView(milestone) {
   document.querySelector(`.edit-milestone[data-milestone-id="${milestoneId}"][data-project-id="${projectId}"]`)?.addEventListener('click', () => {
     state.editingMilestones.add(milestoneId);
     renderMilestones();
-    // Initialize date picker for milestone dates after rendering
+    // Initialize date picker for milestone target date after rendering
     setTimeout(() => {
       const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
-      const dueDateInput = document.querySelector(`.edit-due-date[data-milestone-id="${milestoneId}"]`);
       if (targetDateInput && !targetDateInput.flatpickr) {
         flatpickr(targetDateInput, {
           dateFormat: 'Y-m-d',
-          allowInput: true,
-        });
-      }
-      if (dueDateInput && !dueDateInput.flatpickr) {
-        flatpickr(dueDateInput, {
-          dateFormat: 'Y-m-d',
-          allowInput: true,
+          clickOpens: true,
+          allowInput: false,
         });
       }
     }, 0);
@@ -842,8 +831,8 @@ function attachMilestoneListenersForView(milestone) {
     const title = document.querySelector(`.edit-title[data-milestone-id="${milestoneId}"]`).value.trim();
     const description = document.querySelector(`.edit-description[data-milestone-id="${milestoneId}"]`).value.trim();
     const priority = document.querySelector(`.edit-priority[data-milestone-id="${milestoneId}"]`)?.value || '';
-    const targetDate = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`)?.value || '';
-    const dueDate = document.querySelector(`.edit-due-date[data-milestone-id="${milestoneId}"]`)?.value || '';
+    const targetDateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
+    const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
     
     // Get stakeholders from the DOM
     const stakeholderTags = document.querySelectorAll(`.stakeholder-tag[data-milestone-id="${milestoneId}"]`);
@@ -857,7 +846,6 @@ function attachMilestoneListenersForView(milestone) {
         description: description || undefined,
         priority: priority || undefined,
         targetDate: targetDate || undefined,
-        dueDate: dueDate || undefined,
         stakeholders: stakeholders.length > 0 ? stakeholders : undefined
       });
       state.editingMilestones.delete(milestoneId);
@@ -1058,6 +1046,7 @@ function renderTasksTable(tasks) {
         <td class="task-milestone-cell">${escapeHtml(task.milestone.title)}</td>
         <td>${effort ? escapeHtml(effort.label) : '<span class="text-muted">—</span>'}</td>
         <td>${task.assignedResource ? escapeHtml(task.assignedResource) : '<span class="text-muted">—</span>'}</td>
+        <td>${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '<span class="text-muted">—</span>'}</td>
         <td class="task-actions-cell">
           <button class="btn btn-blue btn-xs edit-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Edit</button>
           <button class="btn btn-red btn-xs delete-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Delete</button>
@@ -1077,6 +1066,7 @@ function renderTasksTable(tasks) {
           <th>Milestone</th>
           <th>Effort</th>
           <th>Assigned</th>
+          <th>Due Date</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -1204,7 +1194,7 @@ function renderTaskCardForView(task) {
         </div>
         <div class="form-group">
           <label>Due Date (optional)</label>
-          <input type="text" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}" placeholder="Select due date">
+          <input type="date" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}">
         </div>
         <div class="form-actions">
           <button class="btn btn-primary btn-sm save-task-view" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Save</button>
@@ -1593,7 +1583,6 @@ function attachMilestoneListeners(projectId, milestone) {
         description: description || undefined,
         priority: priority || undefined,
         targetDate: targetDate || undefined,
-        dueDate: dueDate || undefined,
         stakeholders: stakeholders.length > 0 ? stakeholders : undefined
       });
       state.editingMilestones.delete(milestoneId);
@@ -1753,16 +1742,6 @@ function attachTaskListeners(projectId, milestoneId, task) {
   document.querySelector(`.edit-task[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
     state.editingTasks.add(taskId);
     renderProjects();
-    // Initialize date picker for task due date after rendering
-    setTimeout(() => {
-      const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
-      if (dateInput && !dateInput.flatpickr) {
-        flatpickr(dateInput, {
-          dateFormat: 'Y-m-d',
-          allowInput: true,
-        });
-      }
-    }, 0);
   });
   
   // Save task
