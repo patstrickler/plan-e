@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Task, Milestone, Project, Priority, EffortLevel } from '@/types';
 import { getAllTasks, getAllProjects, createTask } from '@/lib/storage-client';
+import TaskCard from '@/components/TaskCard';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Array<Task & { milestone: Milestone; project: Project }>>([]);
@@ -64,24 +65,6 @@ export default function TasksPage() {
     }
   };
 
-  const getPriorityColor = (priority?: Priority) => {
-    switch (priority) {
-      case 'urgent': return 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300';
-      case 'high': return 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300';
-      case 'medium': return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300';
-      case 'low': return 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300';
-      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300';
-      case 'in-progress': return 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300';
-      case 'not-started': return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
-      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
-    }
-  };
 
   if (loading) {
     return (
@@ -279,55 +262,29 @@ export default function TasksPage() {
               </p>
             </div>
           ) : (
-            tasks.map((task) => (
-              <div
-                key={task.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        {task.title}
-                      </h3>
-                      <span className={`px-2 py-1 text-xs rounded ${getStatusColor(task.status)}`}>
-                        {task.status.replace('-', ' ')}
-                      </span>
-                      {task.priority && (
-                        <span className={`px-2 py-1 text-xs rounded ${getPriorityColor(task.priority)}`}>
-                          {task.priority}
-                        </span>
-                      )}
-                      <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
-                        {task.project.title}
-                      </span>
-                      <span className="px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded">
-                        {task.milestone.title}
-                      </span>
-                    </div>
-                    {task.description && (
-                      <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                        {task.description}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
-                      {task.effortLevel && (
-                        <span>Effort: {task.effortLevel}</span>
-                      )}
-                      {task.assignedResource && (
-                        <span>Assigned to: {task.assignedResource}</span>
-                      )}
-                      {task.startDate && (
-                        <span>Started: {new Date(task.startDate).toLocaleDateString()}</span>
-                      )}
-                      {task.completedDate && (
-                        <span>Completed: {new Date(task.completedDate).toLocaleDateString()}</span>
-                      )}
-                    </div>
+            <div className="grid gap-4">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700"
+                >
+                  <div className="mb-3 flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
+                      {task.project.title}
+                    </span>
+                    <span className="px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded">
+                      {task.milestone.title}
+                    </span>
                   </div>
+                  <TaskCard
+                    projectId={task.projectId}
+                    milestoneId={task.milestoneId}
+                    task={task}
+                    onUpdate={fetchData}
+                  />
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </div>
