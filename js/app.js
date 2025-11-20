@@ -199,13 +199,6 @@ function setupEventListeners() {
     elements.newTaskForm.style.display = 'block';
     elements.newTaskBtn.style.display = 'none';
     document.getElementById('task-title').focus();
-    // Initialize date picker for task due date
-    if (!window.taskDueDatePicker) {
-      window.taskDueDatePicker = flatpickr('#task-due-date', {
-        dateFormat: 'Y-m-d',
-        allowInput: true,
-      });
-    }
   });
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
@@ -218,9 +211,51 @@ function setupEventListeners() {
     document.getElementById('task-title').value = '';
     document.getElementById('task-description').value = '';
     document.getElementById('task-due-date').value = '';
-    if (window.taskDueDatePicker) {
-      window.taskDueDatePicker.clear();
+  });
+
+  // Edit task form
+  const editTaskForm = document.getElementById('edit-task-form');
+  const cancelEditTaskBtn = document.getElementById('cancel-edit-task-btn');
+  
+  cancelEditTaskBtn?.addEventListener('click', () => {
+    editTaskForm.style.display = 'none';
+  });
+
+  editTaskForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const taskId = document.getElementById('edit-task-id').value;
+    const projectId = document.getElementById('edit-task-project-id').value;
+    const milestoneId = document.getElementById('edit-task-milestone-id').value;
+    const title = document.getElementById('edit-task-title').value.trim();
+    const description = document.getElementById('edit-task-description').value.trim();
+    const status = document.getElementById('edit-task-status').value;
+    const priority = document.getElementById('edit-task-priority').value;
+    const effort = document.getElementById('edit-task-effort').value;
+    const resource = document.getElementById('edit-task-resource').value;
+    const dueDate = document.getElementById('edit-task-due-date').value;
+    
+    if (!title || !projectId || !milestoneId) return;
+    
+    try {
+      storage.updateTask(projectId, milestoneId, taskId, {
+        title,
+        description: description || undefined,
+        status,
+        priority: priority || undefined,
+        effortLevel: effort || undefined,
+        assignedResource: resource || undefined,
+        dueDate: dueDate || undefined,
+      });
+      editTaskForm.style.display = 'none';
+      renderTasks();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      alert('Failed to update task');
     }
+  });
+
+  document.getElementById('edit-task-project')?.addEventListener('change', (e) => {
+    populateMilestoneSelect('edit-task-milestone', e.target.value);
   });
 
   elements.newTaskForm?.addEventListener('submit', (e) => {
@@ -232,7 +267,7 @@ function setupEventListeners() {
     const priority = document.getElementById('task-priority').value;
     const effort = document.getElementById('task-effort').value;
     const resource = document.getElementById('task-resource').value;
-    const dueDate = window.taskDueDatePicker ? window.taskDueDatePicker.input.value : document.getElementById('task-due-date').value;
+    const dueDate = document.getElementById('task-due-date').value;
     
     if (!title || !projectId || !milestoneId) return;
     
@@ -251,9 +286,6 @@ function setupEventListeners() {
       document.getElementById('task-effort').value = '';
       document.getElementById('task-resource').value = '';
       document.getElementById('task-due-date').value = '';
-      if (window.taskDueDatePicker) {
-        window.taskDueDatePicker.clear();
-      }
       elements.newTaskForm.style.display = 'none';
       elements.newTaskBtn.style.display = 'block';
       renderTasks();
@@ -424,7 +456,6 @@ function renderMilestoneCard(milestone, projectId) {
   
   if (isEditing) {
     const targetDateValue = milestone.targetDate ? new Date(milestone.targetDate).toISOString().split('T')[0] : '';
-    const dueDateValue = milestone.dueDate ? new Date(milestone.dueDate).toISOString().split('T')[0] : '';
     const stakeholdersList = milestone.stakeholders || [];
     const stakeholdersHtml = stakeholdersList.map((stakeholder, idx) => `
       <span class="stakeholder-tag" data-milestone-id="${milestone.id}" data-index="${idx}">
@@ -451,11 +482,7 @@ function renderMilestoneCard(milestone, projectId) {
             </div>
             <div class="form-group">
               <label>Target Date</label>
-              <input type="date" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${milestone.id}">
-            </div>
-            <div class="form-group">
-              <label>Due Date</label>
-              <input type="date" class="edit-due-date" value="${dueDateValue}" data-milestone-id="${milestone.id}">
+              <input type="text" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${milestone.id}" placeholder="Select target date" readonly>
             </div>
           </div>
           
@@ -501,7 +528,6 @@ function renderMilestoneCard(milestone, projectId) {
           ${milestone.description ? `<p>${escapeHtml(milestone.description)}</p>` : ''}
           ${milestone.priority ? `<span class="badge ${milestone.priority === 'high' ? 'badge-red' : milestone.priority === 'medium' ? 'badge-yellow' : 'badge-green'}">${milestone.priority.toUpperCase()}</span>` : ''}
           ${milestone.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(milestone.targetDate).toLocaleDateString()}</p>` : ''}
-          ${milestone.dueDate ? `<p class="text-xs text-muted">Due: ${new Date(milestone.dueDate).toLocaleDateString()}</p>` : ''}
           ${milestone.stakeholders && milestone.stakeholders.length > 0 ? `<div class="stakeholders-display">${milestone.stakeholders.map(s => `<span class="badge badge-gray">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
           <p class="text-xs text-muted">${completedTasks}/${totalTasks} tasks completed</p>
         </div>
@@ -579,7 +605,7 @@ function renderTaskCard(task, projectId, milestoneId) {
         </div>
         <div class="form-group">
           <label>Due Date (optional)</label>
-          <input type="text" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}" placeholder="Select due date">
+          <input type="date" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}">
         </div>
         <div class="form-actions">
           <button class="btn btn-primary btn-sm save-task" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Save</button>
@@ -996,12 +1022,7 @@ function renderTasksTable(tasks) {
   const effortLevels = storage.getEffortLevels();
   
   const rows = tasks.map(task => {
-    const isEditing = state.editingTasks.has(task.id);
     const isCompleted = task.status === 'completed';
-    
-    if (isEditing) {
-      return renderTaskTableRowEdit(task, statuses, priorities, effortLevels);
-    }
     
     const status = statuses.find(s => s.id === task.status);
     const statusColor = status?.id === 'completed' ? 'badge-green' : 
@@ -1037,12 +1058,6 @@ function renderTasksTable(tasks) {
         <td class="task-milestone-cell">${escapeHtml(task.milestone.title)}</td>
         <td>${effort ? escapeHtml(effort.label) : '<span class="text-muted">—</span>'}</td>
         <td>${task.assignedResource ? escapeHtml(task.assignedResource) : '<span class="text-muted">—</span>'}</td>
-        <td class="task-dates-cell">
-          ${task.dueDate ? `<div class="task-date-small">Due: ${new Date(task.dueDate).toLocaleDateString()}</div>` : ''}
-          ${task.startDate ? `<div class="task-date-small">Started: ${new Date(task.startDate).toLocaleDateString()}</div>` : ''}
-          ${task.completedDate ? `<div class="task-date-small">Completed: ${new Date(task.completedDate).toLocaleDateString()}</div>` : ''}
-          ${!task.dueDate && !task.startDate && !task.completedDate ? '<span class="text-muted">—</span>' : ''}
-        </td>
         <td class="task-actions-cell">
           <button class="btn btn-blue btn-xs edit-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Edit</button>
           <button class="btn btn-red btn-xs delete-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Delete</button>
@@ -1062,7 +1077,6 @@ function renderTasksTable(tasks) {
           <th>Milestone</th>
           <th>Effort</th>
           <th>Assigned</th>
-          <th>Dates</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -1073,62 +1087,6 @@ function renderTasksTable(tasks) {
   `;
 }
 
-function renderTaskTableRowEdit(task, statuses, priorities, effortLevels, users) {
-  const usersList = storage.getUsers();
-  
-  const statusOptions = statuses.map(s => 
-    `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
-  ).join('');
-  
-  const priorityOptions = priorities.map(p => 
-    `<option value="${p.id}" ${task.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
-  ).join('');
-  
-  const effortOptions = effortLevels.map(e => 
-    `<option value="${e.id}" ${task.effortLevel === e.id ? 'selected' : ''}>${escapeHtml(e.label)}</option>`
-  ).join('');
-  
-  const userOptions = usersList.map(u => 
-    `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
-  ).join('');
-  
-  const dueDateValue = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
-  
-  return `
-    <tr class="task-table-row task-table-row-edit" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
-      <td colspan="9">
-        <div class="task-edit-form-inline">
-          <div class="task-edit-row">
-            <input type="text" class="edit-title" value="${escapeHtml(task.title)}" data-task-id="${task.id}" placeholder="Task title">
-            <textarea class="edit-description-small" data-task-id="${task.id}" placeholder="Description (optional)">${escapeHtml(task.description || '')}</textarea>
-          </div>
-          <div class="task-edit-row">
-            <select class="edit-status" data-task-id="${task.id}">
-              ${statusOptions}
-            </select>
-            <select class="edit-priority" data-task-id="${task.id}">
-              <option value="">None</option>
-              ${priorityOptions}
-            </select>
-            <select class="edit-effort" data-task-id="${task.id}">
-              <option value="">None</option>
-              ${effortOptions}
-            </select>
-            <select class="edit-resource" data-task-id="${task.id}">
-              <option value="">None</option>
-              ${userOptions}
-            </select>
-            <input type="text" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}" placeholder="Due Date (optional)">
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary btn-sm save-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Save</button>
-            <button class="btn btn-secondary btn-sm cancel-edit-task-view" data-task-id="${task.id}">Cancel</button>
-          </div>
-        </div>
-      </td>
-    </tr>
-  `;
-}
 
 function populateTaskFilters() {
   const statuses = storage.getStatuses();
@@ -1320,57 +1278,9 @@ function attachTaskListenersForView(task) {
     }
   });
   
-  // Edit task
+  // Edit task - open modal
   document.querySelector(`.edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
-    state.editingTasks.add(taskId);
-    renderTasks();
-    // Initialize date picker for task due date after rendering
-    setTimeout(() => {
-      const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
-      if (dateInput && !dateInput.flatpickr) {
-        flatpickr(dateInput, {
-          dateFormat: 'Y-m-d',
-          allowInput: true,
-        });
-      }
-    }, 0);
-  });
-  
-  // Save task
-  document.querySelector(`.save-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
-    const title = document.querySelector(`.edit-title[data-task-id="${taskId}"]`).value.trim();
-    const description = document.querySelector(`.edit-description[data-task-id="${taskId}"]`)?.value.trim() || document.querySelector(`.edit-description-small[data-task-id="${taskId}"]`)?.value.trim() || '';
-    const status = document.querySelector(`.edit-status[data-task-id="${taskId}"]`).value;
-    const priority = document.querySelector(`.edit-priority[data-task-id="${taskId}"]`).value;
-    const effort = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`).value;
-    const resource = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`).value;
-    const dueDateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
-    const dueDate = dueDateInput ? dueDateInput.value : '';
-    
-    if (!title) return;
-    
-    try {
-      storage.updateTask(projectId, milestoneId, taskId, {
-        title,
-        description: description || undefined,
-        status,
-        priority: priority || undefined,
-        effortLevel: effort || undefined,
-        assignedResource: resource || undefined,
-        dueDate: dueDate || undefined,
-      });
-      state.editingTasks.delete(taskId);
-      renderTasks();
-    } catch (error) {
-      console.error('Failed to update task:', error);
-      alert('Failed to update task');
-    }
-  });
-  
-  // Cancel edit task
-  document.querySelector(`.cancel-edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
-    state.editingTasks.delete(taskId);
-    renderTasks();
+    openEditTaskModal(task);
   });
   
   // Delete task
@@ -1392,6 +1302,63 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function openEditTaskModal(task) {
+  const editTaskForm = document.getElementById('edit-task-form');
+  if (!editTaskForm) return;
+  
+  // Set hidden fields
+  document.getElementById('edit-task-id').value = task.id;
+  document.getElementById('edit-task-project-id').value = task.projectId;
+  document.getElementById('edit-task-milestone-id').value = task.milestoneId;
+  
+  // Populate form fields
+  populateProjectSelect('edit-task-project');
+  document.getElementById('edit-task-project').value = task.projectId;
+  populateMilestoneSelect('edit-task-milestone', task.projectId);
+  document.getElementById('edit-task-milestone').value = task.milestoneId;
+  document.getElementById('edit-task-title').value = task.title;
+  document.getElementById('edit-task-description').value = task.description || '';
+  
+  // Populate status, priority, effort, resource selects
+  const statuses = storage.getStatuses();
+  const priorities = storage.getPriorities();
+  const effortLevels = storage.getEffortLevels();
+  const users = storage.getUsers();
+  
+  const statusSelect = document.getElementById('edit-task-status');
+  statusSelect.innerHTML = statuses.map(s => 
+    `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
+  ).join('');
+  
+  const prioritySelect = document.getElementById('edit-task-priority');
+  prioritySelect.innerHTML = '<option value="">None</option>' + priorities.map(p => 
+    `<option value="${p.id}" ${task.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+  ).join('');
+  
+  const effortSelect = document.getElementById('edit-task-effort');
+  effortSelect.innerHTML = '<option value="">None</option>' + effortLevels.map(e => 
+    `<option value="${e.id}" ${task.effortLevel === e.id ? 'selected' : ''}>${escapeHtml(e.label)}</option>`
+  ).join('');
+  
+  const resourceSelect = document.getElementById('edit-task-resource');
+  resourceSelect.innerHTML = '<option value="">None</option>' + users.map(u => 
+    `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
+  ).join('');
+  
+  // Populate due date
+  const dueDateInput = document.getElementById('edit-task-due-date');
+  if (dueDateInput && task.dueDate) {
+    const dueDate = new Date(task.dueDate);
+    dueDateInput.value = dueDate.toISOString().split('T')[0];
+  } else if (dueDateInput) {
+    dueDateInput.value = '';
+  }
+  
+  // Show form
+  editTaskForm.style.display = 'block';
+  document.getElementById('edit-task-title').focus();
 }
 
 function populateProjectSelect(selectId) {

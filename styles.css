@@ -1035,7 +1035,6 @@ body {
 }
 
 .tasks-table th {
-  padding: 0.625rem 0.75rem;
   text-align: left;
   font-size: 0.75rem;
   font-weight: 600;
@@ -1050,60 +1049,46 @@ body {
 
 .tasks-table th:nth-child(1),
 .tasks-table td:nth-child(1) { 
-  width: 10%;
-  min-width: 100px;
-  max-width: 120px;
+  width: 12%;
+  padding: 0.625rem 1rem;
 } /* Status */
 .tasks-table th:nth-child(2),
 .tasks-table td:nth-child(2) { 
-  width: 10%;
-  min-width: 100px;
-  max-width: 120px;
+  width: 12%;
+  padding: 0.625rem 1rem;
 } /* Priority */
 .tasks-table th:nth-child(3),
 .tasks-table td:nth-child(3) { 
-  width: 25%;
-  min-width: 200px;
+  width: 28%;
+  padding: 0.625rem 1rem;
 } /* Task */
 .tasks-table th:nth-child(4),
 .tasks-table td:nth-child(4) { 
-  width: 12%;
-  min-width: 120px;
-  max-width: 150px;
+  width: 14%;
+  padding: 0.625rem 1rem;
 } /* Project */
 .tasks-table th:nth-child(5),
 .tasks-table td:nth-child(5) { 
-  width: 12%;
-  min-width: 120px;
-  max-width: 150px;
+  width: 14%;
+  padding: 0.625rem 1rem;
 } /* Milestone */
 .tasks-table th:nth-child(6),
 .tasks-table td:nth-child(6) { 
-  width: 8%;
-  min-width: 80px;
-  max-width: 100px;
+  width: 10%;
+  padding: 0.625rem 1rem;
 } /* Effort */
 .tasks-table th:nth-child(7),
 .tasks-table td:nth-child(7) { 
   width: 10%;
-  min-width: 100px;
-  max-width: 120px;
+  padding: 0.625rem 1rem;
 } /* Assigned */
 .tasks-table th:nth-child(8),
 .tasks-table td:nth-child(8) { 
   width: 10%;
-  min-width: 120px;
-  max-width: 150px;
-} /* Dates */
-.tasks-table th:nth-child(9),
-.tasks-table td:nth-child(9) { 
-  width: 13%;
-  min-width: 140px;
-  max-width: 180px;
+  padding: 0.625rem 1rem;
 } /* Actions */
 
 .tasks-table td {
-  padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border);
@@ -1164,15 +1149,6 @@ body {
   text-overflow: ellipsis;
 }
 
-.task-dates-cell {
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.task-date-small {
-  color: var(--text-secondary);
-  line-height: 1.4;
-}
 
 .task-actions-cell {
   white-space: nowrap;
@@ -1315,8 +1291,7 @@ body {
   .tasks-table th:nth-child(5),
   .tasks-table th:nth-child(6),
   .tasks-table th:nth-child(7),
-  .tasks-table th:nth-child(8),
-  .tasks-table th:nth-child(9) {
+  .tasks-table th:nth-child(8) {
     width: auto;
   }
 

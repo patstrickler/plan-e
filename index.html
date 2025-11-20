@@ -5,6 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plan-E - Project Planning Tool</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <style>
+    .flatpickr-calendar {
+      margin-top: 4px;
+    }
+    .flatpickr-wrapper {
+      position: relative;
+    }
+    .flatpickr-wrapper .flatpickr-input[readonly] {
+      cursor: pointer;
+    }
+    /* Hide the calendar icon - we'll open on focus instead */
+    .flatpickr-wrapper input {
+      padding-right: 12px;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -72,10 +88,10 @@
               <label for="milestone-description">Description (optional)</label>
               <textarea id="milestone-description" rows="3" placeholder="Enter milestone description"></textarea>
             </div>
-            <div class="form-group">
-              <label for="milestone-target-date">Target Date (optional)</label>
-              <input type="date" id="milestone-target-date">
-            </div>
+              <div class="form-group">
+                <label for="milestone-target-date">Target Date (optional)</label>
+                <input type="text" id="milestone-target-date" placeholder="Select target date" readonly>
+              </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Create Milestone</button>
               <button type="button" id="cancel-milestone-btn" class="btn btn-secondary">Cancel</button>
@@ -131,9 +147,69 @@
                 <option value="">None</option>
               </select>
             </div>
+              <div class="form-group">
+                <label for="task-due-date">Due Date (optional)</label>
+                <input type="text" id="task-due-date" placeholder="Select due date" readonly>
+              </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Create Task</button>
               <button type="button" id="cancel-task-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+
+          <!-- Edit Task Modal -->
+          <form id="edit-task-form" class="form-card" style="display: none;">
+            <h2>Edit Task</h2>
+            <input type="hidden" id="edit-task-id">
+            <input type="hidden" id="edit-task-project-id">
+            <input type="hidden" id="edit-task-milestone-id">
+            <div class="form-group">
+              <label for="edit-task-project">Project *</label>
+              <select id="edit-task-project" required></select>
+            </div>
+            <div class="form-group">
+              <label for="edit-task-milestone">Milestone *</label>
+              <select id="edit-task-milestone" required></select>
+            </div>
+            <div class="form-group">
+              <label for="edit-task-title">Task Title *</label>
+              <input type="text" id="edit-task-title" required placeholder="Enter task title">
+            </div>
+            <div class="form-group">
+              <label for="edit-task-description">Description (optional)</label>
+              <textarea id="edit-task-description" rows="3" placeholder="Enter task description"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-task-status">Status</label>
+                <select id="edit-task-status"></select>
+              </div>
+              <div class="form-group">
+                <label for="edit-task-priority">Priority</label>
+                <select id="edit-task-priority">
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="edit-task-effort">Effort</label>
+                <select id="edit-task-effort">
+                  <option value="">None</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="edit-task-resource">Assigned Resource</label>
+              <select id="edit-task-resource">
+                <option value="">None</option>
+              </select>
+            </div>
+             <div class="form-group">
+               <label for="edit-task-due-date">Due Date (optional)</label>
+               <input type="text" id="edit-task-due-date" placeholder="Select due date" readonly>
+             </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save Task</button>
+              <button type="button" id="cancel-edit-task-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
         </div>
@@ -257,9 +333,10 @@
     </div>
   </footer>
 
-  <script type="module" src="js/storage.js"></script>
-  <script type="module" src="js/app.js"></script>
-  <script type="module" src="js/footer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script type="module" src="js/storage.js"></script>
+    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/footer.js"></script>
 </body>
 </html>
 
