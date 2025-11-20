@@ -142,6 +142,13 @@ function setupEventListeners() {
     elements.newMilestoneForm.style.display = 'block';
     elements.newMilestoneBtn.style.display = 'none';
     document.getElementById('milestone-title').focus();
+    // Initialize date picker for milestone target date
+    if (!window.milestoneTargetDatePicker) {
+      window.milestoneTargetDatePicker = flatpickr('#milestone-target-date', {
+        dateFormat: 'Y-m-d',
+        allowInput: true,
+      });
+    }
   });
 
   document.getElementById('cancel-milestone-btn')?.addEventListener('click', () => {
@@ -150,6 +157,9 @@ function setupEventListeners() {
     document.getElementById('milestone-title').value = '';
     document.getElementById('milestone-description').value = '';
     document.getElementById('milestone-target-date').value = '';
+    if (window.milestoneTargetDatePicker) {
+      window.milestoneTargetDatePicker.clear();
+    }
   });
 
   elements.newMilestoneForm?.addEventListener('submit', (e) => {
@@ -157,7 +167,7 @@ function setupEventListeners() {
     const projectId = document.getElementById('milestone-project').value;
     const title = document.getElementById('milestone-title').value.trim();
     const description = document.getElementById('milestone-description').value.trim();
-    const targetDate = document.getElementById('milestone-target-date').value;
+    const targetDate = window.milestoneTargetDatePicker ? window.milestoneTargetDatePicker.input.value : document.getElementById('milestone-target-date').value;
     
     if (!title || !projectId) return;
     
@@ -170,6 +180,9 @@ function setupEventListeners() {
       document.getElementById('milestone-title').value = '';
       document.getElementById('milestone-description').value = '';
       document.getElementById('milestone-target-date').value = '';
+      if (window.milestoneTargetDatePicker) {
+        window.milestoneTargetDatePicker.clear();
+      }
       elements.newMilestoneForm.style.display = 'none';
       elements.newMilestoneBtn.style.display = 'block';
       renderMilestones();
@@ -186,6 +199,13 @@ function setupEventListeners() {
     elements.newTaskForm.style.display = 'block';
     elements.newTaskBtn.style.display = 'none';
     document.getElementById('task-title').focus();
+    // Initialize date picker for task due date
+    if (!window.taskDueDatePicker) {
+      window.taskDueDatePicker = flatpickr('#task-due-date', {
+        dateFormat: 'Y-m-d',
+        allowInput: true,
+      });
+    }
   });
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
@@ -212,6 +232,7 @@ function setupEventListeners() {
     const priority = document.getElementById('task-priority').value;
     const effort = document.getElementById('task-effort').value;
     const resource = document.getElementById('task-resource').value;
+    const dueDate = window.taskDueDatePicker ? window.taskDueDatePicker.input.value : document.getElementById('task-due-date').value;
     
     if (!title || !projectId || !milestoneId) return;
     
@@ -222,12 +243,17 @@ function setupEventListeners() {
         priority: priority || undefined,
         effortLevel: effort || undefined,
         assignedResource: resource || undefined,
+        dueDate: dueDate || undefined,
       });
       document.getElementById('task-title').value = '';
       document.getElementById('task-description').value = '';
       document.getElementById('task-priority').value = '';
       document.getElementById('task-effort').value = '';
       document.getElementById('task-resource').value = '';
+      document.getElementById('task-due-date').value = '';
+      if (window.taskDueDatePicker) {
+        window.taskDueDatePicker.clear();
+      }
       elements.newTaskForm.style.display = 'none';
       elements.newTaskBtn.style.display = 'block';
       renderTasks();
@@ -516,6 +542,8 @@ function renderTaskCard(task, projectId, milestoneId) {
       `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
     ).join('');
     
+    const dueDateValue = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
+    
     return `
       <div class="task-card ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
         <input type="text" class="edit-title" value="${escapeHtml(task.title)}" data-task-id="${task.id}">
@@ -548,6 +576,10 @@ function renderTaskCard(task, projectId, milestoneId) {
               ${userOptions}
             </select>
           </div>
+        </div>
+        <div class="form-group">
+          <label>Due Date (optional)</label>
+          <input type="text" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}" placeholder="Select due date">
         </div>
         <div class="form-actions">
           <button class="btn btn-primary btn-sm save-task" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Save</button>
@@ -608,7 +640,7 @@ function renderAddMilestoneForm(projectId) {
     <form class="add-milestone-form" data-project-id="${projectId}">
       <input type="text" class="milestone-title-input" placeholder="Milestone title" required>
       <textarea class="milestone-description-input" placeholder="Description (optional)" rows="2"></textarea>
-      <input type="date" class="milestone-target-date-input" placeholder="Target Date (optional)">
+      <input type="text" class="milestone-target-date-input" placeholder="Target Date (optional)">
       <div class="form-actions">
         <button type="submit" class="btn btn-green btn-sm">Add Milestone</button>
         <button type="button" class="btn btn-secondary btn-sm cancel-add-milestone" data-project-id="${projectId}">Cancel</button>
@@ -622,6 +654,7 @@ function renderAddTaskForm(projectId, milestoneId) {
     <form class="add-task-form" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
       <input type="text" class="task-title-input" placeholder="Task title" required>
       <textarea class="task-description-input" placeholder="Description (optional)" rows="2"></textarea>
+      <input type="text" class="task-due-date-input" placeholder="Due Date (optional)">
       <div class="form-actions">
         <button type="submit" class="btn btn-green btn-sm">Add Task</button>
         <button type="button" class="btn btn-secondary btn-sm cancel-add-task" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Cancel</button>
@@ -793,9 +826,10 @@ function renderTasksTable(tasks) {
         <td>${effort ? escapeHtml(effort.label) : '<span class="text-muted">—</span>'}</td>
         <td>${task.assignedResource ? escapeHtml(task.assignedResource) : '<span class="text-muted">—</span>'}</td>
         <td class="task-dates-cell">
+          ${task.dueDate ? `<div class="task-date-small">Due: ${new Date(task.dueDate).toLocaleDateString()}</div>` : ''}
           ${task.startDate ? `<div class="task-date-small">Started: ${new Date(task.startDate).toLocaleDateString()}</div>` : ''}
           ${task.completedDate ? `<div class="task-date-small">Completed: ${new Date(task.completedDate).toLocaleDateString()}</div>` : ''}
-          ${!task.startDate && !task.completedDate ? '<span class="text-muted">—</span>' : ''}
+          ${!task.dueDate && !task.startDate && !task.completedDate ? '<span class="text-muted">—</span>' : ''}
         </td>
         <td class="task-actions-cell">
           <button class="btn btn-blue btn-xs edit-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Edit</button>
@@ -846,6 +880,8 @@ function renderTaskTableRowEdit(task, statuses, priorities, effortLevels, users)
     `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
   ).join('');
   
+  const dueDateValue = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
+  
   return `
     <tr class="task-table-row task-table-row-edit" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
       <td colspan="9">
@@ -870,6 +906,7 @@ function renderTaskTableRowEdit(task, statuses, priorities, effortLevels, users)
               <option value="">None</option>
               ${userOptions}
             </select>
+            <input type="text" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}" placeholder="Due Date (optional)">
           </div>
           <div class="form-actions">
             <button class="btn btn-primary btn-sm save-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Save</button>
@@ -960,6 +997,8 @@ function renderTaskCardForView(task) {
       `<option value="${u.name}" ${task.assignedResource === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
     ).join('');
     
+    const dueDateValue = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '';
+    
     return `
       <div class="task-card ${isCompleted ? 'task-completed' : ''}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
         <input type="text" class="edit-title" value="${escapeHtml(task.title)}" data-task-id="${task.id}">
@@ -992,6 +1031,10 @@ function renderTaskCardForView(task) {
               ${userOptions}
             </select>
           </div>
+        </div>
+        <div class="form-group">
+          <label>Due Date (optional)</label>
+          <input type="text" class="edit-due-date" value="${dueDateValue}" data-task-id="${task.id}" placeholder="Select due date">
         </div>
         <div class="form-actions">
           <button class="btn btn-primary btn-sm save-task-view" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">Save</button>
@@ -1035,6 +1078,7 @@ function renderTaskCardForView(task) {
               return effort ? `<span>Effort: ${escapeHtml(effort.label)}</span>` : '';
             })()}
             ${task.assignedResource ? `<span>Assigned to: ${escapeHtml(task.assignedResource)}</span>` : ''}
+            ${task.dueDate ? `<span>Due: ${new Date(task.dueDate).toLocaleDateString()}</span>` : ''}
             ${task.startDate ? `<span>Started: ${new Date(task.startDate).toLocaleDateString()}</span>` : ''}
             ${task.completedDate ? `<span>Completed: ${new Date(task.completedDate).toLocaleDateString()}</span>` : ''}
           </div>
@@ -1068,16 +1112,28 @@ function attachTaskListenersForView(task) {
   document.querySelector(`.edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
     state.editingTasks.add(taskId);
     renderTasks();
+    // Initialize date picker for task due date after rendering
+    setTimeout(() => {
+      const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
+      if (dateInput && !dateInput.flatpickr) {
+        flatpickr(dateInput, {
+          dateFormat: 'Y-m-d',
+          allowInput: true,
+        });
+      }
+    }, 0);
   });
   
   // Save task
   document.querySelector(`.save-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
     const title = document.querySelector(`.edit-title[data-task-id="${taskId}"]`).value.trim();
-    const description = document.querySelector(`.edit-description[data-task-id="${taskId}"]`).value.trim();
+    const description = document.querySelector(`.edit-description[data-task-id="${taskId}"]`)?.value.trim() || document.querySelector(`.edit-description-small[data-task-id="${taskId}"]`)?.value.trim() || '';
     const status = document.querySelector(`.edit-status[data-task-id="${taskId}"]`).value;
     const priority = document.querySelector(`.edit-priority[data-task-id="${taskId}"]`).value;
     const effort = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`).value;
     const resource = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`).value;
+    const dueDateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
+    const dueDate = dueDateInput ? dueDateInput.value : '';
     
     if (!title) return;
     
@@ -1089,6 +1145,7 @@ function attachTaskListenersForView(task) {
         priority: priority || undefined,
         effortLevel: effort || undefined,
         assignedResource: resource || undefined,
+        dueDate: dueDate || undefined,
       });
       state.editingTasks.delete(taskId);
       renderTasks();
@@ -1258,6 +1315,16 @@ function attachProjectListeners(project) {
   document.querySelector(`.add-milestone-btn[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
     state.showAddMilestone.set(projectId, true);
     renderProjects();
+    // Initialize date picker for inline milestone target date after rendering
+    setTimeout(() => {
+      const dateInput = document.querySelector(`.milestone-target-date-input[data-project-id="${projectId}"]`);
+      if (dateInput && !dateInput.flatpickr) {
+        flatpickr(dateInput, {
+          dateFormat: 'Y-m-d',
+          allowInput: true,
+        });
+      }
+    }, 0);
   });
   
   // Cancel add milestone
@@ -1271,7 +1338,8 @@ function attachProjectListeners(project) {
     e.preventDefault();
     const title = e.target.querySelector('.milestone-title-input').value.trim();
     const description = e.target.querySelector('.milestone-description-input').value.trim();
-    const targetDate = e.target.querySelector('.milestone-target-date-input')?.value || '';
+    const targetDateInput = e.target.querySelector('.milestone-target-date-input');
+    const targetDate = targetDateInput ? targetDateInput.value : '';
     
     if (!title) return;
     
@@ -1288,6 +1356,7 @@ function attachProjectListeners(project) {
       alert('Failed to create milestone');
     }
   });
+  
   
   // Milestone listeners
   project.milestones.forEach(milestone => {
@@ -1313,6 +1382,16 @@ function attachMilestoneListeners(projectId, milestone) {
   document.querySelector(`.edit-milestone[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
     state.editingMilestones.add(milestoneId);
     renderProjects();
+    // Initialize date picker for milestone target date after rendering
+    setTimeout(() => {
+      const dateInput = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`);
+      if (dateInput && !dateInput.flatpickr) {
+        flatpickr(dateInput, {
+          dateFormat: 'Y-m-d',
+          allowInput: true,
+        });
+      }
+    }, 0);
   });
   
   // Save milestone
@@ -1429,6 +1508,16 @@ function attachMilestoneListeners(projectId, milestone) {
   document.querySelector(`.add-task-btn[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
     state.showAddTask.set(milestoneId, true);
     renderProjects();
+    // Initialize date picker for inline task due date after rendering
+    setTimeout(() => {
+      const dateInput = document.querySelector(`.task-due-date-input[data-milestone-id="${milestoneId}"]`);
+      if (dateInput && !dateInput.flatpickr) {
+        flatpickr(dateInput, {
+          dateFormat: 'Y-m-d',
+          allowInput: true,
+        });
+      }
+    }, 0);
   });
   
   // Cancel add task
@@ -1442,11 +1531,17 @@ function attachMilestoneListeners(projectId, milestone) {
     e.preventDefault();
     const title = e.target.querySelector('.task-title-input').value.trim();
     const description = e.target.querySelector('.task-description-input').value.trim();
+    const dueDateInput = e.target.querySelector('.task-due-date-input');
+    const dueDate = dueDateInput ? dueDateInput.value : '';
     
     if (!title) return;
     
     try {
-      storage.createTask(projectId, milestoneId, { title, description: description || undefined });
+      storage.createTask(projectId, milestoneId, { 
+        title, 
+        description: description || undefined,
+        dueDate: dueDate || undefined
+      });
       state.showAddTask.delete(milestoneId);
       loadProjects();
     } catch (error) {
@@ -1479,6 +1574,16 @@ function attachTaskListeners(projectId, milestoneId, task) {
   document.querySelector(`.edit-task[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
     state.editingTasks.add(taskId);
     renderProjects();
+    // Initialize date picker for task due date after rendering
+    setTimeout(() => {
+      const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
+      if (dateInput && !dateInput.flatpickr) {
+        flatpickr(dateInput, {
+          dateFormat: 'Y-m-d',
+          allowInput: true,
+        });
+      }
+    }, 0);
   });
   
   // Save task
@@ -1489,6 +1594,8 @@ function attachTaskListeners(projectId, milestoneId, task) {
     const priority = document.querySelector(`.edit-priority[data-task-id="${taskId}"]`).value;
     const effort = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`).value;
     const resource = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`).value;
+    const dueDateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
+    const dueDate = dueDateInput ? dueDateInput.value : '';
     
     if (!title) return;
     
@@ -1500,6 +1607,7 @@ function attachTaskListeners(projectId, milestoneId, task) {
         priority: priority || undefined,
         effortLevel: effort || undefined,
         assignedResource: resource || undefined,
+        dueDate: dueDate || undefined,
       });
       state.editingTasks.delete(taskId);
       loadProjects();
