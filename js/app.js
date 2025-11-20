@@ -2607,6 +2607,9 @@ function setupSettingsEventListeners() {
     document.getElementById('add-status-form').style.display = 'none';
     document.getElementById('add-status-btn').style.display = 'block';
     document.getElementById('status-label').value = '';
+    document.getElementById('status-color').value = '#71717a';
+    document.getElementById('status-color-text').value = '#71717a';
+    updateSelectedSwatch(document.getElementById('status-color-swatches'), '#71717a');
   });
 
   document.getElementById('add-status-form')?.addEventListener('submit', (e) => {
@@ -2644,6 +2647,9 @@ function setupSettingsEventListeners() {
     document.getElementById('add-effort-form').style.display = 'none';
     document.getElementById('add-effort-btn').style.display = 'block';
     document.getElementById('effort-label').value = '';
+    document.getElementById('effort-color').value = '#71717a';
+    document.getElementById('effort-color-text').value = '#71717a';
+    updateSelectedSwatch(document.getElementById('effort-color-swatches'), '#71717a');
   });
 
   document.getElementById('add-effort-form')?.addEventListener('submit', (e) => {
