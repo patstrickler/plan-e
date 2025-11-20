@@ -394,14 +394,56 @@ function renderMilestoneCard(milestone, projectId) {
   
   if (isEditing) {
     const targetDateValue = milestone.targetDate ? new Date(milestone.targetDate).toISOString().split('T')[0] : '';
+    const dueDateValue = milestone.dueDate ? new Date(milestone.dueDate).toISOString().split('T')[0] : '';
+    const stakeholdersList = milestone.stakeholders || [];
+    const stakeholdersHtml = stakeholdersList.map((stakeholder, idx) => `
+      <span class="stakeholder-tag" data-milestone-id="${milestone.id}" data-index="${idx}">
+        ${escapeHtml(stakeholder)}
+        <button type="button" class="stakeholder-remove" data-milestone-id="${milestone.id}" data-index="${idx}">×</button>
+      </span>
+    `).join('');
+    
     return `
       <div class="milestone-card" data-milestone-id="${milestone.id}" data-project-id="${projectId}">
-        <input type="text" class="edit-title" value="${escapeHtml(milestone.title)}" data-milestone-id="${milestone.id}">
-        <textarea class="edit-description" data-milestone-id="${milestone.id}">${escapeHtml(milestone.description || '')}</textarea>
-        <input type="date" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${milestone.id}" placeholder="Target Date (optional)">
-        <div class="form-actions">
-          <button class="btn btn-primary btn-sm save-milestone" data-milestone-id="${milestone.id}" data-project-id="${projectId}">Save</button>
-          <button class="btn btn-secondary btn-sm cancel-edit-milestone" data-milestone-id="${milestone.id}">Cancel</button>
+        <div class="milestone-edit-form">
+          <input type="text" class="edit-title" value="${escapeHtml(milestone.title)}" data-milestone-id="${milestone.id}" placeholder="Milestone title" required>
+          <textarea class="edit-description" data-milestone-id="${milestone.id}" placeholder="Description (optional)" rows="2">${escapeHtml(milestone.description || '')}</textarea>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Priority</label>
+              <select class="edit-priority" data-milestone-id="${milestone.id}">
+                <option value="">None</option>
+                <option value="low" ${milestone.priority === 'low' ? 'selected' : ''}>Low</option>
+                <option value="medium" ${milestone.priority === 'medium' ? 'selected' : ''}>Medium</option>
+                <option value="high" ${milestone.priority === 'high' ? 'selected' : ''}>High</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Target Date</label>
+              <input type="date" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${milestone.id}">
+            </div>
+            <div class="form-group">
+              <label>Due Date</label>
+              <input type="date" class="edit-due-date" value="${dueDateValue}" data-milestone-id="${milestone.id}">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Stakeholders</label>
+            <div class="stakeholders-list" data-milestone-id="${milestone.id}">
+              ${stakeholdersHtml}
+            </div>
+            <div class="stakeholder-input-row">
+              <input type="text" class="edit-stakeholder-input" data-milestone-id="${milestone.id}" placeholder="Enter stakeholder name">
+              <button type="button" class="btn btn-secondary btn-sm add-stakeholder-btn" data-milestone-id="${milestone.id}">Add</button>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm save-milestone" data-milestone-id="${milestone.id}" data-project-id="${projectId}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-milestone" data-milestone-id="${milestone.id}">Cancel</button>
+          </div>
         </div>
       </div>
     `;
