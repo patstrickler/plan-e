@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Milestone, Project } from '@/types';
 import { getAllMilestones, getAllProjects, createMilestone } from '@/lib/storage-client';
-import Link from 'next/link';
 
 export default function MilestonesPage() {
   const [milestones, setMilestones] = useState<Array<Milestone & { project: Project }>>([]);
@@ -62,22 +61,12 @@ export default function MilestonesPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <header className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                Milestones
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                View and manage all milestones across projects
-              </p>
-            </div>
-            <Link
-              href="/"
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
-            >
-              ← Projects
-            </Link>
-          </div>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Milestones
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            View and manage all milestones across projects
+          </p>
         </header>
 
         <div className="mb-6">

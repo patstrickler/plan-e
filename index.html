@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plan-E - Project Planning Tool</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-content">
+        <div>
+          <h1>Plan-E</h1>
+          <p class="subtitle">Organize your projects, milestones, and tasks</p>
+        </div>
+        <nav class="nav-links">
+          <a href="#milestones" class="nav-link">Milestones</a>
+          <a href="#tasks" class="nav-link">Tasks</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="app">
+      <div class="loading" id="loading">Loading...</div>
+      
+      <!-- Projects View -->
+      <div id="projects-view" class="view">
+        <div class="mb-6">
+          <button id="new-project-btn" class="btn btn-primary">+ New Project</button>
+          
+          <form id="new-project-form" class="form-card" style="display: none;">
+            <h2>Create New Project</h2>
+            <div class="form-group">
+              <label for="project-title">Project Title *</label>
+              <input type="text" id="project-title" required placeholder="Enter project title">
+            </div>
+            <div class="form-group">
+              <label for="project-description">Description (optional)</label>
+              <textarea id="project-description" rows="3" placeholder="Enter project description"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Create Project</button>
+              <button type="button" id="cancel-project-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="projects-list" class="projects-list"></div>
+      </div>
+
+      <!-- Milestones View -->
+      <div id="milestones-view" class="view" style="display: none;">
+        <div class="mb-6">
+          <a href="#" class="back-link" data-view="projects">← Back to Projects</a>
+          <h2>All Milestones</h2>
+          <button id="new-milestone-btn" class="btn btn-primary">+ New Milestone</button>
+          
+          <form id="new-milestone-form" class="form-card" style="display: none;">
+            <h2>Create New Milestone</h2>
+            <div class="form-group">
+              <label for="milestone-project">Project *</label>
+              <select id="milestone-project" required></select>
+            </div>
+            <div class="form-group">
+              <label for="milestone-title">Milestone Title *</label>
+              <input type="text" id="milestone-title" required placeholder="Enter milestone title">
+            </div>
+            <div class="form-group">
+              <label for="milestone-description">Description (optional)</label>
+              <textarea id="milestone-description" rows="3" placeholder="Enter milestone description"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Create Milestone</button>
+              <button type="button" id="cancel-milestone-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="milestones-list" class="milestones-list"></div>
+      </div>
+
+      <!-- Tasks View -->
+      <div id="tasks-view" class="view" style="display: none;">
+        <div class="mb-6">
+          <a href="#" class="back-link" data-view="projects">← Back to Projects</a>
+          <h2>All Tasks</h2>
+          <button id="new-task-btn" class="btn btn-primary">+ New Task</button>
+          
+          <form id="new-task-form" class="form-card" style="display: none;">
+            <h2>Create New Task</h2>
+            <div class="form-group">
+              <label for="task-project">Project *</label>
+              <select id="task-project" required></select>
+            </div>
+            <div class="form-group">
+              <label for="task-milestone">Milestone *</label>
+              <select id="task-milestone" required></select>
+            </div>
+            <div class="form-group">
+              <label for="task-title">Task Title *</label>
+              <input type="text" id="task-title" required placeholder="Enter task title">
+            </div>
+            <div class="form-group">
+              <label for="task-description">Description (optional)</label>
+              <textarea id="task-description" rows="3" placeholder="Enter task description"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="task-priority">Priority</label>
+                <select id="task-priority">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="task-effort">Effort</label>
+                <select id="task-effort">
+                  <option value="small">Small</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="large">Large</option>
+                  <option value="x-large">X-Large</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="task-resource">Assigned Resource</label>
+              <input type="text" id="task-resource" placeholder="Enter resource name">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Create Task</button>
+              <button type="button" id="cancel-task-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="tasks-list" class="tasks-list"></div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="js/storage.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
+
