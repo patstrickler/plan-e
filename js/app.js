@@ -268,69 +268,89 @@ function setupEventListeners() {
   });
 
   // Task form
-  elements.newTaskBtn?.addEventListener('click', () => {
-    populateProjectSelect('task-project');
-    updateAllSelects(); // Populate priority, effort, and resource selects
-    // Clear and reset milestone select
-    const milestoneSelect = document.getElementById('task-milestone');
-    if (milestoneSelect) {
-      milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
-      milestoneSelect.value = '';
-    }
-    // Reset project select
-    const projectSelect = document.getElementById('task-project');
-    if (projectSelect) {
-      projectSelect.value = '';
-    }
-    elements.newTaskForm.style.display = 'block';
-    elements.newTaskBtn.style.display = 'none';
-    document.getElementById('task-title').focus();
-    // Initialize date picker for task due date
-    setTimeout(() => {
-      if (!window.taskDueDatePicker) {
-        const dateInput = document.getElementById('task-due-date');
-        if (dateInput) {
-          window.taskDueDatePicker = flatpickr(dateInput, {
-            dateFormat: 'Y-m-d',
-            clickOpens: true,
-            allowInput: false,
-          });
-          dateInput.addEventListener('focus', () => {
-            window.taskDueDatePicker.open();
-          });
-        }
+  const newTaskBtn = document.getElementById('new-task-btn');
+  const newTaskForm = document.getElementById('new-task-form');
+  if (newTaskBtn && newTaskForm) {
+    newTaskBtn.addEventListener('click', () => {
+      populateProjectSelect('task-project');
+      updateAllSelects(); // Populate priority, effort, and resource selects
+      // Clear and reset milestone select
+      const milestoneSelect = document.getElementById('task-milestone');
+      if (milestoneSelect) {
+        milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
+        milestoneSelect.value = '';
       }
-    }, 100);
-  });
+      // Reset project select
+      const projectSelect = document.getElementById('task-project');
+      if (projectSelect) {
+        projectSelect.value = '';
+      }
+      newTaskForm.style.display = 'block';
+      newTaskBtn.style.display = 'none';
+      const titleInput = document.getElementById('task-title');
+      if (titleInput) {
+        titleInput.focus();
+      }
+      // Initialize date picker for task due date
+      setTimeout(() => {
+        if (!window.taskDueDatePicker) {
+          const dateInput = document.getElementById('task-due-date');
+          if (dateInput) {
+            window.taskDueDatePicker = flatpickr(dateInput, {
+              dateFormat: 'Y-m-d',
+              clickOpens: true,
+              allowInput: false,
+            });
+            dateInput.addEventListener('focus', () => {
+              window.taskDueDatePicker.open();
+            });
+          }
+        }
+      }, 100);
+    });
+  } else {
+    console.error('new-task-btn or new-task-form element not found');
+  }
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
     populateMilestoneSelect('task-milestone', e.target.value);
   });
 
-  document.getElementById('cancel-task-btn')?.addEventListener('click', () => {
-    elements.newTaskForm.style.display = 'none';
-    elements.newTaskBtn.style.display = 'block';
-    document.getElementById('task-title').value = '';
-    document.getElementById('task-description').value = '';
-    document.getElementById('task-due-date').value = '';
-    // Reset project and milestone selects
-    const projectSelect = document.getElementById('task-project');
-    if (projectSelect) {
-      projectSelect.value = '';
-    }
-    const milestoneSelect = document.getElementById('task-milestone');
-    if (milestoneSelect) {
-      milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
-      milestoneSelect.value = '';
-    }
-    // Reset other selects
-    document.getElementById('task-priority').value = '';
-    document.getElementById('task-effort').value = '';
-    document.getElementById('task-resource').value = '';
-    if (window.taskDueDatePicker) {
-      window.taskDueDatePicker.clear();
-    }
-  });
+  const cancelTaskBtn = document.getElementById('cancel-task-btn');
+  if (cancelTaskBtn) {
+    cancelTaskBtn.addEventListener('click', () => {
+      const taskForm = document.getElementById('new-task-form');
+      const taskBtn = document.getElementById('new-task-btn');
+      if (taskForm) taskForm.style.display = 'none';
+      if (taskBtn) taskBtn.style.display = 'block';
+      const titleInput = document.getElementById('task-title');
+      if (titleInput) titleInput.value = '';
+      const descInput = document.getElementById('task-description');
+      if (descInput) descInput.value = '';
+      const dueDateInput = document.getElementById('task-due-date');
+      if (dueDateInput) dueDateInput.value = '';
+      // Reset project and milestone selects
+      const projectSelect = document.getElementById('task-project');
+      if (projectSelect) {
+        projectSelect.value = '';
+      }
+      const milestoneSelect = document.getElementById('task-milestone');
+      if (milestoneSelect) {
+        milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
+        milestoneSelect.value = '';
+      }
+      // Reset other selects
+      const prioritySelect = document.getElementById('task-priority');
+      if (prioritySelect) prioritySelect.value = '';
+      const effortSelect = document.getElementById('task-effort');
+      if (effortSelect) effortSelect.value = '';
+      const resourceSelect = document.getElementById('task-resource');
+      if (resourceSelect) resourceSelect.value = '';
+      if (window.taskDueDatePicker) {
+        window.taskDueDatePicker.clear();
+      }
+    });
+  }
 
   // Edit task form
   const editTaskForm = document.getElementById('edit-task-form');
@@ -441,7 +461,7 @@ function setupEventListeners() {
     populateMilestoneSelect('edit-task-milestone', e.target.value);
   });
 
-  const newTaskForm = document.getElementById('new-task-form');
+  // Use the newTaskForm variable declared earlier
   if (newTaskForm) {
     newTaskForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -500,8 +520,9 @@ function setupEventListeners() {
         if (window.taskDueDatePicker) {
           window.taskDueDatePicker.clear();
         }
-        elements.newTaskForm.style.display = 'none';
-        elements.newTaskBtn.style.display = 'block';
+        newTaskForm.style.display = 'none';
+        const taskBtn = document.getElementById('new-task-btn');
+        if (taskBtn) taskBtn.style.display = 'block';
         renderTasks();
       } catch (error) {
         console.error('Failed to create task:', error);
