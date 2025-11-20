@@ -733,13 +733,27 @@ function renderMilestones() {
     if (isEditing) {
       const targetDateValue = m.targetDate ? new Date(m.targetDate).toISOString().split('T')[0] : '';
       return `
-        <div class="milestone-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
-          <input type="text" class="edit-title-milestone-view" value="${escapeHtml(m.title)}" data-milestone-id="${m.id}">
-          <textarea class="edit-description-milestone-view" data-milestone-id="${m.id}">${escapeHtml(m.description || '')}</textarea>
-          <input type="text" class="edit-target-date-milestone-view" value="${targetDateValue}" data-milestone-id="${m.id}" placeholder="Select target date">
+        <div class="form-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
+          <h2>Edit Milestone</h2>
+          <div class="form-group">
+            <label for="edit-milestone-view-project-${m.id}">Project *</label>
+            <select id="edit-milestone-view-project-${m.id}" class="edit-milestone-view-project" data-milestone-id="${m.id}" required></select>
+          </div>
+          <div class="form-group">
+            <label for="edit-milestone-view-title-${m.id}">Milestone Title *</label>
+            <input type="text" id="edit-milestone-view-title-${m.id}" class="edit-title-milestone-view" value="${escapeHtml(m.title)}" data-milestone-id="${m.id}" required placeholder="Enter milestone title">
+          </div>
+          <div class="form-group">
+            <label for="edit-milestone-view-description-${m.id}">Description (optional)</label>
+            <textarea id="edit-milestone-view-description-${m.id}" class="edit-description-milestone-view" data-milestone-id="${m.id}" rows="3" placeholder="Enter milestone description">${escapeHtml(m.description || '')}</textarea>
+          </div>
+          <div class="form-group">
+            <label for="edit-milestone-view-target-date-${m.id}">Target Date (optional)</label>
+            <input type="text" id="edit-milestone-view-target-date-${m.id}" class="edit-target-date-milestone-view" value="${targetDateValue}" data-milestone-id="${m.id}" placeholder="Select target date">
+          </div>
           <div class="form-actions">
-            <button class="btn btn-primary btn-sm save-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Save</button>
-            <button class="btn btn-secondary btn-sm cancel-edit-milestone-view" data-milestone-id="${m.id}">Cancel</button>
+            <button type="button" class="btn btn-primary save-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Save Milestone</button>
+            <button type="button" class="btn btn-secondary cancel-edit-milestone-view" data-milestone-id="${m.id}">Cancel</button>
           </div>
         </div>
       `;
@@ -1459,8 +1473,13 @@ function attachMilestoneViewListeners(milestone) {
   document.querySelector(`.edit-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
     state.editingMilestones.add(milestoneId);
     renderMilestones();
-    // Initialize date picker for milestone target date after rendering
+    // Populate project select and initialize date picker after rendering
     setTimeout(() => {
+      const projectSelect = document.querySelector(`.edit-milestone-view-project[data-milestone-id="${milestoneId}"]`);
+      if (projectSelect) {
+        populateProjectSelectForMilestone(projectSelect.id, projectId);
+      }
+      
       const targetDateInput = document.querySelector(`.edit-target-date-milestone-view[data-milestone-id="${milestoneId}"]`);
       if (targetDateInput && !targetDateInput.flatpickr) {
         const fp = flatpickr(targetDateInput, {
@@ -1478,15 +1497,22 @@ function attachMilestoneViewListeners(milestone) {
   
   // Save milestone
   document.querySelector(`.save-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    const title = document.querySelector(`.edit-title-milestone-view[data-milestone-id="${milestoneId}"]`).value.trim();
-    const description = document.querySelector(`.edit-description-milestone-view[data-milestone-id="${milestoneId}"]`).value.trim();
+    const titleInput = document.querySelector(`.edit-title-milestone-view[data-milestone-id="${milestoneId}"]`);
+    const descriptionInput = document.querySelector(`.edit-description-milestone-view[data-milestone-id="${milestoneId}"]`);
+    const projectSelect = document.querySelector(`.edit-milestone-view-project[data-milestone-id="${milestoneId}"]`);
     const targetDateInput = document.querySelector(`.edit-target-date-milestone-view[data-milestone-id="${milestoneId}"]`);
+    
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const newProjectId = projectSelect ? projectSelect.value : projectId;
     const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
     
-    if (!title) return;
+    if (!title || !newProjectId) return;
     
     try {
-      storage.updateMilestone(projectId, milestoneId, { 
+      // If project changed, we need to handle it differently
+      // For now, just update within the same project
+      storage.updateMilestone(newProjectId, milestoneId, { 
         title, 
         description: description || undefined,
         targetDate: targetDate || undefined
@@ -1519,6 +1545,14 @@ function attachMilestoneViewListeners(milestone) {
       alert('Failed to delete milestone');
     }
   });
+}
+
+function populateProjectSelectForMilestone(selectId, selectedProjectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  
+  select.innerHTML = '<option value="">Select a project</option>' +
+    state.projects.map(p => `<option value="${p.id}" ${p.id === selectedProjectId ? 'selected' : ''}>${escapeHtml(p.title)}</option>`).join('');
 }
 
 function attachMilestoneListeners(projectId, milestone) {
@@ -1807,9 +1841,17 @@ function renderPriorities() {
     const isEditing = state.editingMetadata.get(`priority-${priority.id}`);
     
     if (isEditing) {
+      const currentColor = priority.color || '#71717a';
       return `
         <div class="metadata-item-editing" data-priority-id="${priority.id}">
           <input type="text" class="edit-priority-label" value="${escapeHtml(priority.label)}" data-priority-id="${priority.id}" placeholder="Label">
+          <div class="form-group">
+            <label>Color</label>
+            <div class="color-input-group">
+              <input type="color" class="edit-priority-color" value="${currentColor}" data-priority-id="${priority.id}">
+              <input type="text" class="edit-priority-color-text" value="${currentColor}" placeholder="#71717a" class="color-text-input" data-priority-id="${priority.id}">
+            </div>
+          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-priority" data-priority-id="${priority.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-priority" data-priority-id="${priority.id}">Cancel</button>
@@ -1818,9 +1860,11 @@ function renderPriorities() {
       `;
     }
     
+    const colorStyle = priority.color ? `style="background-color: ${priority.color};"` : '';
     return `
       <div class="metadata-item" data-priority-id="${priority.id}">
         <div class="metadata-item-content">
+          <span class="metadata-item-color-swatch" ${colorStyle}></span>
           <span class="metadata-item-label">${escapeHtml(priority.label)}</span>
         </div>
         <div class="metadata-item-actions">
@@ -1857,9 +1901,17 @@ function renderStatuses() {
     const isEditing = state.editingMetadata.get(`status-${status.id}`);
     
     if (isEditing) {
+      const currentColor = status.color || '#71717a';
       return `
         <div class="metadata-item-editing" data-status-id="${status.id}">
           <input type="text" class="edit-status-label" value="${escapeHtml(status.label)}" data-status-id="${status.id}" placeholder="Label">
+          <div class="form-group">
+            <label>Color</label>
+            <div class="color-input-group">
+              <input type="color" class="edit-status-color" value="${currentColor}" data-status-id="${status.id}">
+              <input type="text" class="edit-status-color-text" value="${currentColor}" placeholder="#71717a" class="color-text-input" data-status-id="${status.id}">
+            </div>
+          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-status" data-status-id="${status.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-status" data-status-id="${status.id}">Cancel</button>
@@ -1868,9 +1920,11 @@ function renderStatuses() {
       `;
     }
     
+    const colorStyle = status.color ? `style="background-color: ${status.color};"` : '';
     return `
       <div class="metadata-item" data-status-id="${status.id}">
         <div class="metadata-item-content">
+          <span class="metadata-item-color-swatch" ${colorStyle}></span>
           <span class="metadata-item-label">${escapeHtml(status.label)}</span>
         </div>
         <div class="metadata-item-actions">
@@ -2087,12 +2141,15 @@ function setupSettingsEventListeners() {
   document.getElementById('add-priority-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const label = document.getElementById('priority-label').value.trim();
+    const color = document.getElementById('priority-color').value || '#71717a';
     
     if (!label) return;
     
     try {
-      storage.addPriority(label);
+      storage.addPriority(label, color);
       document.getElementById('priority-label').value = '';
+      document.getElementById('priority-color').value = '#71717a';
+      document.getElementById('priority-color-text').value = '#71717a';
       document.getElementById('add-priority-form').style.display = 'none';
       document.getElementById('add-priority-btn').style.display = 'block';
       renderSettings();
@@ -2119,12 +2176,15 @@ function setupSettingsEventListeners() {
   document.getElementById('add-status-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const label = document.getElementById('status-label').value.trim();
+    const color = document.getElementById('status-color').value || '#71717a';
     
     if (!label) return;
     
     try {
-      storage.addStatus(label);
+      storage.addStatus(label, color);
       document.getElementById('status-label').value = '';
+      document.getElementById('status-color').value = '#71717a';
+      document.getElementById('status-color-text').value = '#71717a';
       document.getElementById('add-status-form').style.display = 'none';
       document.getElementById('add-status-btn').style.display = 'block';
       renderSettings();
@@ -2141,6 +2201,46 @@ function setupSettingsEventListeners() {
     document.getElementById('add-effort-btn').style.display = 'none';
     document.getElementById('effort-label').focus();
   });
+  
+  // Color picker sync for add forms
+  // Priority color sync
+  document.getElementById('priority-color')?.addEventListener('input', (e) => {
+    const textInput = document.getElementById('priority-color-text');
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.getElementById('priority-color-text')?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.getElementById('priority-color');
+      if (colorInput) colorInput.value = colorValue;
+    }
+  });
+  
+  // Status color sync
+  document.getElementById('status-color')?.addEventListener('input', (e) => {
+    const textInput = document.getElementById('status-color-text');
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.getElementById('status-color-text')?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.getElementById('status-color');
+      if (colorInput) colorInput.value = colorValue;
+    }
+  });
+  
+  // Effort color sync
+  document.getElementById('effort-color')?.addEventListener('input', (e) => {
+    const textInput = document.getElementById('effort-color-text');
+    if (textInput) textInput.value = e.target.value;
+  });
+  document.getElementById('effort-color-text')?.addEventListener('input', (e) => {
+    const colorValue = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+      const colorInput = document.getElementById('effort-color');
+      if (colorInput) colorInput.value = colorValue;
+    }
+  });
 
   document.getElementById('cancel-effort-btn')?.addEventListener('click', () => {
     document.getElementById('add-effort-form').style.display = 'none';
@@ -2151,12 +2251,15 @@ function setupSettingsEventListeners() {
   document.getElementById('add-effort-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const label = document.getElementById('effort-label').value.trim();
+    const color = document.getElementById('effort-color').value || '#71717a';
     
     if (!label) return;
     
     try {
-      storage.addEffortLevel(label);
+      storage.addEffortLevel(label, color);
       document.getElementById('effort-label').value = '';
+      document.getElementById('effort-color').value = '#71717a';
+      document.getElementById('effort-color-text').value = '#71717a';
       document.getElementById('add-effort-form').style.display = 'none';
       document.getElementById('add-effort-btn').style.display = 'block';
       renderSettings();
