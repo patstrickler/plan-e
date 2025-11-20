@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Milestone } from '@/types';
 import TaskCard from './TaskCard';
+import { createTask, updateMilestone, deleteMilestone, getProject } from '@/lib/storage-client';
 
 interface MilestoneCardProps {
   projectId: string;
@@ -18,79 +19,71 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(milestone.title);
   const [editDescription, setEditDescription] = useState(milestone.description || '');
+  const [currentMilestone, setCurrentMilestone] = useState(milestone);
 
-  const handleAddTask = async (e: React.FormEvent) => {
+  // Refresh milestone data
+  const refreshMilestone = () => {
+    const project = getProject(projectId);
+    if (project) {
+      const updated = project.milestones.find(m => m.id === milestone.id);
+      if (updated) {
+        setCurrentMilestone(updated);
+      }
+    }
+    onUpdate();
+  };
+
+  // Sync milestone prop changes
+  useEffect(() => {
+    setCurrentMilestone(milestone);
+  }, [milestone]);
+
+  const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
 
     try {
-      const response = await fetch(
-        `/api/projects/${projectId}/milestones/${milestone.id}/tasks`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: taskTitle,
-            description: taskDescription || undefined,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setTaskTitle('');
-        setTaskDescription('');
-        setShowAddTask(false);
-        onUpdate();
-      }
+      createTask(projectId, milestone.id, {
+        title: taskTitle,
+        description: taskDescription || undefined,
+      });
+      setTaskTitle('');
+      setTaskDescription('');
+      setShowAddTask(false);
+      refreshMilestone();
     } catch (error) {
       console.error('Failed to add task:', error);
     }
   };
 
-  const handleUpdateMilestone = async () => {
+  const handleUpdateMilestone = () => {
     try {
-      const response = await fetch(
-        `/api/projects/${projectId}/milestones/${milestone.id}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: editTitle,
-            description: editDescription || undefined,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setIsEditing(false);
-        onUpdate();
-      }
+      updateMilestone(projectId, milestone.id, {
+        title: editTitle,
+        description: editDescription || undefined,
+      });
+      setIsEditing(false);
+      refreshMilestone();
     } catch (error) {
       console.error('Failed to update milestone:', error);
     }
   };
 
-  const handleDeleteMilestone = async () => {
-    if (!confirm(`Are you sure you want to delete "${milestone.title}"?`)) return;
+  const handleDeleteMilestone = () => {
+    if (!confirm(`Are you sure you want to delete "${displayMilestone.title}"?`)) return;
 
     try {
-      const response = await fetch(
-        `/api/projects/${projectId}/milestones/${milestone.id}`,
-        {
-          method: 'DELETE',
-        }
-      );
-
-      if (response.ok) {
-        onUpdate();
-      }
+      deleteMilestone(projectId, milestone.id);
+      onUpdate();
     } catch (error) {
       console.error('Failed to delete milestone:', error);
     }
   };
 
-  const completedTasks = milestone.tasks.filter((t) => t.completed).length;
-  const totalTasks = milestone.tasks.length;
+  const displayMilestone = currentMilestone || milestone;
+
+  const completedTasks = displayMilestone.tasks.filter((t) => t.completed).length;
+  const totalTasks = displayMilestone.tasks.length;
 
   return (
     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
@@ -122,8 +115,8 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
                 <button
                   onClick={() => {
                     setIsEditing(false);
-                    setEditTitle(milestone.title);
-                    setEditDescription(milestone.description || '');
+                    setEditTitle(displayMilestone.title);
+                    setEditDescription(displayMilestone.description || '');
                   }}
                   className="px-3 py-1 text-sm bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500"
                 >
@@ -134,16 +127,16 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
           ) : (
             <>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                {milestone.title}
+                {displayMilestone.title}
               </h3>
-              {milestone.description && (
+              {displayMilestone.description && (
                 <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                  {milestone.description}
+                  {displayMilestone.description}
                 </p>
               )}
-              {milestone.dueDate && (
+              {displayMilestone.dueDate && (
                 <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">
-                  Due: {new Date(milestone.dueDate).toLocaleDateString()}
+                  Due: {new Date(displayMilestone.dueDate).toLocaleDateString()}
                 </p>
               )}
               <p className="text-xs text-gray-500 dark:text-gray-500">
@@ -227,18 +220,18 @@ export default function MilestoneCard({ projectId, milestone, onUpdate }: Milest
           </div>
 
           <div className="space-y-2">
-            {milestone.tasks.length === 0 ? (
+            {displayMilestone.tasks.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-sm italic">
                 No tasks yet. Add one above!
               </p>
             ) : (
-              milestone.tasks.map((task) => (
+              displayMilestone.tasks.map((task) => (
                 <TaskCard
                   key={task.id}
                   projectId={projectId}
-                  milestoneId={milestone.id}
+                  milestoneId={displayMilestone.id}
                   task={task}
-                  onUpdate={onUpdate}
+                  onUpdate={refreshMilestone}
                 />
               ))
             )}

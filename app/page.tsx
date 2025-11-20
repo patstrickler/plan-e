@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Project } from '@/types';
 import ProjectCard from '@/components/ProjectCard';
+import { getAllProjects, createProject } from '@/lib/storage-client';
 
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -11,13 +12,10 @@ export default function Home() {
   const [projectTitle, setProjectTitle] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
 
-  const fetchProjects = async () => {
+  const fetchProjects = () => {
     try {
-      const response = await fetch('/api/projects');
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(data);
-      }
+      const data = getAllProjects();
+      setProjects(data);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
@@ -29,26 +27,19 @@ export default function Home() {
     fetchProjects();
   }, []);
 
-  const handleAddProject = async (e: React.FormEvent) => {
+  const handleAddProject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectTitle.trim()) return;
 
     try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: projectTitle,
-          description: projectDescription || undefined,
-        }),
+      createProject({
+        title: projectTitle,
+        description: projectDescription || undefined,
       });
-
-      if (response.ok) {
-        setProjectTitle('');
-        setProjectDescription('');
-        setShowAddProject(false);
-        fetchProjects();
-      }
+      setProjectTitle('');
+      setProjectDescription('');
+      setShowAddProject(false);
+      fetchProjects();
     } catch (error) {
       console.error('Failed to add project:', error);
     }

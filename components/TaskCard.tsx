@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Task } from '@/types';
+import { updateTask, deleteTask } from '@/lib/storage-client';
 
 interface TaskCardProps {
   projectId: string;
@@ -15,64 +16,36 @@ export default function TaskCard({ projectId, milestoneId, task, onUpdate }: Tas
   const [editTitle, setEditTitle] = useState(task.title);
   const [editDescription, setEditDescription] = useState(task.description || '');
 
-  const handleToggleComplete = async () => {
+  const handleToggleComplete = () => {
     try {
-      const response = await fetch(
-        `/api/projects/${projectId}/milestones/${milestoneId}/tasks/${task.id}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            completed: !task.completed,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        onUpdate();
-      }
+      updateTask(projectId, milestoneId, task.id, {
+        completed: !task.completed,
+      });
+      onUpdate();
     } catch (error) {
       console.error('Failed to update task:', error);
     }
   };
 
-  const handleUpdateTask = async () => {
+  const handleUpdateTask = () => {
     try {
-      const response = await fetch(
-        `/api/projects/${projectId}/milestones/${milestoneId}/tasks/${task.id}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: editTitle,
-            description: editDescription || undefined,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setIsEditing(false);
-        onUpdate();
-      }
+      updateTask(projectId, milestoneId, task.id, {
+        title: editTitle,
+        description: editDescription || undefined,
+      });
+      setIsEditing(false);
+      onUpdate();
     } catch (error) {
       console.error('Failed to update task:', error);
     }
   };
 
-  const handleDeleteTask = async () => {
+  const handleDeleteTask = () => {
     if (!confirm(`Are you sure you want to delete "${task.title}"?`)) return;
 
     try {
-      const response = await fetch(
-        `/api/projects/${projectId}/milestones/${milestoneId}/tasks/${task.id}`,
-        {
-          method: 'DELETE',
-        }
-      );
-
-      if (response.ok) {
-        onUpdate();
-      }
+      deleteTask(projectId, milestoneId, task.id);
+      onUpdate();
     } catch (error) {
       console.error('Failed to delete task:', error);
     }

@@ -31,12 +31,39 @@ npm run dev
 
 3. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Build for Production
+### Build for Production (Static Export)
 
 ```bash
 npm run build
-npm start
 ```
+
+This creates a static export in the `out` directory that can be deployed to any static hosting service.
+
+## Deployment
+
+### GitHub Pages
+
+1. Build the static export:
+```bash
+npm run build
+```
+
+2. The `out` directory contains the static site that can be deployed to GitHub Pages.
+
+3. In your GitHub repository settings, enable GitHub Pages and point it to the `out` directory.
+
+### Vercel (Recommended)
+
+The easiest way to deploy is using [Vercel](https://vercel.com):
+
+1. Push your code to GitHub
+2. Import your repository in Vercel
+3. Vercel will automatically detect Next.js and deploy
+
+Or use the GitHub Actions workflow (requires Vercel tokens in GitHub secrets):
+- `VERCEL_TOKEN` - Your Vercel API token
+- `VERCEL_ORG_ID` - Your Vercel organization ID
+- `VERCEL_PROJECT_ID` - Your Vercel project ID
 
 ## Project Structure
 
@@ -59,4 +86,13 @@ npm start
 - **Next.js 14** - React framework with App Router
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
-- **JSON File Storage** - Simple file-based data persistence
+- **localStorage** - Client-side data persistence (works offline!)
+
+## Data Storage
+
+All data is stored in your browser's localStorage. This means:
+- ✅ Your data persists across browser sessions
+- ✅ No backend/server required
+- ✅ Works offline
+- ✅ Privacy-focused (data stays in your browser)
+- ⚠️ Data is stored per browser/device

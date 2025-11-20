@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Project } from '@/types';
 import MilestoneCard from './MilestoneCard';
+import { createMilestone, updateProject, deleteProject, getProject } from '@/lib/storage-client';
 
 interface ProjectCardProps {
   project: Project;
@@ -17,67 +18,60 @@ export default function ProjectCard({ project, onUpdate }: ProjectCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(project.title);
   const [editDescription, setEditDescription] = useState(project.description || '');
+  const [currentProject, setCurrentProject] = useState(project);
 
-  const handleAddMilestone = async (e: React.FormEvent) => {
+  // Update local project state when prop changes
+  const refreshProject = () => {
+    const updated = getProject(project.id);
+    if (updated) {
+      setCurrentProject(updated);
+    }
+    onUpdate();
+  };
+
+  const handleAddMilestone = (e: React.FormEvent) => {
     e.preventDefault();
     if (!milestoneTitle.trim()) return;
 
     try {
-      const response = await fetch(`/api/projects/${project.id}/milestones`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: milestoneTitle,
-          description: milestoneDescription || undefined,
-        }),
+      createMilestone(project.id, {
+        title: milestoneTitle,
+        description: milestoneDescription || undefined,
       });
-
-      if (response.ok) {
-        setMilestoneTitle('');
-        setMilestoneDescription('');
-        setShowAddMilestone(false);
-        onUpdate();
-      }
+      setMilestoneTitle('');
+      setMilestoneDescription('');
+      setShowAddMilestone(false);
+      refreshProject();
     } catch (error) {
       console.error('Failed to add milestone:', error);
     }
   };
 
-  const handleUpdateProject = async () => {
+  const handleUpdateProject = () => {
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editTitle,
-          description: editDescription || undefined,
-        }),
+      updateProject(project.id, {
+        title: editTitle,
+        description: editDescription || undefined,
       });
-
-      if (response.ok) {
-        setIsEditing(false);
-        onUpdate();
-      }
+      setIsEditing(false);
+      refreshProject();
     } catch (error) {
       console.error('Failed to update project:', error);
     }
   };
 
-  const handleDeleteProject = async () => {
+  const handleDeleteProject = () => {
     if (!confirm(`Are you sure you want to delete "${project.title}"?`)) return;
 
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        onUpdate();
-      }
+      deleteProject(project.id);
+      onUpdate();
     } catch (error) {
       console.error('Failed to delete project:', error);
     }
   };
+
+  const displayProject = currentProject || project;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4 border border-gray-200 dark:border-gray-700">
@@ -109,8 +103,8 @@ export default function ProjectCard({ project, onUpdate }: ProjectCardProps) {
                 <button
                   onClick={() => {
                     setIsEditing(false);
-                    setEditTitle(project.title);
-                    setEditDescription(project.description || '');
+                    setEditTitle(displayProject.title);
+                    setEditDescription(displayProject.description || '');
                   }}
                   className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 text-sm"
                 >
@@ -121,15 +115,15 @@ export default function ProjectCard({ project, onUpdate }: ProjectCardProps) {
           ) : (
             <>
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-                {project.title}
+                {displayProject.title}
               </h2>
-              {project.description && (
+              {displayProject.description && (
                 <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                  {project.description}
+                  {displayProject.description}
                 </p>
               )}
               <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">
-                {project.milestones.length} milestone{project.milestones.length !== 1 ? 's' : ''}
+                {displayProject.milestones.length} milestone{displayProject.milestones.length !== 1 ? 's' : ''}
               </p>
             </>
           )}
@@ -209,17 +203,17 @@ export default function ProjectCard({ project, onUpdate }: ProjectCardProps) {
           </div>
 
           <div className="space-y-3">
-            {project.milestones.length === 0 ? (
+            {displayProject.milestones.length === 0 ? (
               <p className="text-gray-500 dark:text-gray-400 text-sm italic">
                 No milestones yet. Add one above!
               </p>
             ) : (
-              project.milestones.map((milestone) => (
+              displayProject.milestones.map((milestone) => (
                 <MilestoneCard
                   key={milestone.id}
-                  projectId={project.id}
+                  projectId={displayProject.id}
                   milestone={milestone}
-                  onUpdate={onUpdate}
+                  onUpdate={refreshProject}
                 />
               ))
             )}
