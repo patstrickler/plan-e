@@ -149,6 +149,7 @@ function setupEventListeners() {
     elements.newMilestoneBtn.style.display = 'block';
     document.getElementById('milestone-title').value = '';
     document.getElementById('milestone-description').value = '';
+    document.getElementById('milestone-target-date').value = '';
   });
 
   elements.newMilestoneForm?.addEventListener('submit', (e) => {
@@ -156,13 +157,19 @@ function setupEventListeners() {
     const projectId = document.getElementById('milestone-project').value;
     const title = document.getElementById('milestone-title').value.trim();
     const description = document.getElementById('milestone-description').value.trim();
+    const targetDate = document.getElementById('milestone-target-date').value;
     
     if (!title || !projectId) return;
     
     try {
-      storage.createMilestone(projectId, { title, description: description || undefined });
+      storage.createMilestone(projectId, { 
+        title, 
+        description: description || undefined,
+        targetDate: targetDate || undefined
+      });
       document.getElementById('milestone-title').value = '';
       document.getElementById('milestone-description').value = '';
+      document.getElementById('milestone-target-date').value = '';
       elements.newMilestoneForm.style.display = 'none';
       elements.newMilestoneBtn.style.display = 'block';
       renderMilestones();
@@ -386,10 +393,12 @@ function renderMilestoneCard(milestone, projectId) {
   const totalTasks = milestone.tasks.length;
   
   if (isEditing) {
+    const targetDateValue = milestone.targetDate ? new Date(milestone.targetDate).toISOString().split('T')[0] : '';
     return `
       <div class="milestone-card" data-milestone-id="${milestone.id}" data-project-id="${projectId}">
         <input type="text" class="edit-title" value="${escapeHtml(milestone.title)}" data-milestone-id="${milestone.id}">
         <textarea class="edit-description" data-milestone-id="${milestone.id}">${escapeHtml(milestone.description || '')}</textarea>
+        <input type="date" class="edit-target-date" value="${targetDateValue}" data-milestone-id="${milestone.id}" placeholder="Target Date (optional)">
         <div class="form-actions">
           <button class="btn btn-primary btn-sm save-milestone" data-milestone-id="${milestone.id}" data-project-id="${projectId}">Save</button>
           <button class="btn btn-secondary btn-sm cancel-edit-milestone" data-milestone-id="${milestone.id}">Cancel</button>
@@ -418,6 +427,7 @@ function renderMilestoneCard(milestone, projectId) {
         <div class="project-card-content">
           <h3>${escapeHtml(milestone.title)}</h3>
           ${milestone.description ? `<p>${escapeHtml(milestone.description)}</p>` : ''}
+          ${milestone.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(milestone.targetDate).toLocaleDateString()}</p>` : ''}
           ${milestone.dueDate ? `<p class="text-xs text-muted">Due: ${new Date(milestone.dueDate).toLocaleDateString()}</p>` : ''}
           <p class="text-xs text-muted">${completedTasks}/${totalTasks} tasks completed</p>
         </div>
@@ -550,6 +560,7 @@ function renderAddMilestoneForm(projectId) {
     <form class="add-milestone-form" data-project-id="${projectId}">
       <input type="text" class="milestone-title-input" placeholder="Milestone title" required>
       <textarea class="milestone-description-input" placeholder="Description (optional)" rows="2"></textarea>
+      <input type="date" class="milestone-target-date-input" placeholder="Target Date (optional)">
       <div class="form-actions">
         <button type="submit" class="btn btn-green btn-sm">Add Milestone</button>
         <button type="button" class="btn btn-secondary btn-sm cancel-add-milestone" data-project-id="${projectId}">Cancel</button>
@@ -601,6 +612,7 @@ function renderMilestones() {
         <h3>${escapeHtml(m.title)}</h3>
         <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
         ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
+        ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
         <div class="milestone-progress">
           <div class="progress-bar-container">
             ${notStartedPercent > 0 ? `<div class="progress-bar-segment progress-bar-not-started" style="width: ${notStartedPercent}%"></div>` : ''}
@@ -1211,11 +1223,16 @@ function attachProjectListeners(project) {
     e.preventDefault();
     const title = e.target.querySelector('.milestone-title-input').value.trim();
     const description = e.target.querySelector('.milestone-description-input').value.trim();
+    const targetDate = e.target.querySelector('.milestone-target-date-input')?.value || '';
     
     if (!title) return;
     
     try {
-      storage.createMilestone(projectId, { title, description: description || undefined });
+      storage.createMilestone(projectId, { 
+        title, 
+        description: description || undefined,
+        targetDate: targetDate || undefined
+      });
       state.showAddMilestone.delete(projectId);
       loadProjects();
     } catch (error) {
@@ -1254,11 +1271,16 @@ function attachMilestoneListeners(projectId, milestone) {
   document.querySelector(`.save-milestone[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
     const title = document.querySelector(`.edit-title[data-milestone-id="${milestoneId}"]`).value.trim();
     const description = document.querySelector(`.edit-description[data-milestone-id="${milestoneId}"]`).value.trim();
+    const targetDate = document.querySelector(`.edit-target-date[data-milestone-id="${milestoneId}"]`)?.value || '';
     
     if (!title) return;
     
     try {
-      storage.updateMilestone(projectId, milestoneId, { title, description: description || undefined });
+      storage.updateMilestone(projectId, milestoneId, { 
+        title, 
+        description: description || undefined,
+        targetDate: targetDate || undefined
+      });
       state.editingMilestones.delete(milestoneId);
       loadProjects();
     } catch (error) {
