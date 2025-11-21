@@ -266,7 +266,6 @@ function setupEventListeners() {
     document.getElementById('requirement-description').value = '';
     document.getElementById('requirement-category').value = '';
     document.getElementById('requirement-priority').value = '';
-    document.getElementById('requirement-status').value = '';
     document.getElementById('requirement-milestone').value = '';
     const milestoneSelect = document.getElementById('requirement-milestone');
     if (milestoneSelect) {
@@ -282,7 +281,6 @@ function setupEventListeners() {
     const description = document.getElementById('requirement-description').value.trim();
     const category = document.getElementById('requirement-category').value.trim();
     const priority = document.getElementById('requirement-priority').value;
-    const status = document.getElementById('requirement-status').value;
     
     if (!title || !projectId) return;
     
@@ -292,14 +290,12 @@ function setupEventListeners() {
         description: description || undefined,
         category: category || undefined,
         priority: priority || undefined,
-        status: status || undefined,
         milestoneId: milestoneId || undefined
       });
       document.getElementById('requirement-title').value = '';
       document.getElementById('requirement-description').value = '';
       document.getElementById('requirement-category').value = '';
       document.getElementById('requirement-priority').value = '';
-      document.getElementById('requirement-status').value = '';
       document.getElementById('requirement-milestone').value = '';
       const milestoneSelect = document.getElementById('requirement-milestone');
       if (milestoneSelect) {
@@ -1089,10 +1085,6 @@ function renderRequirements() {
         `<option value="${p.id}" ${r.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
       ).join('');
       
-      const statusOptions = statuses.map(s => 
-        `<option value="${s.id}" ${r.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
-      ).join('');
-      
       const project = state.projects.find(p => p.id === r.projectId);
       const milestoneOptions = project ? project.milestones.map(m => 
         `<option value="${m.id}" ${r.milestoneId === m.id ? 'selected' : ''}>${escapeHtml(m.title)}</option>`
@@ -1126,13 +1118,6 @@ function renderRequirements() {
               <select id="edit-requirement-view-priority-${r.id}" class="edit-priority-requirement-view" data-requirement-id="${r.id}">
                 <option value="">None</option>
                 ${priorityOptions}
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="edit-requirement-view-status-${r.id}">Status</label>
-              <select id="edit-requirement-view-status-${r.id}" class="edit-status-requirement-view" data-requirement-id="${r.id}">
-                <option value="">None</option>
-                ${statusOptions}
               </select>
             </div>
           </div>
@@ -1203,6 +1188,115 @@ function renderRequirements() {
   // Attach event listeners for requirements in the view
   requirements.forEach(requirement => {
     attachRequirementViewListeners(requirement);
+  });
+}
+
+function renderFunctionalRequirements() {
+  if (!elements.functionalRequirementsList) return;
+  
+  const functionalRequirements = storage.getAllFunctionalRequirements();
+  
+  if (functionalRequirements.length === 0) {
+    elements.functionalRequirementsList.innerHTML = `
+      <div class="empty-state">
+        <p>No functional requirements yet</p>
+        <p class="empty-state-sub">Create your first functional requirement to get started!</p>
+      </div>
+    `;
+    return;
+  }
+  
+  elements.functionalRequirementsList.innerHTML = functionalRequirements.map(fr => {
+    const isEditing = state.editingFunctionalRequirements.has(fr.id);
+    
+    if (isEditing) {
+      const project = state.projects.find(p => p.id === fr.projectId);
+      const userRequirements = project ? (project.requirements || []) : [];
+      const selectedUserReqs = fr.linkedUserRequirements || [];
+      
+      const userReqOptions = userRequirements.map(ur => 
+        `<option value="${ur.id}" ${selectedUserReqs.includes(ur.id) ? 'selected' : ''}>${escapeHtml(ur.title)}</option>`
+      ).join('');
+      
+      return `
+        <div class="form-card" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
+          <h2>Edit Functional Requirement</h2>
+          <div class="form-group">
+            <label for="edit-functional-requirement-view-project-${fr.id}">Project *</label>
+            <select id="edit-functional-requirement-view-project-${fr.id}" class="edit-functional-requirement-view-project" data-functional-requirement-id="${fr.id}" required></select>
+          </div>
+          <div class="form-group">
+            <label for="edit-functional-requirement-view-linked-user-requirements-${fr.id}">Linked User Requirements</label>
+            <select id="edit-functional-requirement-view-linked-user-requirements-${fr.id}" class="edit-functional-requirement-view-linked-user-requirements" data-functional-requirement-id="${fr.id}" multiple style="min-height: 100px;">
+              ${userReqOptions}
+            </select>
+            <small style="color: var(--text-muted); font-size: 0.875rem;">Hold Ctrl/Cmd to select multiple</small>
+          </div>
+          <div class="form-group">
+            <label for="edit-functional-requirement-view-tracking-id-${fr.id}">Tracking ID *</label>
+            <input type="text" id="edit-functional-requirement-view-tracking-id-${fr.id}" class="edit-tracking-id-functional-requirement-view" value="${escapeHtml(fr.trackingId)}" data-functional-requirement-id="${fr.id}" required placeholder="Enter tracking ID">
+          </div>
+          <div class="form-group">
+            <label for="edit-functional-requirement-view-title-${fr.id}">Functional Requirement Title *</label>
+            <input type="text" id="edit-functional-requirement-view-title-${fr.id}" class="edit-title-functional-requirement-view" value="${escapeHtml(fr.title)}" data-functional-requirement-id="${fr.id}" required placeholder="Enter functional requirement title">
+          </div>
+          <div class="form-group">
+            <label for="edit-functional-requirement-view-description-${fr.id}">Description (optional)</label>
+            <textarea id="edit-functional-requirement-view-description-${fr.id}" class="edit-description-functional-requirement-view" data-functional-requirement-id="${fr.id}" rows="4" placeholder="Enter functional requirement description">${escapeHtml(fr.description || '')}</textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary save-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Save Functional Requirement</button>
+            <button type="button" class="btn btn-secondary cancel-edit-functional-requirement-view" data-functional-requirement-id="${fr.id}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+    
+    const project = state.projects.find(p => p.id === fr.projectId);
+    const linkedUserReqs = (fr.linkedUserRequirements || []).map(urId => {
+      const ur = project ? (project.requirements || []).find(r => r.id === urId) : null;
+      return ur;
+    }).filter(Boolean);
+    
+    // Get all tasks linked to this functional requirement
+    const allTasks = storage.getAllTasks();
+    const linkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === fr.id);
+    
+    // Calculate progress from linked tasks
+    const progressBarHtml = renderFunctionalRequirementProgressBar(fr, linkedTasks, true);
+    
+    return `
+      <div class="milestone-card" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
+        <div class="project-card-header">
+          <div class="project-card-content">
+            <h3>${escapeHtml(fr.trackingId)} - ${escapeHtml(fr.title)}</h3>
+            <p class="text-muted">Project: ${escapeHtml(fr.project.title)}</p>
+            ${fr.description ? `<p>${escapeHtml(fr.description)}</p>` : ''}
+            ${linkedUserReqs.length > 0 ? `
+              <div class="task-meta">
+                <p class="text-xs text-muted">Linked User Requirements:</p>
+                ${linkedUserReqs.map(ur => `<span class="badge" style="background: var(--gray-100); color: var(--text-primary); border-color: var(--border);">${escapeHtml(ur.title)}</span>`).join('')}
+              </div>
+            ` : ''}
+            <div class="task-meta">
+              <p class="text-xs text-muted">${linkedTasks.length} task${linkedTasks.length !== 1 ? 's' : ''} linked</p>
+            </div>
+            <div class="milestone-progress">
+              ${progressBarHtml}
+            </div>
+          </div>
+          <div class="project-card-actions">
+            <button class="btn btn-blue btn-xs edit-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Edit</button>
+            <button class="btn btn-red btn-xs delete-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Attach event listeners for functional requirements in the view
+  functionalRequirements.forEach(functionalRequirement => {
+    attachFunctionalRequirementViewListeners(functionalRequirement);
   });
 }
 
