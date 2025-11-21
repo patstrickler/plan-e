@@ -770,8 +770,16 @@ function setupEventListeners() {
     const newProjectId = projectSelect ? projectSelect.value : projectId;
     let targetDate = '';
     if (targetDateInput) {
-      if (targetDateInput.flatpickr && targetDateInput.flatpickr.input) {
-        targetDate = targetDateInput.flatpickr.input.value;
+      if (targetDateInput.flatpickr) {
+        // Get value from flatpickr instance - same as add new form
+        const selectedDates = targetDateInput.flatpickr.selectedDates;
+        if (selectedDates && selectedDates.length > 0) {
+          targetDate = targetDateInput.flatpickr.formatDate(selectedDates[0], 'Y-m-d');
+        } else if (targetDateInput.flatpickr.input && targetDateInput.flatpickr.input.value) {
+          targetDate = targetDateInput.flatpickr.input.value;
+        } else {
+          targetDate = targetDateInput.value;
+        }
       } else {
         targetDate = targetDateInput.value || '';
       }
