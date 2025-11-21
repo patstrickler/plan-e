@@ -38,12 +38,17 @@ Or simply open `index.html` directly in your browser - no build step required!
 
 ### Prerequisites
 
-- Docker and Docker Compose installed on your system
+- Docker Desktop installed and running on your system
+- Make sure Docker Desktop is started (check for the whale icon in your menu bar)
 
 ### Running with Docker
 
 1. **Build and run with Docker Compose** (recommended):
 ```bash
+# Try the newer syntax first (Docker Desktop 20.10+)
+docker compose up -d
+
+# Or use the older syntax if the above doesn't work
 docker-compose up -d
 ```
 
@@ -57,9 +62,9 @@ docker run -d -p 3000:80 --name plan-e plan-e
 
 ### Docker Commands
 
-- **Stop the container**: `docker-compose down` or `docker stop plan-e`
-- **View logs**: `docker-compose logs -f` or `docker logs -f plan-e`
-- **Rebuild after changes**: `docker-compose up -d --build`
+- **Stop the container**: `docker compose down` (or `docker-compose down`) or `docker stop plan-e`
+- **View logs**: `docker compose logs -f` (or `docker-compose logs -f`) or `docker logs -f plan-e`
+- **Rebuild after changes**: `docker compose up -d --build` (or `docker-compose up -d --build`)
 
 ## Deployment
 

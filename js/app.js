@@ -25,7 +25,6 @@ const state = {
   requirementSearch: '',
   requirementFilterProject: '',
   requirementFilterPriority: '',
-  requirementFilterCategory: '',
   requirementSortColumn: '',
   requirementSortDirection: 'asc',
   functionalRequirementSearch: '',
@@ -1549,6 +1548,33 @@ function renderRequirements() {
   
   // Attach sort listeners
   attachRequirementSortListeners();
+}
+
+function populateRequirementFilters() {
+  const priorities = storage.getPriorities();
+  const projects = storage.getAllProjects();
+  
+  // Populate priority filter
+  const priorityFilter = document.getElementById('requirement-filter-priority');
+  if (priorityFilter && priorityFilter.options.length === 1) {
+    priorities.forEach(priority => {
+      const option = document.createElement('option');
+      option.value = priority.id;
+      option.textContent = priority.label;
+      priorityFilter.appendChild(option);
+    });
+  }
+  
+  // Populate project filter
+  const projectFilter = document.getElementById('requirement-filter-project');
+  if (projectFilter && projectFilter.options.length === 1) {
+    projects.forEach(project => {
+      const option = document.createElement('option');
+      option.value = project.id;
+      option.textContent = project.title;
+      projectFilter.appendChild(option);
+    });
+  }
 }
 
 function sortRequirements(requirements) {
