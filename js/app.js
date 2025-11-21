@@ -605,7 +605,6 @@ function setupEventListeners() {
     document.getElementById('edit-requirement-project-id').value = requirement.projectId;
     document.getElementById('edit-requirement-title').value = requirement.title || '';
     document.getElementById('edit-requirement-description').value = requirement.description || '';
-    document.getElementById('edit-requirement-category').value = requirement.category || '';
     
     // Populate project select
     populateProjectSelect('edit-requirement-project');
@@ -625,11 +624,6 @@ function setupEventListeners() {
       const prioritySelect = document.getElementById('edit-requirement-priority');
       if (prioritySelect) prioritySelect.value = requirement.priority || '';
     }, 150);
-    
-    // Handle project change to update milestones
-    document.getElementById('edit-requirement-project')?.addEventListener('change', (e) => {
-      populateMilestoneSelect('edit-requirement-milestone', e.target.value);
-    });
     
     // Show form
     editRequirementForm.style.display = 'block';
@@ -806,7 +800,6 @@ function setupEventListeners() {
     const projectSelect = document.getElementById('edit-requirement-project');
     const milestoneSelect = document.getElementById('edit-requirement-milestone');
     const prioritySelect = document.getElementById('edit-requirement-priority');
-    const categoryInput = document.getElementById('edit-requirement-category');
     
     const requirementId = requirementIdInput ? requirementIdInput.value : '';
     const projectId = projectIdInput ? projectIdInput.value : '';
@@ -815,7 +808,6 @@ function setupEventListeners() {
     const newProjectId = projectSelect ? projectSelect.value : projectId;
     const milestoneId = milestoneSelect ? milestoneSelect.value : '';
     const priority = prioritySelect ? prioritySelect.value : '';
-    const category = categoryInput ? categoryInput.value.trim() : '';
     
     if (!title || !newProjectId || !requirementId) return;
     
@@ -823,7 +815,6 @@ function setupEventListeners() {
       storage.updateRequirement(newProjectId, requirementId, {
         title,
         description: description || undefined,
-        category: category || undefined,
         priority: priority || undefined,
         milestoneId: milestoneId || undefined
       });
@@ -1461,14 +1452,23 @@ function renderMilestonesTable(milestones) {
     `;
   }).join('');
   
+  const getSortIndicator = (column) => {
+    if (state.milestoneSortColumn !== column) return '';
+    return state.milestoneSortDirection === 'asc' ? ' ↑' : ' ↓';
+  };
+  
+  const getSortClass = (column) => {
+    return state.milestoneSortColumn === column ? 'sortable-header sorted' : 'sortable-header';
+  };
+  
   return `
     <table class="tasks-table">
       <thead>
         <tr>
-          <th>Milestone</th>
-          <th>Project</th>
-          <th>Target Date</th>
-          <th>Progress</th>
+          <th class="${getSortClass('title')}" data-sort-column="title">Milestone${getSortIndicator('title')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('targetDate')}" data-sort-column="targetDate">Target Date${getSortIndicator('targetDate')}</th>
+          <th class="${getSortClass('progress')}" data-sort-column="progress">Progress${getSortIndicator('progress')}</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -1480,6 +1480,22 @@ function renderMilestonesTable(milestones) {
   `;
 }
 
+function attachMilestoneSortListeners() {
+  const headers = document.querySelectorAll('#milestones-list .sortable-header');
+  headers.forEach(header => {
+    header.addEventListener('click', () => {
+      const column = header.getAttribute('data-sort-column');
+      if (state.milestoneSortColumn === column) {
+        state.milestoneSortDirection = state.milestoneSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.milestoneSortColumn = column;
+        state.milestoneSortDirection = 'asc';
+      }
+      renderMilestones();
+    });
+  });
+}
+
 function renderRequirements() {
   if (!elements.requirementsList) return;
   
@@ -1488,7 +1504,10 @@ function renderRequirements() {
   // Apply filters
   const filteredRequirements = filterRequirements(allRequirements);
   
-  if (filteredRequirements.length === 0) {
+  // Apply sorting
+  const sortedRequirements = sortRequirements(filteredRequirements);
+  
+  if (sortedRequirements.length === 0) {
     elements.requirementsList.innerHTML = `
       <div class="empty-state">
         <p>No user requirements found</p>
@@ -1499,15 +1518,87 @@ function renderRequirements() {
   }
   
   // Render table
-  elements.requirementsList.innerHTML = renderRequirementsTable(filteredRequirements);
+  elements.requirementsList.innerHTML = renderRequirementsTable(sortedRequirements);
   
   // Attach event listeners for requirements in the view
-  filteredRequirements.forEach(requirement => {
+  sortedRequirements.forEach(requirement => {
     attachRequirementViewListeners(requirement);
   });
   
   // Populate filter dropdowns if not already populated
   populateRequirementFilters();
+  
+  // Attach sort listeners
+  attachRequirementSortListeners();
+}
+
+function sortRequirements(requirements) {
+  if (!state.requirementSortColumn) return requirements;
+  
+  const sorted = [...requirements].sort((a, b) => {
+    let aVal, bVal;
+    
+    switch (state.requirementSortColumn) {
+      case 'title':
+        aVal = a.title || '';
+        bVal = b.title || '';
+        break;
+      case 'project':
+        aVal = a.project?.title || '';
+        bVal = b.project?.title || '';
+        break;
+      case 'milestone':
+        const aProject = state.projects.find(p => p.id === a.projectId);
+        const bProject = state.projects.find(p => p.id === b.projectId);
+        const aMilestone = aProject && a.milestoneId ? aProject.milestones.find(m => m.id === a.milestoneId) : null;
+        const bMilestone = bProject && b.milestoneId ? bProject.milestones.find(m => m.id === b.milestoneId) : null;
+        aVal = aMilestone?.title || '';
+        bVal = bMilestone?.title || '';
+        break;
+      case 'priority':
+        const priorities = storage.getPriorities();
+        const aPriority = priorities.find(p => p.id === a.priority);
+        const bPriority = priorities.find(p => p.id === b.priority);
+        aVal = aPriority?.label || '';
+        bVal = bPriority?.label || '';
+        break;
+      case 'category':
+        aVal = a.category || '';
+        bVal = b.category || '';
+        break;
+      case 'linkedFRs':
+        const allFRs = storage.getAllFunctionalRequirements();
+        const aLinkedFRs = allFRs.filter(fr => (fr.linkedUserRequirements || []).includes(a.id));
+        const bLinkedFRs = allFRs.filter(fr => (fr.linkedUserRequirements || []).includes(b.id));
+        aVal = aLinkedFRs.length;
+        bVal = bLinkedFRs.length;
+        break;
+      case 'linkedTasks':
+        const allFRs2 = storage.getAllFunctionalRequirements();
+        const allTasks = storage.getAllTasks();
+        const aLinkedFRs2 = allFRs2.filter(fr => (fr.linkedUserRequirements || []).includes(a.id));
+        const bLinkedFRs2 = allFRs2.filter(fr => (fr.linkedUserRequirements || []).includes(b.id));
+        const aLinkedTasks = allTasks.filter(t => aLinkedFRs2.some(fr => fr.id === t.linkedFunctionalRequirement));
+        const bLinkedTasks = allTasks.filter(t => bLinkedFRs2.some(fr => fr.id === t.linkedFunctionalRequirement));
+        aVal = aLinkedTasks.length;
+        bVal = bLinkedTasks.length;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return state.requirementSortDirection === 'asc' 
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    } else {
+      return state.requirementSortDirection === 'asc' 
+        ? aVal - bVal
+        : bVal - aVal;
+    }
+  });
+  
+  return sorted;
 }
 
 function filterRequirements(requirements) {
@@ -1583,16 +1674,25 @@ function renderRequirementsTable(requirements) {
     `;
   }).join('');
   
+  const getSortIndicator = (column) => {
+    if (state.requirementSortColumn !== column) return '';
+    return state.requirementSortDirection === 'asc' ? ' ↑' : ' ↓';
+  };
+  
+  const getSortClass = (column) => {
+    return state.requirementSortColumn === column ? 'sortable-header sorted' : 'sortable-header';
+  };
+  
   return `
     <table class="tasks-table">
       <thead>
         <tr>
-          <th>Requirement</th>
-          <th>Project</th>
-          <th>Milestone</th>
-          <th>Priority</th>
-          <th>Linked FRs</th>
-          <th>Linked Tasks</th>
+          <th class="${getSortClass('title')}" data-sort-column="title">Requirement${getSortIndicator('title')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
+          <th class="${getSortClass('priority')}" data-sort-column="priority">Priority${getSortIndicator('priority')}</th>
+          <th class="${getSortClass('linkedFRs')}" data-sort-column="linkedFRs">Linked FRs${getSortIndicator('linkedFRs')}</th>
+          <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
           <th>Progress</th>
           <th>Actions</th>
         </tr>
@@ -1602,6 +1702,22 @@ function renderRequirementsTable(requirements) {
       </tbody>
     </table>
   `;
+}
+
+function attachRequirementSortListeners() {
+  const headers = document.querySelectorAll('#requirements-list .sortable-header');
+  headers.forEach(header => {
+    header.addEventListener('click', () => {
+      const column = header.getAttribute('data-sort-column');
+      if (state.requirementSortColumn === column) {
+        state.requirementSortDirection = state.requirementSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.requirementSortColumn = column;
+        state.requirementSortDirection = 'asc';
+      }
+      renderRequirements();
+    });
+  });
 }
 
 function renderFunctionalRequirements() {
@@ -1623,10 +1739,10 @@ function renderFunctionalRequirements() {
   }
   
   // Render table
-  elements.functionalRequirementsList.innerHTML = renderFunctionalRequirementsTable(filteredFunctionalRequirements);
+  elements.functionalRequirementsList.innerHTML = renderFunctionalRequirementsTable(sortedFunctionalRequirements);
   
   // Attach event listeners for functional requirements in the view
-  filteredFunctionalRequirements.forEach(functionalRequirement => {
+  sortedFunctionalRequirements.forEach(functionalRequirement => {
     attachFunctionalRequirementViewListeners(functionalRequirement);
   });
   
