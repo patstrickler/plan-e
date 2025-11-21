@@ -571,7 +571,7 @@ function setupEventListeners() {
     const targetDateInput = document.getElementById('edit-milestone-target-date');
     if (targetDateInput) {
       // Destroy existing flatpickr instance if it exists
-      if (targetDateInput.flatpickr) {
+      if (targetDateInput.flatpickr && typeof targetDateInput.flatpickr.destroy === 'function') {
         targetDateInput.flatpickr.destroy();
       }
       
@@ -585,6 +585,11 @@ function setupEventListeners() {
       
       // Initialize date picker - same as add new form
       setTimeout(() => {
+        // Make sure we don't have a stale instance
+        if (targetDateInput.flatpickr && typeof targetDateInput.flatpickr.destroy === 'function') {
+          targetDateInput.flatpickr.destroy();
+        }
+        
         window.editMilestoneTargetDatePicker = flatpickr(targetDateInput, {
           dateFormat: 'Y-m-d',
           clickOpens: true,
@@ -592,11 +597,15 @@ function setupEventListeners() {
         });
         // Ensure calendar opens on focus
         targetDateInput.addEventListener('focus', () => {
-          window.editMilestoneTargetDatePicker.open();
+          if (window.editMilestoneTargetDatePicker) {
+            window.editMilestoneTargetDatePicker.open();
+          }
         });
         // Also open on click
         targetDateInput.addEventListener('click', () => {
-          window.editMilestoneTargetDatePicker.open();
+          if (window.editMilestoneTargetDatePicker) {
+            window.editMilestoneTargetDatePicker.open();
+          }
         });
       }, 100);
     }
@@ -1556,7 +1565,11 @@ function populateRequirementFilters() {
   
   // Populate priority filter
   const priorityFilter = document.getElementById('requirement-filter-priority');
-  if (priorityFilter && priorityFilter.options.length === 1) {
+  if (priorityFilter) {
+    // Clear existing options except the first one
+    while (priorityFilter.options.length > 1) {
+      priorityFilter.remove(1);
+    }
     priorities.forEach(priority => {
       const option = document.createElement('option');
       option.value = priority.id;
@@ -1567,7 +1580,49 @@ function populateRequirementFilters() {
   
   // Populate project filter
   const projectFilter = document.getElementById('requirement-filter-project');
-  if (projectFilter && projectFilter.options.length === 1) {
+  if (projectFilter) {
+    // Clear existing options except the first one
+    while (projectFilter.options.length > 1) {
+      projectFilter.remove(1);
+    }
+    projects.forEach(project => {
+      const option = document.createElement('option');
+      option.value = project.id;
+      option.textContent = project.title;
+      projectFilter.appendChild(option);
+    });
+  }
+}
+
+function populateMilestoneFilters() {
+  const projects = storage.getAllProjects();
+  
+  // Populate project filter
+  const projectFilter = document.getElementById('milestone-filter-project');
+  if (projectFilter) {
+    // Clear existing options except the first one
+    while (projectFilter.options.length > 1) {
+      projectFilter.remove(1);
+    }
+    projects.forEach(project => {
+      const option = document.createElement('option');
+      option.value = project.id;
+      option.textContent = project.title;
+      projectFilter.appendChild(option);
+    });
+  }
+}
+
+function populateFunctionalRequirementFilters() {
+  const projects = storage.getAllProjects();
+  
+  // Populate project filter
+  const projectFilter = document.getElementById('functional-requirement-filter-project');
+  if (projectFilter) {
+    // Clear existing options except the first one
+    while (projectFilter.options.length > 1) {
+      projectFilter.remove(1);
+    }
     projects.forEach(project => {
       const option = document.createElement('option');
       option.value = project.id;
@@ -2245,7 +2300,11 @@ function populateTaskFilters() {
   
   // Populate status filter
   const statusFilter = document.getElementById('task-filter-status');
-  if (statusFilter && statusFilter.options.length === 1) {
+  if (statusFilter) {
+    // Clear existing options except the first one
+    while (statusFilter.options.length > 1) {
+      statusFilter.remove(1);
+    }
     statuses.forEach(status => {
       const option = document.createElement('option');
       option.value = status.id;
@@ -2256,7 +2315,11 @@ function populateTaskFilters() {
   
   // Populate priority filter
   const priorityFilter = document.getElementById('task-filter-priority');
-  if (priorityFilter && priorityFilter.options.length === 1) {
+  if (priorityFilter) {
+    // Clear existing options except the first one
+    while (priorityFilter.options.length > 1) {
+      priorityFilter.remove(1);
+    }
     priorities.forEach(priority => {
       const option = document.createElement('option');
       option.value = priority.id;
@@ -2267,7 +2330,11 @@ function populateTaskFilters() {
   
   // Populate project filter
   const projectFilter = document.getElementById('task-filter-project');
-  if (projectFilter && projectFilter.options.length === 1) {
+  if (projectFilter) {
+    // Clear existing options except the first one
+    while (projectFilter.options.length > 1) {
+      projectFilter.remove(1);
+    }
     projects.forEach(project => {
       const option = document.createElement('option');
       option.value = project.id;
@@ -2278,7 +2345,11 @@ function populateTaskFilters() {
   
   // Populate resource filter
   const resourceFilter = document.getElementById('task-filter-resource');
-  if (resourceFilter && resourceFilter.options.length === 1) {
+  if (resourceFilter) {
+    // Clear existing options except the first one
+    while (resourceFilter.options.length > 1) {
+      resourceFilter.remove(1);
+    }
     users.forEach(user => {
       const option = document.createElement('option');
       option.value = user.name;
