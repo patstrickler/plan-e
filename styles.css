@@ -115,19 +115,16 @@ body {
 }
 
 .nav-link {
-  padding: 0.5rem 1rem;
-  background: var(--gray-100);
-  color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  color: var(--primary);
   text-decoration: none;
-  border-radius: 0.5rem;
   font-weight: 500;
-  transition: all 0.2s;
-  border: 1px solid var(--border);
+  transition: color 0.2s;
 }
 
 .nav-link:hover {
-  background: var(--gray-200);
-  border-color: var(--border-hover);
+  color: var(--primary-hover);
+  text-decoration: underline;
 }
 
 .back-link {
