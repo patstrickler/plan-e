@@ -20,11 +20,20 @@ const state = {
   taskFilterResource: '',
   milestoneSearch: '',
   milestoneFilterProject: '',
+  milestoneSortColumn: '',
+  milestoneSortDirection: 'asc',
   requirementSearch: '',
   requirementFilterProject: '',
   requirementFilterPriority: '',
+  requirementFilterCategory: '',
+  requirementSortColumn: '',
+  requirementSortDirection: 'asc',
   functionalRequirementSearch: '',
   functionalRequirementFilterProject: '',
+  functionalRequirementSortColumn: '',
+  functionalRequirementSortDirection: 'asc',
+  taskSortColumn: '',
+  taskSortDirection: 'asc',
 };
 
 // DOM elements
@@ -544,6 +553,126 @@ function setupEventListeners() {
     editTaskForm.style.display = 'block';
   };
 
+  // Function to open edit milestone modal and populate it
+  window.openEditMilestoneModal = function(milestone) {
+    const editMilestoneForm = document.getElementById('edit-milestone-form');
+    if (!editMilestoneForm) return;
+
+    // Populate form fields
+    document.getElementById('edit-milestone-id').value = milestone.id;
+    document.getElementById('edit-milestone-project-id').value = milestone.projectId;
+    document.getElementById('edit-milestone-title').value = milestone.title || '';
+    document.getElementById('edit-milestone-description').value = milestone.description || '';
+    
+    // Populate project select
+    populateProjectSelect('edit-milestone-project');
+    document.getElementById('edit-milestone-project').value = milestone.projectId;
+    
+    // Set target date
+    const targetDateInput = document.getElementById('edit-milestone-target-date');
+    if (targetDateInput && milestone.targetDate) {
+      const targetDateValue = new Date(milestone.targetDate).toISOString().split('T')[0];
+      targetDateInput.value = targetDateValue;
+    }
+    
+    // Initialize date picker
+    setTimeout(() => {
+      if (targetDateInput && !targetDateInput.flatpickr) {
+        const fp = flatpickr(targetDateInput, {
+          dateFormat: 'Y-m-d',
+          clickOpens: true,
+          allowInput: false,
+        });
+        targetDateInput.addEventListener('focus', () => {
+          fp.open();
+        });
+      } else if (targetDateInput && targetDateInput.flatpickr && milestone.targetDate) {
+        targetDateInput.flatpickr.setDate(milestone.targetDate);
+      }
+    }, 100);
+    
+    // Show form
+    editMilestoneForm.style.display = 'block';
+  };
+
+  // Function to open edit requirement modal and populate it
+  window.openEditRequirementModal = function(requirement) {
+    const editRequirementForm = document.getElementById('edit-requirement-form');
+    if (!editRequirementForm) return;
+
+    // Populate form fields
+    document.getElementById('edit-requirement-id').value = requirement.id;
+    document.getElementById('edit-requirement-project-id').value = requirement.projectId;
+    document.getElementById('edit-requirement-title').value = requirement.title || '';
+    document.getElementById('edit-requirement-description').value = requirement.description || '';
+    document.getElementById('edit-requirement-category').value = requirement.category || '';
+    
+    // Populate project select
+    populateProjectSelect('edit-requirement-project');
+    document.getElementById('edit-requirement-project').value = requirement.projectId;
+    
+    // Populate milestone select
+    populateMilestoneSelect('edit-requirement-milestone', requirement.projectId);
+    setTimeout(() => {
+      if (requirement.milestoneId) {
+        document.getElementById('edit-requirement-milestone').value = requirement.milestoneId;
+      }
+    }, 100);
+    
+    // Populate priority select
+    updateAllSelects();
+    setTimeout(() => {
+      const prioritySelect = document.getElementById('edit-requirement-priority');
+      if (prioritySelect) prioritySelect.value = requirement.priority || '';
+    }, 150);
+    
+    // Handle project change to update milestones
+    document.getElementById('edit-requirement-project')?.addEventListener('change', (e) => {
+      populateMilestoneSelect('edit-requirement-milestone', e.target.value);
+    });
+    
+    // Show form
+    editRequirementForm.style.display = 'block';
+  };
+
+  // Function to open edit functional requirement modal and populate it
+  window.openEditFunctionalRequirementModal = function(functionalRequirement) {
+    const editFunctionalRequirementForm = document.getElementById('edit-functional-requirement-form');
+    if (!editFunctionalRequirementForm) return;
+
+    // Populate form fields
+    document.getElementById('edit-functional-requirement-id').value = functionalRequirement.id;
+    document.getElementById('edit-functional-requirement-project-id').value = functionalRequirement.projectId;
+    document.getElementById('edit-functional-requirement-tracking-id').value = functionalRequirement.trackingId || '';
+    document.getElementById('edit-functional-requirement-title').value = functionalRequirement.title || '';
+    document.getElementById('edit-functional-requirement-description').value = functionalRequirement.description || '';
+    
+    // Populate project select
+    populateProjectSelect('edit-functional-requirement-project');
+    document.getElementById('edit-functional-requirement-project').value = functionalRequirement.projectId;
+    
+    // Populate user requirements select
+    populateUserRequirementsSelect('edit-functional-requirement-linked-user-requirements', functionalRequirement.projectId);
+    setTimeout(() => {
+      const userReqsSelect = document.getElementById('edit-functional-requirement-linked-user-requirements');
+      if (userReqsSelect) {
+        const selectedUserReqs = functionalRequirement.linkedUserRequirements || [];
+        selectedUserReqs.forEach(urId => {
+          const option = userReqsSelect.querySelector(`option[value="${urId}"]`);
+          if (option) option.selected = true;
+        });
+      }
+    }, 100);
+    
+    // Handle project change to update user requirements
+    document.getElementById('edit-functional-requirement-project')?.addEventListener('change', (e) => {
+      populateUserRequirementsSelect('edit-functional-requirement-linked-user-requirements', e.target.value);
+    });
+    
+    // Show form
+    editFunctionalRequirementForm.style.display = 'block';
+  };
+
   editTaskForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const taskIdInput = document.getElementById('edit-task-id');
@@ -604,6 +733,163 @@ function setupEventListeners() {
     if (e && e.target && e.target.value !== undefined) {
       populateMilestoneSelect('edit-task-milestone', e.target.value);
       populateFunctionalRequirementSelect('edit-task-functional-requirement', e.target.value);
+    }
+  });
+
+  // Edit Milestone Form handlers
+  const editMilestoneForm = document.getElementById('edit-milestone-form');
+  const cancelEditMilestoneBtn = document.getElementById('cancel-edit-milestone-btn');
+  
+  cancelEditMilestoneBtn?.addEventListener('click', () => {
+    if (editMilestoneForm) editMilestoneForm.style.display = 'none';
+    // Clear date picker if it exists
+    const targetDateInput = document.getElementById('edit-milestone-target-date');
+    if (targetDateInput && targetDateInput.flatpickr) {
+      targetDateInput.flatpickr.clear();
+    }
+  });
+
+  editMilestoneForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const milestoneIdInput = document.getElementById('edit-milestone-id');
+    const projectIdInput = document.getElementById('edit-milestone-project-id');
+    const titleInput = document.getElementById('edit-milestone-title');
+    const descriptionInput = document.getElementById('edit-milestone-description');
+    const projectSelect = document.getElementById('edit-milestone-project');
+    const targetDateInput = document.getElementById('edit-milestone-target-date');
+    
+    const milestoneId = milestoneIdInput ? milestoneIdInput.value : '';
+    const projectId = projectIdInput ? projectIdInput.value : '';
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const newProjectId = projectSelect ? projectSelect.value : projectId;
+    let targetDate = '';
+    if (targetDateInput) {
+      if (targetDateInput.flatpickr && targetDateInput.flatpickr.input) {
+        targetDate = targetDateInput.flatpickr.input.value;
+      } else {
+        targetDate = targetDateInput.value || '';
+      }
+    }
+    
+    if (!title || !newProjectId || !milestoneId) return;
+    
+    try {
+      storage.updateMilestone(newProjectId, milestoneId, {
+        title,
+        description: description || undefined,
+        targetDate: targetDate || undefined
+      });
+      if (editMilestoneForm) editMilestoneForm.style.display = 'none';
+      renderMilestones();
+      renderProjects();
+    } catch (error) {
+      console.error('Failed to update milestone:', error);
+      alert('Failed to update milestone');
+    }
+  });
+
+  // Edit Requirement Form handlers
+  const editRequirementForm = document.getElementById('edit-requirement-form');
+  const cancelEditRequirementBtn = document.getElementById('cancel-edit-requirement-btn');
+  
+  cancelEditRequirementBtn?.addEventListener('click', () => {
+    if (editRequirementForm) editRequirementForm.style.display = 'none';
+  });
+
+  editRequirementForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const requirementIdInput = document.getElementById('edit-requirement-id');
+    const projectIdInput = document.getElementById('edit-requirement-project-id');
+    const titleInput = document.getElementById('edit-requirement-title');
+    const descriptionInput = document.getElementById('edit-requirement-description');
+    const projectSelect = document.getElementById('edit-requirement-project');
+    const milestoneSelect = document.getElementById('edit-requirement-milestone');
+    const prioritySelect = document.getElementById('edit-requirement-priority');
+    const categoryInput = document.getElementById('edit-requirement-category');
+    
+    const requirementId = requirementIdInput ? requirementIdInput.value : '';
+    const projectId = projectIdInput ? projectIdInput.value : '';
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const newProjectId = projectSelect ? projectSelect.value : projectId;
+    const milestoneId = milestoneSelect ? milestoneSelect.value : '';
+    const priority = prioritySelect ? prioritySelect.value : '';
+    const category = categoryInput ? categoryInput.value.trim() : '';
+    
+    if (!title || !newProjectId || !requirementId) return;
+    
+    try {
+      storage.updateRequirement(newProjectId, requirementId, {
+        title,
+        description: description || undefined,
+        category: category || undefined,
+        priority: priority || undefined,
+        milestoneId: milestoneId || undefined
+      });
+      if (editRequirementForm) editRequirementForm.style.display = 'none';
+      renderRequirements();
+      renderProjects();
+    } catch (error) {
+      console.error('Failed to update requirement:', error);
+      alert('Failed to update requirement');
+    }
+  });
+
+  document.getElementById('edit-requirement-project')?.addEventListener('change', (e) => {
+    if (e && e.target && e.target.value !== undefined) {
+      populateMilestoneSelect('edit-requirement-milestone', e.target.value);
+    }
+  });
+
+  // Edit Functional Requirement Form handlers
+  const editFunctionalRequirementForm = document.getElementById('edit-functional-requirement-form');
+  const cancelEditFunctionalRequirementBtn = document.getElementById('cancel-edit-functional-requirement-btn');
+  
+  cancelEditFunctionalRequirementBtn?.addEventListener('click', () => {
+    if (editFunctionalRequirementForm) editFunctionalRequirementForm.style.display = 'none';
+  });
+
+  editFunctionalRequirementForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const functionalRequirementIdInput = document.getElementById('edit-functional-requirement-id');
+    const projectIdInput = document.getElementById('edit-functional-requirement-project-id');
+    const trackingIdInput = document.getElementById('edit-functional-requirement-tracking-id');
+    const titleInput = document.getElementById('edit-functional-requirement-title');
+    const descriptionInput = document.getElementById('edit-functional-requirement-description');
+    const projectSelect = document.getElementById('edit-functional-requirement-project');
+    const userReqsSelect = document.getElementById('edit-functional-requirement-linked-user-requirements');
+    
+    const functionalRequirementId = functionalRequirementIdInput ? functionalRequirementIdInput.value : '';
+    const projectId = projectIdInput ? projectIdInput.value : '';
+    const trackingId = trackingIdInput ? trackingIdInput.value.trim() : '';
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const newProjectId = projectSelect ? projectSelect.value : projectId;
+    const linkedUserRequirements = userReqsSelect ? Array.from(userReqsSelect.selectedOptions).map(opt => opt.value) : [];
+    
+    if (!trackingId || !title || !newProjectId || !functionalRequirementId) return;
+    
+    try {
+      storage.updateFunctionalRequirement(newProjectId, functionalRequirementId, {
+        trackingId,
+        title,
+        description: description || undefined,
+        linkedUserRequirements: linkedUserRequirements || []
+      });
+      if (editFunctionalRequirementForm) editFunctionalRequirementForm.style.display = 'none';
+      renderFunctionalRequirements();
+      renderRequirements();
+      renderProjects();
+    } catch (error) {
+      console.error('Failed to update functional requirement:', error);
+      alert('Failed to update functional requirement');
+    }
+  });
+
+  document.getElementById('edit-functional-requirement-project')?.addEventListener('change', (e) => {
+    if (e && e.target && e.target.value !== undefined) {
+      populateUserRequirementsSelect('edit-functional-requirement-linked-user-requirements', e.target.value);
     }
   });
 
@@ -1305,8 +1591,8 @@ function filterFunctionalRequirements(functionalRequirements) {
       const matchesSearch = 
         functionalRequirement.title.toLowerCase().includes(searchLower) ||
         (functionalRequirement.description && functionalRequirement.description.toLowerCase().includes(searchLower)) ||
-        functionalRequirement.trackingId.toLowerCase().includes(searchLower) ||
-        functionalRequirement.project.title.toLowerCase().includes(searchLower);
+        (functionalRequirement.trackingId && functionalRequirement.trackingId.toLowerCase().includes(searchLower)) ||
+        (functionalRequirement.project && functionalRequirement.project.title.toLowerCase().includes(searchLower));
       if (!matchesSearch) return false;
     }
     
@@ -1385,7 +1671,10 @@ function renderTasks() {
   // Apply filters
   const filteredTasks = filterTasks(allTasks);
   
-  if (filteredTasks.length === 0) {
+  // Apply sorting
+  const sortedTasks = sortTasks(filteredTasks);
+  
+  if (sortedTasks.length === 0) {
     elements.tasksList.innerHTML = `
       <div class="empty-state">
         <p>No tasks found</p>
@@ -1396,10 +1685,10 @@ function renderTasks() {
   }
   
   // Render table
-  elements.tasksList.innerHTML = renderTasksTable(filteredTasks);
+  elements.tasksList.innerHTML = renderTasksTable(sortedTasks);
   
   // Re-attach event listeners
-  filteredTasks.forEach(task => {
+  sortedTasks.forEach(task => {
     attachTaskListenersForView(task);
   });
   
@@ -1443,6 +1732,76 @@ function filterTasks(tasks) {
     
     return true;
   });
+}
+
+function sortTasks(tasks) {
+  if (!state.taskSortColumn) return tasks;
+  
+  const sorted = [...tasks].sort((a, b) => {
+    let aVal, bVal;
+    
+    switch (state.taskSortColumn) {
+      case 'status':
+        const statuses = storage.getStatuses();
+        const aStatus = statuses.find(s => s.id === a.status);
+        const bStatus = statuses.find(s => s.id === b.status);
+        aVal = aStatus?.label || '';
+        bVal = bStatus?.label || '';
+        break;
+      case 'priority':
+        const priorities = storage.getPriorities();
+        const aPriority = priorities.find(p => p.id === a.priority);
+        const bPriority = priorities.find(p => p.id === b.priority);
+        aVal = aPriority?.label || '';
+        bVal = bPriority?.label || '';
+        break;
+      case 'title':
+        aVal = a.title || '';
+        bVal = b.title || '';
+        break;
+      case 'project':
+        aVal = a.project?.title || '';
+        bVal = b.project?.title || '';
+        break;
+      case 'milestone':
+        aVal = a.milestone?.title || '';
+        bVal = b.milestone?.title || '';
+        break;
+      case 'effort':
+        const effortLevels = storage.getEffortLevels();
+        const aEffort = effortLevels.find(e => e.id === a.effortLevel);
+        const bEffort = effortLevels.find(e => e.id === b.effortLevel);
+        aVal = aEffort?.label || '';
+        bVal = bEffort?.label || '';
+        break;
+      case 'assigned':
+        aVal = a.assignedResource || '';
+        bVal = b.assignedResource || '';
+        break;
+      case 'startDate':
+        aVal = a.startDate ? new Date(a.startDate).getTime() : 0;
+        bVal = b.startDate ? new Date(b.startDate).getTime() : 0;
+        break;
+      case 'completedDate':
+        aVal = a.completedDate ? new Date(a.completedDate).getTime() : 0;
+        bVal = b.completedDate ? new Date(b.completedDate).getTime() : 0;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return state.taskSortDirection === 'asc' 
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    } else {
+      return state.taskSortDirection === 'asc' 
+        ? aVal - bVal
+        : bVal - aVal;
+    }
+  });
+  
+  return sorted;
 }
 
 function renderTasksTable(tasks) {
@@ -1502,18 +1861,27 @@ function renderTasksTable(tasks) {
     `;
   }).join('');
   
+  const getSortIndicator = (column) => {
+    if (state.taskSortColumn !== column) return '';
+    return state.taskSortDirection === 'asc' ? ' ↑' : ' ↓';
+  };
+  
+  const getSortClass = (column) => {
+    return state.taskSortColumn === column ? 'sortable-header sorted' : 'sortable-header';
+  };
+  
   return `
     <table class="tasks-table">
       <thead>
         <tr>
-          <th>Status</th>
-          <th>Priority</th>
-          <th>Task</th>
-          <th>Project</th>
-          <th>Milestone</th>
-          <th>Effort</th>
-          <th>Assigned</th>
-          <th>Dates</th>
+          <th class="${getSortClass('status')}" data-sort-column="status">Status${getSortIndicator('status')}</th>
+          <th class="${getSortClass('priority')}" data-sort-column="priority">Priority${getSortIndicator('priority')}</th>
+          <th class="${getSortClass('title')}" data-sort-column="title">Task${getSortIndicator('title')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
+          <th class="${getSortClass('effort')}" data-sort-column="effort">Effort${getSortIndicator('effort')}</th>
+          <th class="${getSortClass('assigned')}" data-sort-column="assigned">Assigned${getSortIndicator('assigned')}</th>
+          <th class="${getSortClass('startDate')}" data-sort-column="startDate">Dates${getSortIndicator('startDate')}</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -2284,75 +2652,7 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
   
   // Edit functional requirement
   document.querySelector(`.edit-functional-requirement-view[data-functional-requirement-id="${functionalRequirementId}"]`)?.addEventListener('click', () => {
-    state.editingFunctionalRequirements.add(functionalRequirementId);
-    renderFunctionalRequirements();
-    // Populate project select after rendering
-    setTimeout(() => {
-      const projectSelect = document.querySelector(`.edit-functional-requirement-view-project[data-functional-requirement-id="${functionalRequirementId}"]`);
-      if (projectSelect) {
-        populateProjectSelectForFunctionalRequirement(projectSelect.id, projectId);
-        // Populate user requirements select
-        const userReqsSelect = document.querySelector(`.edit-functional-requirement-view-linked-user-requirements[data-functional-requirement-id="${functionalRequirementId}"]`);
-        if (userReqsSelect) {
-          populateUserRequirementsSelect(userReqsSelect.id, projectId);
-          // Set selected user requirements
-          const selectedUserReqs = functionalRequirement.linkedUserRequirements || [];
-          selectedUserReqs.forEach(urId => {
-            const option = userReqsSelect.querySelector(`option[value="${urId}"]`);
-            if (option) option.selected = true;
-          });
-        }
-      }
-      // Handle project change to update user requirements
-      const projectSelectChange = document.querySelector(`.edit-functional-requirement-view-project[data-functional-requirement-id="${functionalRequirementId}"]`);
-      if (projectSelectChange) {
-        projectSelectChange.addEventListener('change', (e) => {
-          const userReqsSelect = document.querySelector(`.edit-functional-requirement-view-linked-user-requirements[data-functional-requirement-id="${functionalRequirementId}"]`);
-          if (userReqsSelect) {
-            populateUserRequirementsSelect(userReqsSelect.id, e.target.value);
-          }
-        });
-      }
-    }, 100);
-  });
-  
-  // Save functional requirement
-  document.querySelector(`.save-functional-requirement-view[data-functional-requirement-id="${functionalRequirementId}"]`)?.addEventListener('click', () => {
-    const trackingIdInput = document.querySelector(`.edit-tracking-id-functional-requirement-view[data-functional-requirement-id="${functionalRequirementId}"]`);
-    const titleInput = document.querySelector(`.edit-title-functional-requirement-view[data-functional-requirement-id="${functionalRequirementId}"]`);
-    const descriptionInput = document.querySelector(`.edit-description-functional-requirement-view[data-functional-requirement-id="${functionalRequirementId}"]`);
-    const projectSelect = document.querySelector(`.edit-functional-requirement-view-project[data-functional-requirement-id="${functionalRequirementId}"]`);
-    const userReqsSelect = document.querySelector(`.edit-functional-requirement-view-linked-user-requirements[data-functional-requirement-id="${functionalRequirementId}"]`);
-    
-    const trackingId = trackingIdInput ? trackingIdInput.value.trim() : '';
-    const title = titleInput ? titleInput.value.trim() : '';
-    const description = descriptionInput ? descriptionInput.value.trim() : '';
-    const newProjectId = projectSelect ? projectSelect.value : projectId;
-    const linkedUserRequirements = userReqsSelect ? Array.from(userReqsSelect.selectedOptions).map(opt => opt.value) : [];
-    
-    if (!trackingId || !title || !newProjectId) return;
-    
-    try {
-      storage.updateFunctionalRequirement(newProjectId, functionalRequirementId, { 
-        trackingId,
-        title, 
-        description: description || undefined,
-        linkedUserRequirements: linkedUserRequirements || []
-      });
-      state.editingFunctionalRequirements.delete(functionalRequirementId);
-      renderFunctionalRequirements();
-      renderRequirements();
-      renderProjects(); // Also update projects view if visible
-    } catch (error) {
-      console.error('Failed to update functional requirement:', error);
-      alert('Failed to update functional requirement');
-    }
-  });
-  
-  // Cancel edit functional requirement
-  document.querySelector(`.cancel-edit-functional-requirement-view[data-functional-requirement-id="${functionalRequirementId}"]`)?.addEventListener('click', () => {
-    state.editingFunctionalRequirements.delete(functionalRequirementId);
-    renderFunctionalRequirements();
+    openEditFunctionalRequirementModal(functionalRequirement);
   });
   
   // Delete functional requirement
