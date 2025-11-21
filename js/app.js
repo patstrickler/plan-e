@@ -1828,7 +1828,10 @@ function renderFunctionalRequirements() {
   // Apply filters
   const filteredFunctionalRequirements = filterFunctionalRequirements(allFunctionalRequirements);
   
-  if (filteredFunctionalRequirements.length === 0) {
+  // Apply sorting
+  const sortedFunctionalRequirements = sortFunctionalRequirements(filteredFunctionalRequirements);
+  
+  if (sortedFunctionalRequirements.length === 0) {
     elements.functionalRequirementsList.innerHTML = `
       <div class="empty-state">
         <p>No functional requirements found</p>
