@@ -997,67 +997,97 @@ function renderMilestones() {
     return;
   }
   
-  elements.milestonesList.innerHTML = milestones.map(m => {
-    const isEditing = state.editingMilestones.has(m.id);
-    const progressBarHtml = renderMilestoneProgressBar(m, true);
-    const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
-    const totalTasks = m.tasks ? m.tasks.length : 0;
-    
-    if (isEditing) {
-      const targetDateValue = m.targetDate ? new Date(m.targetDate).toISOString().split('T')[0] : '';
-      return `
-        <div class="form-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
-          <h2>Edit Milestone</h2>
-          <div class="form-group">
-            <label for="edit-milestone-view-project-${m.id}">Project *</label>
-            <select id="edit-milestone-view-project-${m.id}" class="edit-milestone-view-project" data-milestone-id="${m.id}" required></select>
-          </div>
-          <div class="form-group">
-            <label for="edit-milestone-view-title-${m.id}">Milestone Title *</label>
-            <input type="text" id="edit-milestone-view-title-${m.id}" class="edit-title-milestone-view" value="${escapeHtml(m.title)}" data-milestone-id="${m.id}" required placeholder="Enter milestone title">
-          </div>
-          <div class="form-group">
-            <label for="edit-milestone-view-description-${m.id}">Description (optional)</label>
-            <textarea id="edit-milestone-view-description-${m.id}" class="edit-description-milestone-view" data-milestone-id="${m.id}" rows="3" placeholder="Enter milestone description">${escapeHtml(m.description || '')}</textarea>
-          </div>
-          <div class="form-group">
-            <label for="edit-milestone-view-target-date-${m.id}">Target Date (optional)</label>
-            <input type="text" id="edit-milestone-view-target-date-${m.id}" class="edit-target-date-milestone-view" value="${targetDateValue}" data-milestone-id="${m.id}" placeholder="Select target date">
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-primary save-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Save Milestone</button>
-            <button type="button" class="btn btn-secondary cancel-edit-milestone-view" data-milestone-id="${m.id}">Cancel</button>
-          </div>
-        </div>
-      `;
-    }
-    
-    return `
-      <div class="milestone-card" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
-        <div class="project-card-header">
-          <div class="project-card-content">
-            <h3>${escapeHtml(m.title)}</h3>
-            <p class="text-muted">Project: ${escapeHtml(m.project.title)}</p>
-            ${m.description ? `<p>${escapeHtml(m.description)}</p>` : ''}
-            ${m.targetDate ? `<p class="text-xs text-muted">Target Date: ${new Date(m.targetDate).toLocaleDateString()}</p>` : ''}
-            <p class="text-xs text-muted">${completedTasks}/${totalTasks} tasks completed</p>
-            <div class="milestone-progress">
-              ${progressBarHtml}
-            </div>
-          </div>
-          <div class="project-card-actions">
-            <button class="btn btn-blue btn-xs edit-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Edit</button>
-            <button class="btn btn-red btn-xs delete-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Delete</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
+  // Render table
+  elements.milestonesList.innerHTML = renderMilestonesTable(milestones);
   
   // Attach event listeners for milestones in the view
   milestones.forEach(milestone => {
     attachMilestoneViewListeners(milestone);
   });
+}
+
+function renderMilestonesTable(milestones) {
+  const rows = milestones.map(m => {
+    const isEditing = state.editingMilestones.has(m.id);
+    const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
+    const totalTasks = m.tasks ? m.tasks.length : 0;
+    
+    if (isEditing) {
+      return renderMilestoneTableRowEdit(m);
+    }
+    
+    const progressBarHtml = renderMilestoneProgressBar(m, false);
+    
+    return `
+      <tr class="task-table-row" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
+        <td class="task-title-cell">
+          <strong>${escapeHtml(m.title)}</strong>
+          ${m.description ? `<div class="task-description-small">${escapeHtml(m.description)}</div>` : ''}
+        </td>
+        <td class="task-project-cell">${escapeHtml(m.project.title)}</td>
+        <td>${m.targetDate ? new Date(m.targetDate).toLocaleDateString() : '<span class="text-muted">—</span>'}</td>
+        <td>${completedTasks}/${totalTasks}</td>
+        <td>
+          <div class="milestone-progress">
+            ${progressBarHtml}
+          </div>
+        </td>
+        <td class="task-actions-cell">
+          <button class="btn btn-blue btn-xs edit-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Edit</button>
+          <button class="btn btn-red btn-xs delete-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Delete</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  
+  return `
+    <table class="tasks-table">
+      <thead>
+        <tr>
+          <th>Milestone</th>
+          <th>Project</th>
+          <th>Target Date</th>
+          <th>Progress</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderMilestoneTableRowEdit(milestone) {
+  const targetDateValue = milestone.targetDate ? new Date(milestone.targetDate).toISOString().split('T')[0] : '';
+  const projects = storage.getAllProjects();
+  const projectOptions = projects.map(p => 
+    `<option value="${p.id}" ${milestone.projectId === p.id ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
+  ).join('');
+  
+  return `
+    <tr class="task-table-row task-table-row-edit" data-milestone-id="${milestone.id}" data-project-id="${milestone.projectId}">
+      <td colspan="6">
+        <div class="task-edit-form-inline">
+          <div class="task-edit-row">
+            <input type="text" class="edit-title-milestone-view" value="${escapeHtml(milestone.title)}" data-milestone-id="${milestone.id}" placeholder="Milestone title" required>
+            <textarea class="edit-description-milestone-view" data-milestone-id="${milestone.id}" placeholder="Description (optional)" rows="2">${escapeHtml(milestone.description || '')}</textarea>
+          </div>
+          <div class="task-edit-row">
+            <select id="edit-milestone-view-project-${milestone.id}" class="edit-milestone-view-project" data-milestone-id="${milestone.id}" required>
+              ${projectOptions}
+            </select>
+            <input type="text" id="edit-milestone-view-target-date-${milestone.id}" class="edit-target-date-milestone-view" value="${targetDateValue}" data-milestone-id="${milestone.id}" placeholder="Target Date (optional)">
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm save-milestone-view" data-milestone-id="${milestone.id}" data-project-id="${milestone.projectId}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-milestone-view" data-milestone-id="${milestone.id}">Cancel</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
 }
 
 function renderRequirements() {
@@ -1075,64 +1105,26 @@ function renderRequirements() {
     return;
   }
   
-  elements.requirementsList.innerHTML = requirements.map(r => {
+  // Render table
+  elements.requirementsList.innerHTML = renderRequirementsTable(requirements);
+  
+  // Attach event listeners for requirements in the view
+  requirements.forEach(requirement => {
+    attachRequirementViewListeners(requirement);
+  });
+}
+
+function renderRequirementsTable(requirements) {
+  const rows = requirements.map(r => {
     const isEditing = state.editingRequirements.has(r.id);
     const priorities = storage.getPriorities();
     
     if (isEditing) {
-      const priorityOptions = priorities.map(p => 
-        `<option value="${p.id}" ${r.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
-      ).join('');
-      
-      const project = state.projects.find(p => p.id === r.projectId);
-      const milestoneOptions = project ? project.milestones.map(m => 
-        `<option value="${m.id}" ${r.milestoneId === m.id ? 'selected' : ''}>${escapeHtml(m.title)}</option>`
-      ).join('') : '';
-      
-      return `
-        <div class="form-card" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
-          <h2>Edit User Requirement</h2>
-          <div class="form-group">
-            <label for="edit-requirement-view-project-${r.id}">Project *</label>
-            <select id="edit-requirement-view-project-${r.id}" class="edit-requirement-view-project" data-requirement-id="${r.id}" required></select>
-          </div>
-          <div class="form-group">
-            <label for="edit-requirement-view-milestone-${r.id}">Milestone (optional)</label>
-            <select id="edit-requirement-view-milestone-${r.id}" class="edit-requirement-view-milestone" data-requirement-id="${r.id}">
-              <option value="">None</option>
-              ${milestoneOptions}
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="edit-requirement-view-title-${r.id}">Requirement Title *</label>
-            <input type="text" id="edit-requirement-view-title-${r.id}" class="edit-title-requirement-view" value="${escapeHtml(r.title)}" data-requirement-id="${r.id}" required placeholder="Enter requirement title">
-          </div>
-          <div class="form-group">
-            <label for="edit-requirement-view-description-${r.id}">Description (optional)</label>
-            <textarea id="edit-requirement-view-description-${r.id}" class="edit-description-requirement-view" data-requirement-id="${r.id}" rows="4" placeholder="Enter requirement description">${escapeHtml(r.description || '')}</textarea>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="edit-requirement-view-priority-${r.id}">Priority</label>
-              <select id="edit-requirement-view-priority-${r.id}" class="edit-priority-requirement-view" data-requirement-id="${r.id}">
-                <option value="">None</option>
-                ${priorityOptions}
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="edit-requirement-view-category-${r.id}">Category (optional)</label>
-            <input type="text" id="edit-requirement-view-category-${r.id}" class="edit-category-requirement-view" value="${escapeHtml(r.category || '')}" data-requirement-id="${r.id}" placeholder="e.g., Functional, Non-functional, UI/UX">
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-primary save-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Save User Requirement</button>
-            <button type="button" class="btn btn-secondary cancel-edit-requirement-view" data-requirement-id="${r.id}">Cancel</button>
-          </div>
-        </div>
-      `;
+      return renderRequirementTableRowEdit(r);
     }
     
     const priority = priorities.find(p => p.id === r.priority);
+    const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
     const project = state.projects.find(p => p.id === r.projectId);
     const milestone = project && r.milestoneId ? project.milestones.find(m => m.id === r.milestoneId) : null;
     
@@ -1149,43 +1141,101 @@ function renderRequirements() {
     );
     
     // Calculate progress from linked tasks
-    const progressBarHtml = renderUserRequirementProgressBar(r, linkedTasks, true);
+    const progressBarHtml = renderUserRequirementProgressBar(r, linkedTasks, false);
     
     return `
-      <div class="milestone-card" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
-        <div class="project-card-header">
-          <div class="project-card-content">
-            <h3>${escapeHtml(r.title)}</h3>
-            <p class="text-muted">Project: ${escapeHtml(r.project.title)}</p>
-            ${milestone ? `<p class="text-muted">Milestone: ${escapeHtml(milestone.title)}</p>` : ''}
-            ${r.description ? `<p>${escapeHtml(r.description)}</p>` : ''}
-            ${r.category ? `<p class="text-xs text-muted">Category: ${escapeHtml(r.category)}</p>` : ''}
-            <div class="task-meta">
-              ${priority ? `<span class="badge" style="background: ${priority.color}15; color: ${priority.color}; border-color: ${priority.color}40;">Priority: ${escapeHtml(priority.label)}</span>` : ''}
-            </div>
-            ${linkedFunctionalReqs.length > 0 ? `
-              <div class="task-meta">
-                <p class="text-xs text-muted">Linked Functional Requirements: ${linkedFunctionalReqs.length}</p>
-                <p class="text-xs text-muted">Linked Tasks: ${linkedTasks.length}</p>
-              </div>
-            ` : ''}
-            <div class="milestone-progress">
-              ${progressBarHtml}
-            </div>
+      <tr class="task-table-row" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
+        <td class="task-title-cell">
+          <strong>${escapeHtml(r.title)}</strong>
+          ${r.description ? `<div class="task-description-small">${escapeHtml(r.description)}</div>` : ''}
+        </td>
+        <td class="task-project-cell">${escapeHtml(r.project.title)}</td>
+        <td class="task-milestone-cell">${milestone ? escapeHtml(milestone.title) : '<span class="text-muted">—</span>'}</td>
+        <td>${priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : '<span class="text-muted">—</span>'}</td>
+        <td>${r.category ? escapeHtml(r.category) : '<span class="text-muted">—</span>'}</td>
+        <td>${linkedFunctionalReqs.length}</td>
+        <td>${linkedTasks.length}</td>
+        <td>
+          <div class="milestone-progress">
+            ${progressBarHtml}
           </div>
-          <div class="project-card-actions">
-            <button class="btn btn-blue btn-xs edit-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Edit</button>
-            <button class="btn btn-red btn-xs delete-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Delete</button>
-          </div>
-        </div>
-      </div>
+        </td>
+        <td class="task-actions-cell">
+          <button class="btn btn-blue btn-xs edit-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Edit</button>
+          <button class="btn btn-red btn-xs delete-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Delete</button>
+        </td>
+      </tr>
     `;
   }).join('');
   
-  // Attach event listeners for requirements in the view
-  requirements.forEach(requirement => {
-    attachRequirementViewListeners(requirement);
-  });
+  return `
+    <table class="tasks-table">
+      <thead>
+        <tr>
+          <th>Requirement</th>
+          <th>Project</th>
+          <th>Milestone</th>
+          <th>Priority</th>
+          <th>Category</th>
+          <th>Linked FRs</th>
+          <th>Linked Tasks</th>
+          <th>Progress</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderRequirementTableRowEdit(r) {
+  const priorities = storage.getPriorities();
+  const priorityOptions = priorities.map(p => 
+    `<option value="${p.id}" ${r.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+  ).join('');
+  
+  const projects = storage.getAllProjects();
+  const projectOptions = projects.map(p => 
+    `<option value="${p.id}" ${r.projectId === p.id ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
+  ).join('');
+  
+  const project = state.projects.find(p => p.id === r.projectId);
+  const milestoneOptions = project ? project.milestones.map(m => 
+    `<option value="${m.id}" ${r.milestoneId === m.id ? 'selected' : ''}>${escapeHtml(m.title)}</option>`
+  ).join('') : '';
+  
+  return `
+    <tr class="task-table-row task-table-row-edit" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
+      <td colspan="9">
+        <div class="task-edit-form-inline">
+          <div class="task-edit-row">
+            <input type="text" class="edit-title-requirement-view" value="${escapeHtml(r.title)}" data-requirement-id="${r.id}" placeholder="Requirement title" required>
+            <textarea class="edit-description-requirement-view" data-requirement-id="${r.id}" placeholder="Description (optional)" rows="2">${escapeHtml(r.description || '')}</textarea>
+          </div>
+          <div class="task-edit-row">
+            <select id="edit-requirement-view-project-${r.id}" class="edit-requirement-view-project" data-requirement-id="${r.id}" required>
+              ${projectOptions}
+            </select>
+            <select id="edit-requirement-view-milestone-${r.id}" class="edit-requirement-view-milestone" data-requirement-id="${r.id}">
+              <option value="">None</option>
+              ${milestoneOptions}
+            </select>
+            <select class="edit-priority-requirement-view" data-requirement-id="${r.id}">
+              <option value="">None</option>
+              ${priorityOptions}
+            </select>
+            <input type="text" class="edit-category-requirement-view" value="${escapeHtml(r.category || '')}" data-requirement-id="${r.id}" placeholder="Category (optional)">
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm save-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-requirement-view" data-requirement-id="${r.id}">Cancel</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
 }
 
 function renderFunctionalRequirements() {
@@ -1203,50 +1253,21 @@ function renderFunctionalRequirements() {
     return;
   }
   
-  elements.functionalRequirementsList.innerHTML = functionalRequirements.map(fr => {
+  // Render table
+  elements.functionalRequirementsList.innerHTML = renderFunctionalRequirementsTable(functionalRequirements);
+  
+  // Attach event listeners for functional requirements in the view
+  functionalRequirements.forEach(functionalRequirement => {
+    attachFunctionalRequirementViewListeners(functionalRequirement);
+  });
+}
+
+function renderFunctionalRequirementsTable(functionalRequirements) {
+  const rows = functionalRequirements.map(fr => {
     const isEditing = state.editingFunctionalRequirements.has(fr.id);
     
     if (isEditing) {
-      const project = state.projects.find(p => p.id === fr.projectId);
-      const userRequirements = project ? (project.requirements || []) : [];
-      const selectedUserReqs = fr.linkedUserRequirements || [];
-      
-      const userReqOptions = userRequirements.map(ur => 
-        `<option value="${ur.id}" ${selectedUserReqs.includes(ur.id) ? 'selected' : ''}>${escapeHtml(ur.title)}</option>`
-      ).join('');
-      
-      return `
-        <div class="form-card" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
-          <h2>Edit Functional Requirement</h2>
-          <div class="form-group">
-            <label for="edit-functional-requirement-view-project-${fr.id}">Project *</label>
-            <select id="edit-functional-requirement-view-project-${fr.id}" class="edit-functional-requirement-view-project" data-functional-requirement-id="${fr.id}" required></select>
-          </div>
-          <div class="form-group">
-            <label for="edit-functional-requirement-view-linked-user-requirements-${fr.id}">Linked User Requirements</label>
-            <select id="edit-functional-requirement-view-linked-user-requirements-${fr.id}" class="edit-functional-requirement-view-linked-user-requirements" data-functional-requirement-id="${fr.id}" multiple style="min-height: 100px;">
-              ${userReqOptions}
-            </select>
-            <small style="color: var(--text-muted); font-size: 0.875rem;">Hold Ctrl/Cmd to select multiple</small>
-          </div>
-          <div class="form-group">
-            <label for="edit-functional-requirement-view-tracking-id-${fr.id}">Tracking ID *</label>
-            <input type="text" id="edit-functional-requirement-view-tracking-id-${fr.id}" class="edit-tracking-id-functional-requirement-view" value="${escapeHtml(fr.trackingId)}" data-functional-requirement-id="${fr.id}" required placeholder="Enter tracking ID">
-          </div>
-          <div class="form-group">
-            <label for="edit-functional-requirement-view-title-${fr.id}">Functional Requirement Title *</label>
-            <input type="text" id="edit-functional-requirement-view-title-${fr.id}" class="edit-title-functional-requirement-view" value="${escapeHtml(fr.title)}" data-functional-requirement-id="${fr.id}" required placeholder="Enter functional requirement title">
-          </div>
-          <div class="form-group">
-            <label for="edit-functional-requirement-view-description-${fr.id}">Description (optional)</label>
-            <textarea id="edit-functional-requirement-view-description-${fr.id}" class="edit-description-functional-requirement-view" data-functional-requirement-id="${fr.id}" rows="4" placeholder="Enter functional requirement description">${escapeHtml(fr.description || '')}</textarea>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn btn-primary save-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Save Functional Requirement</button>
-            <button type="button" class="btn btn-secondary cancel-edit-functional-requirement-view" data-functional-requirement-id="${fr.id}">Cancel</button>
-          </div>
-        </div>
-      `;
+      return renderFunctionalRequirementTableRowEdit(fr);
     }
     
     const project = state.projects.find(p => p.id === fr.projectId);
@@ -1260,41 +1281,93 @@ function renderFunctionalRequirements() {
     const linkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === fr.id);
     
     // Calculate progress from linked tasks
-    const progressBarHtml = renderFunctionalRequirementProgressBar(fr, linkedTasks, true);
+    const progressBarHtml = renderFunctionalRequirementProgressBar(fr, linkedTasks, false);
     
     return `
-      <div class="milestone-card" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
-        <div class="project-card-header">
-          <div class="project-card-content">
-            <h3>${escapeHtml(fr.trackingId)} - ${escapeHtml(fr.title)}</h3>
-            <p class="text-muted">Project: ${escapeHtml(fr.project.title)}</p>
-            ${fr.description ? `<p>${escapeHtml(fr.description)}</p>` : ''}
-            ${linkedUserReqs.length > 0 ? `
-              <div class="task-meta">
-                <p class="text-xs text-muted">Linked User Requirements:</p>
-                ${linkedUserReqs.map(ur => `<span class="badge" style="background: var(--gray-100); color: var(--text-primary); border-color: var(--border);">${escapeHtml(ur.title)}</span>`).join('')}
-              </div>
-            ` : ''}
-            <div class="task-meta">
-              <p class="text-xs text-muted">${linkedTasks.length} task${linkedTasks.length !== 1 ? 's' : ''} linked</p>
-            </div>
-            <div class="milestone-progress">
-              ${progressBarHtml}
-            </div>
+      <tr class="task-table-row" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
+        <td><strong>${escapeHtml(fr.trackingId)}</strong></td>
+        <td class="task-title-cell">
+          <strong>${escapeHtml(fr.title)}</strong>
+          ${fr.description ? `<div class="task-description-small">${escapeHtml(fr.description)}</div>` : ''}
+        </td>
+        <td class="task-project-cell">${escapeHtml(fr.project.title)}</td>
+        <td>${linkedUserReqs.length > 0 ? linkedUserReqs.map(ur => `<span class="badge" style="background: var(--gray-100); color: var(--text-primary); border-color: var(--border); margin-right: 0.25rem;">${escapeHtml(ur.title)}</span>`).join('') : '<span class="text-muted">—</span>'}</td>
+        <td>${linkedTasks.length}</td>
+        <td>
+          <div class="milestone-progress">
+            ${progressBarHtml}
           </div>
-          <div class="project-card-actions">
-            <button class="btn btn-blue btn-xs edit-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Edit</button>
-            <button class="btn btn-red btn-xs delete-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Delete</button>
-          </div>
-        </div>
-      </div>
+        </td>
+        <td class="task-actions-cell">
+          <button class="btn btn-blue btn-xs edit-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Edit</button>
+          <button class="btn btn-red btn-xs delete-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Delete</button>
+        </td>
+      </tr>
     `;
   }).join('');
   
-  // Attach event listeners for functional requirements in the view
-  functionalRequirements.forEach(functionalRequirement => {
-    attachFunctionalRequirementViewListeners(functionalRequirement);
-  });
+  return `
+    <table class="tasks-table">
+      <thead>
+        <tr>
+          <th>Tracking ID</th>
+          <th>Functional Requirement</th>
+          <th>Project</th>
+          <th>Linked User Reqs</th>
+          <th>Linked Tasks</th>
+          <th>Progress</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderFunctionalRequirementTableRowEdit(fr) {
+  const projects = storage.getAllProjects();
+  const projectOptions = projects.map(p => 
+    `<option value="${p.id}" ${fr.projectId === p.id ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
+  ).join('');
+  
+  const project = state.projects.find(p => p.id === fr.projectId);
+  const userRequirements = project ? (project.requirements || []) : [];
+  const selectedUserReqs = fr.linkedUserRequirements || [];
+  
+  const userReqOptions = userRequirements.map(ur => 
+    `<option value="${ur.id}" ${selectedUserReqs.includes(ur.id) ? 'selected' : ''}>${escapeHtml(ur.title)}</option>`
+  ).join('');
+  
+  return `
+    <tr class="task-table-row task-table-row-edit" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
+      <td colspan="7">
+        <div class="task-edit-form-inline">
+          <div class="task-edit-row">
+            <input type="text" class="edit-tracking-id-functional-requirement-view" value="${escapeHtml(fr.trackingId)}" data-functional-requirement-id="${fr.id}" placeholder="Tracking ID" required>
+            <input type="text" class="edit-title-functional-requirement-view" value="${escapeHtml(fr.title)}" data-functional-requirement-id="${fr.id}" placeholder="Functional requirement title" required>
+          </div>
+          <div class="task-edit-row">
+            <textarea class="edit-description-functional-requirement-view" data-functional-requirement-id="${fr.id}" placeholder="Description (optional)" rows="2">${escapeHtml(fr.description || '')}</textarea>
+          </div>
+          <div class="task-edit-row">
+            <select id="edit-functional-requirement-view-project-${fr.id}" class="edit-functional-requirement-view-project" data-functional-requirement-id="${fr.id}" required>
+              ${projectOptions}
+            </select>
+            <select id="edit-functional-requirement-view-linked-user-requirements-${fr.id}" class="edit-functional-requirement-view-linked-user-requirements" data-functional-requirement-id="${fr.id}" multiple style="min-height: 80px;">
+              ${userReqOptions}
+            </select>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Hold Ctrl/Cmd to select multiple</small>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary btn-sm save-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-functional-requirement-view" data-functional-requirement-id="${fr.id}">Cancel</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
 }
 
 function renderTasks() {
