@@ -208,6 +208,43 @@
               <button type="button" id="cancel-milestone-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
+
+          <!-- Edit Milestone Form -->
+          <form id="edit-milestone-form" class="form-card" style="display: none;">
+            <h2>Edit Milestone</h2>
+            <input type="hidden" id="edit-milestone-id">
+            <input type="hidden" id="edit-milestone-project-id">
+            <div class="form-group">
+              <label for="edit-milestone-project">Project *</label>
+              <select id="edit-milestone-project" required></select>
+            </div>
+            <div class="form-group">
+              <label for="edit-milestone-title">Milestone Title *</label>
+              <input type="text" id="edit-milestone-title" required placeholder="Enter milestone title">
+            </div>
+            <div class="form-group">
+              <label for="edit-milestone-description">Description (optional)</label>
+              <textarea id="edit-milestone-description" rows="3" placeholder="Enter milestone description"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="edit-milestone-target-date">Target Date (optional)</label>
+              <input type="text" id="edit-milestone-target-date" placeholder="Select target date">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save Milestone</button>
+              <button type="button" id="cancel-edit-milestone-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Search and Filter Controls -->
+        <div class="tasks-controls mb-4">
+          <div class="tasks-search-filter">
+            <input type="text" id="milestone-search" class="task-search-input" placeholder="Search milestones...">
+            <select id="milestone-filter-project" class="task-filter-select">
+              <option value="">All Projects</option>
+            </select>
+          </div>
         </div>
 
         <div id="milestones-list" class="tasks-table-container"></div>
@@ -392,15 +429,61 @@
                 </select>
               </div>
             </div>
-            <div class="form-group">
-              <label for="requirement-category">Category (optional)</label>
-              <input type="text" id="requirement-category" placeholder="e.g., Functional, Non-functional, UI/UX">
-            </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Create User Requirement</button>
               <button type="button" id="cancel-requirement-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
+
+          <!-- Edit User Requirement Form -->
+          <form id="edit-requirement-form" class="form-card" style="display: none;">
+            <h2>Edit User Requirement</h2>
+            <input type="hidden" id="edit-requirement-id">
+            <input type="hidden" id="edit-requirement-project-id">
+            <div class="form-group">
+              <label for="edit-requirement-project">Project *</label>
+              <select id="edit-requirement-project" required></select>
+            </div>
+            <div class="form-group">
+              <label for="edit-requirement-milestone">Milestone (optional)</label>
+              <select id="edit-requirement-milestone">
+                <option value="">None</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit-requirement-title">Requirement Title *</label>
+              <input type="text" id="edit-requirement-title" required placeholder="Enter requirement title">
+            </div>
+            <div class="form-group">
+              <label for="edit-requirement-description">Description (optional)</label>
+              <textarea id="edit-requirement-description" rows="4" placeholder="Enter requirement description"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-requirement-priority">Priority</label>
+                <select id="edit-requirement-priority">
+                  <option value="">None</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save User Requirement</button>
+              <button type="button" id="cancel-edit-requirement-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Search and Filter Controls -->
+        <div class="tasks-controls mb-4">
+          <div class="tasks-search-filter">
+            <input type="text" id="requirement-search" class="task-search-input" placeholder="Search user requirements...">
+            <select id="requirement-filter-project" class="task-filter-select">
+              <option value="">All Projects</option>
+            </select>
+            <select id="requirement-filter-priority" class="task-filter-select">
+              <option value="">All Priorities</option>
+            </select>
+          </div>
         </div>
 
         <div id="requirements-list" class="tasks-table-container"></div>
@@ -441,6 +524,49 @@
               <button type="button" id="cancel-functional-requirement-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
+
+          <!-- Edit Functional Requirement Form -->
+          <form id="edit-functional-requirement-form" class="form-card" style="display: none;">
+            <h2>Edit Functional Requirement</h2>
+            <input type="hidden" id="edit-functional-requirement-id">
+            <input type="hidden" id="edit-functional-requirement-project-id">
+            <div class="form-group">
+              <label for="edit-functional-requirement-project">Project *</label>
+              <select id="edit-functional-requirement-project" required></select>
+            </div>
+            <div class="form-group">
+              <label for="edit-functional-requirement-linked-user-requirements">Linked User Requirements</label>
+              <select id="edit-functional-requirement-linked-user-requirements" multiple style="min-height: 100px;">
+              </select>
+              <small style="color: var(--text-muted); font-size: 0.875rem;">Hold Ctrl/Cmd to select multiple</small>
+            </div>
+            <div class="form-group">
+              <label for="edit-functional-requirement-tracking-id">Tracking ID *</label>
+              <input type="text" id="edit-functional-requirement-tracking-id" required placeholder="Enter tracking ID">
+            </div>
+            <div class="form-group">
+              <label for="edit-functional-requirement-title">Functional Requirement Title *</label>
+              <input type="text" id="edit-functional-requirement-title" required placeholder="Enter functional requirement title">
+            </div>
+            <div class="form-group">
+              <label for="edit-functional-requirement-description">Description (optional)</label>
+              <textarea id="edit-functional-requirement-description" rows="4" placeholder="Enter functional requirement description"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save Functional Requirement</button>
+              <button type="button" id="cancel-edit-functional-requirement-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Search and Filter Controls -->
+        <div class="tasks-controls mb-4">
+          <div class="tasks-search-filter">
+            <input type="text" id="functional-requirement-search" class="task-search-input" placeholder="Search functional requirements...">
+            <select id="functional-requirement-filter-project" class="task-filter-select">
+              <option value="">All Projects</option>
+            </select>
+          </div>
         </div>
 
         <div id="functional-requirements-list" class="tasks-table-container"></div>

@@ -18,6 +18,13 @@ const state = {
   taskFilterPriority: '',
   taskFilterProject: '',
   taskFilterResource: '',
+  milestoneSearch: '',
+  milestoneFilterProject: '',
+  requirementSearch: '',
+  requirementFilterProject: '',
+  requirementFilterPriority: '',
+  functionalRequirementSearch: '',
+  functionalRequirementFilterProject: '',
 };
 
 // DOM elements
@@ -264,7 +271,6 @@ function setupEventListeners() {
     elements.newRequirementBtn.style.display = 'block';
     document.getElementById('requirement-title').value = '';
     document.getElementById('requirement-description').value = '';
-    document.getElementById('requirement-category').value = '';
     document.getElementById('requirement-priority').value = '';
     document.getElementById('requirement-milestone').value = '';
     const milestoneSelect = document.getElementById('requirement-milestone');
@@ -279,7 +285,6 @@ function setupEventListeners() {
     const milestoneId = document.getElementById('requirement-milestone').value;
     const title = document.getElementById('requirement-title').value.trim();
     const description = document.getElementById('requirement-description').value.trim();
-    const category = document.getElementById('requirement-category').value.trim();
     const priority = document.getElementById('requirement-priority').value;
     
     if (!title || !projectId) return;
@@ -288,13 +293,11 @@ function setupEventListeners() {
       storage.createRequirement(projectId, { 
         title, 
         description: description || undefined,
-        category: category || undefined,
         priority: priority || undefined,
         milestoneId: milestoneId || undefined
       });
       document.getElementById('requirement-title').value = '';
       document.getElementById('requirement-description').value = '';
-      document.getElementById('requirement-category').value = '';
       document.getElementById('requirement-priority').value = '';
       document.getElementById('requirement-milestone').value = '';
       const milestoneSelect = document.getElementById('requirement-milestone');
@@ -700,6 +703,15 @@ function setupEventListeners() {
   
   // Task search and filter listeners
   setupTaskSearchAndFilterListeners();
+  
+  // Milestone search and filter listeners
+  setupMilestoneSearchAndFilterListeners();
+  
+  // User requirement search and filter listeners
+  setupRequirementSearchAndFilterListeners();
+  
+  // Functional requirement search and filter listeners
+  setupFunctionalRequirementSearchAndFilterListeners();
 }
 
 function setupTaskSearchAndFilterListeners() {
@@ -732,6 +744,57 @@ function setupTaskSearchAndFilterListeners() {
   resourceFilter?.addEventListener('change', (e) => {
     state.taskFilterResource = e.target.value;
     renderTasks();
+  });
+}
+
+function setupMilestoneSearchAndFilterListeners() {
+  const searchInput = document.getElementById('milestone-search');
+  const projectFilter = document.getElementById('milestone-filter-project');
+  
+  searchInput?.addEventListener('input', (e) => {
+    state.milestoneSearch = e.target.value;
+    renderMilestones();
+  });
+  
+  projectFilter?.addEventListener('change', (e) => {
+    state.milestoneFilterProject = e.target.value;
+    renderMilestones();
+  });
+}
+
+function setupRequirementSearchAndFilterListeners() {
+  const searchInput = document.getElementById('requirement-search');
+  const projectFilter = document.getElementById('requirement-filter-project');
+  const priorityFilter = document.getElementById('requirement-filter-priority');
+  
+  searchInput?.addEventListener('input', (e) => {
+    state.requirementSearch = e.target.value;
+    renderRequirements();
+  });
+  
+  projectFilter?.addEventListener('change', (e) => {
+    state.requirementFilterProject = e.target.value;
+    renderRequirements();
+  });
+  
+  priorityFilter?.addEventListener('change', (e) => {
+    state.requirementFilterPriority = e.target.value;
+    renderRequirements();
+  });
+}
+
+function setupFunctionalRequirementSearchAndFilterListeners() {
+  const searchInput = document.getElementById('functional-requirement-search');
+  const projectFilter = document.getElementById('functional-requirement-filter-project');
+  
+  searchInput?.addEventListener('input', (e) => {
+    state.functionalRequirementSearch = e.target.value;
+    renderFunctionalRequirements();
+  });
+  
+  projectFilter?.addEventListener('change', (e) => {
+    state.functionalRequirementFilterProject = e.target.value;
+    renderFunctionalRequirements();
   });
 }
 
@@ -985,37 +1048,58 @@ function renderAddTaskForm(projectId, milestoneId) {
 function renderMilestones() {
   if (!elements.milestonesList) return;
   
-  const milestones = storage.getAllMilestones();
+  const allMilestones = storage.getAllMilestones();
   
-  if (milestones.length === 0) {
+  // Apply filters
+  const filteredMilestones = filterMilestones(allMilestones);
+  
+  if (filteredMilestones.length === 0) {
     elements.milestonesList.innerHTML = `
       <div class="empty-state">
-        <p>No milestones yet</p>
-        <p class="empty-state-sub">Create your first milestone to get started!</p>
+        <p>No milestones found</p>
+        <p class="empty-state-sub">${allMilestones.length === 0 ? 'Create your first milestone to get started!' : 'Try adjusting your search or filters.'}</p>
       </div>
     `;
     return;
   }
   
   // Render table
-  elements.milestonesList.innerHTML = renderMilestonesTable(milestones);
+  elements.milestonesList.innerHTML = renderMilestonesTable(filteredMilestones);
   
   // Attach event listeners for milestones in the view
-  milestones.forEach(milestone => {
+  filteredMilestones.forEach(milestone => {
     attachMilestoneViewListeners(milestone);
+  });
+  
+  // Populate filter dropdowns if not already populated
+  populateMilestoneFilters();
+}
+
+function filterMilestones(milestones) {
+  return milestones.filter(milestone => {
+    // Search filter
+    if (state.milestoneSearch) {
+      const searchLower = state.milestoneSearch.toLowerCase();
+      const matchesSearch = 
+        milestone.title.toLowerCase().includes(searchLower) ||
+        (milestone.description && milestone.description.toLowerCase().includes(searchLower)) ||
+        (milestone.project && milestone.project.title.toLowerCase().includes(searchLower));
+      if (!matchesSearch) return false;
+    }
+    
+    // Project filter
+    if (state.milestoneFilterProject && milestone.projectId !== state.milestoneFilterProject) {
+      return false;
+    }
+    
+    return true;
   });
 }
 
 function renderMilestonesTable(milestones) {
   const rows = milestones.map(m => {
-    const isEditing = state.editingMilestones.has(m.id);
     const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
     const totalTasks = m.tasks ? m.tasks.length : 0;
-    
-    if (isEditing) {
-      return renderMilestoneTableRowEdit(m);
-    }
-    
     const progressBarHtml = renderMilestoneProgressBar(m, false);
     
     return `
@@ -1059,70 +1143,65 @@ function renderMilestonesTable(milestones) {
   `;
 }
 
-function renderMilestoneTableRowEdit(milestone) {
-  const targetDateValue = milestone.targetDate ? new Date(milestone.targetDate).toISOString().split('T')[0] : '';
-  const projects = storage.getAllProjects();
-  const projectOptions = projects.map(p => 
-    `<option value="${p.id}" ${milestone.projectId === p.id ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
-  ).join('');
-  
-  return `
-    <tr class="task-table-row task-table-row-edit" data-milestone-id="${milestone.id}" data-project-id="${milestone.projectId}">
-      <td colspan="6">
-        <div class="task-edit-form-inline">
-          <div class="task-edit-row">
-            <input type="text" class="edit-title-milestone-view" value="${escapeHtml(milestone.title)}" data-milestone-id="${milestone.id}" placeholder="Milestone title" required>
-            <textarea class="edit-description-milestone-view" data-milestone-id="${milestone.id}" placeholder="Description (optional)" rows="2">${escapeHtml(milestone.description || '')}</textarea>
-          </div>
-          <div class="task-edit-row">
-            <select id="edit-milestone-view-project-${milestone.id}" class="edit-milestone-view-project" data-milestone-id="${milestone.id}" required>
-              ${projectOptions}
-            </select>
-            <input type="text" id="edit-milestone-view-target-date-${milestone.id}" class="edit-target-date-milestone-view" value="${targetDateValue}" data-milestone-id="${milestone.id}" placeholder="Target Date (optional)">
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary btn-sm save-milestone-view" data-milestone-id="${milestone.id}" data-project-id="${milestone.projectId}">Save</button>
-            <button class="btn btn-secondary btn-sm cancel-edit-milestone-view" data-milestone-id="${milestone.id}">Cancel</button>
-          </div>
-        </div>
-      </td>
-    </tr>
-  `;
-}
-
 function renderRequirements() {
   if (!elements.requirementsList) return;
   
-  const requirements = storage.getAllRequirements();
+  const allRequirements = storage.getAllRequirements();
   
-  if (requirements.length === 0) {
+  // Apply filters
+  const filteredRequirements = filterRequirements(allRequirements);
+  
+  if (filteredRequirements.length === 0) {
     elements.requirementsList.innerHTML = `
       <div class="empty-state">
-        <p>No user requirements yet</p>
-        <p class="empty-state-sub">Create your first user requirement to get started!</p>
+        <p>No user requirements found</p>
+        <p class="empty-state-sub">${allRequirements.length === 0 ? 'Create your first user requirement to get started!' : 'Try adjusting your search or filters.'}</p>
       </div>
     `;
     return;
   }
   
   // Render table
-  elements.requirementsList.innerHTML = renderRequirementsTable(requirements);
+  elements.requirementsList.innerHTML = renderRequirementsTable(filteredRequirements);
   
   // Attach event listeners for requirements in the view
-  requirements.forEach(requirement => {
+  filteredRequirements.forEach(requirement => {
     attachRequirementViewListeners(requirement);
+  });
+  
+  // Populate filter dropdowns if not already populated
+  populateRequirementFilters();
+}
+
+function filterRequirements(requirements) {
+  return requirements.filter(requirement => {
+    // Search filter
+    if (state.requirementSearch) {
+      const searchLower = state.requirementSearch.toLowerCase();
+      const matchesSearch = 
+        requirement.title.toLowerCase().includes(searchLower) ||
+        (requirement.description && requirement.description.toLowerCase().includes(searchLower)) ||
+        requirement.project.title.toLowerCase().includes(searchLower);
+      if (!matchesSearch) return false;
+    }
+    
+    // Project filter
+    if (state.requirementFilterProject && requirement.projectId !== state.requirementFilterProject) {
+      return false;
+    }
+    
+    // Priority filter
+    if (state.requirementFilterPriority && requirement.priority !== state.requirementFilterPriority) {
+      return false;
+    }
+    
+    return true;
   });
 }
 
 function renderRequirementsTable(requirements) {
   const rows = requirements.map(r => {
-    const isEditing = state.editingRequirements.has(r.id);
     const priorities = storage.getPriorities();
-    
-    if (isEditing) {
-      return renderRequirementTableRowEdit(r);
-    }
-    
     const priority = priorities.find(p => p.id === r.priority);
     const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
     const project = state.projects.find(p => p.id === r.projectId);
@@ -1152,7 +1231,6 @@ function renderRequirementsTable(requirements) {
         <td class="task-project-cell">${escapeHtml(r.project.title)}</td>
         <td class="task-milestone-cell">${milestone ? escapeHtml(milestone.title) : '<span class="text-muted">—</span>'}</td>
         <td>${priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : '<span class="text-muted">—</span>'}</td>
-        <td>${r.category ? escapeHtml(r.category) : '<span class="text-muted">—</span>'}</td>
         <td>${linkedFunctionalReqs.length}</td>
         <td>${linkedTasks.length}</td>
         <td>
@@ -1176,7 +1254,6 @@ function renderRequirementsTable(requirements) {
           <th>Project</th>
           <th>Milestone</th>
           <th>Priority</th>
-          <th>Category</th>
           <th>Linked FRs</th>
           <th>Linked Tasks</th>
           <th>Progress</th>
@@ -1190,86 +1267,60 @@ function renderRequirementsTable(requirements) {
   `;
 }
 
-function renderRequirementTableRowEdit(r) {
-  const priorities = storage.getPriorities();
-  const priorityOptions = priorities.map(p => 
-    `<option value="${p.id}" ${r.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
-  ).join('');
-  
-  const projects = storage.getAllProjects();
-  const projectOptions = projects.map(p => 
-    `<option value="${p.id}" ${r.projectId === p.id ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
-  ).join('');
-  
-  const project = state.projects.find(p => p.id === r.projectId);
-  const milestoneOptions = project ? project.milestones.map(m => 
-    `<option value="${m.id}" ${r.milestoneId === m.id ? 'selected' : ''}>${escapeHtml(m.title)}</option>`
-  ).join('') : '';
-  
-  return `
-    <tr class="task-table-row task-table-row-edit" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
-      <td colspan="9">
-        <div class="task-edit-form-inline">
-          <div class="task-edit-row">
-            <input type="text" class="edit-title-requirement-view" value="${escapeHtml(r.title)}" data-requirement-id="${r.id}" placeholder="Requirement title" required>
-            <textarea class="edit-description-requirement-view" data-requirement-id="${r.id}" placeholder="Description (optional)" rows="2">${escapeHtml(r.description || '')}</textarea>
-          </div>
-          <div class="task-edit-row">
-            <select id="edit-requirement-view-project-${r.id}" class="edit-requirement-view-project" data-requirement-id="${r.id}" required>
-              ${projectOptions}
-            </select>
-            <select id="edit-requirement-view-milestone-${r.id}" class="edit-requirement-view-milestone" data-requirement-id="${r.id}">
-              <option value="">None</option>
-              ${milestoneOptions}
-            </select>
-            <select class="edit-priority-requirement-view" data-requirement-id="${r.id}">
-              <option value="">None</option>
-              ${priorityOptions}
-            </select>
-            <input type="text" class="edit-category-requirement-view" value="${escapeHtml(r.category || '')}" data-requirement-id="${r.id}" placeholder="Category (optional)">
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary btn-sm save-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Save</button>
-            <button class="btn btn-secondary btn-sm cancel-edit-requirement-view" data-requirement-id="${r.id}">Cancel</button>
-          </div>
-        </div>
-      </td>
-    </tr>
-  `;
-}
-
 function renderFunctionalRequirements() {
   if (!elements.functionalRequirementsList) return;
   
-  const functionalRequirements = storage.getAllFunctionalRequirements();
+  const allFunctionalRequirements = storage.getAllFunctionalRequirements();
   
-  if (functionalRequirements.length === 0) {
+  // Apply filters
+  const filteredFunctionalRequirements = filterFunctionalRequirements(allFunctionalRequirements);
+  
+  if (filteredFunctionalRequirements.length === 0) {
     elements.functionalRequirementsList.innerHTML = `
       <div class="empty-state">
-        <p>No functional requirements yet</p>
-        <p class="empty-state-sub">Create your first functional requirement to get started!</p>
+        <p>No functional requirements found</p>
+        <p class="empty-state-sub">${allFunctionalRequirements.length === 0 ? 'Create your first functional requirement to get started!' : 'Try adjusting your search or filters.'}</p>
       </div>
     `;
     return;
   }
   
   // Render table
-  elements.functionalRequirementsList.innerHTML = renderFunctionalRequirementsTable(functionalRequirements);
+  elements.functionalRequirementsList.innerHTML = renderFunctionalRequirementsTable(filteredFunctionalRequirements);
   
   // Attach event listeners for functional requirements in the view
-  functionalRequirements.forEach(functionalRequirement => {
+  filteredFunctionalRequirements.forEach(functionalRequirement => {
     attachFunctionalRequirementViewListeners(functionalRequirement);
+  });
+  
+  // Populate filter dropdowns if not already populated
+  populateFunctionalRequirementFilters();
+}
+
+function filterFunctionalRequirements(functionalRequirements) {
+  return functionalRequirements.filter(functionalRequirement => {
+    // Search filter
+    if (state.functionalRequirementSearch) {
+      const searchLower = state.functionalRequirementSearch.toLowerCase();
+      const matchesSearch = 
+        functionalRequirement.title.toLowerCase().includes(searchLower) ||
+        (functionalRequirement.description && functionalRequirement.description.toLowerCase().includes(searchLower)) ||
+        functionalRequirement.trackingId.toLowerCase().includes(searchLower) ||
+        functionalRequirement.project.title.toLowerCase().includes(searchLower);
+      if (!matchesSearch) return false;
+    }
+    
+    // Project filter
+    if (state.functionalRequirementFilterProject && functionalRequirement.projectId !== state.functionalRequirementFilterProject) {
+      return false;
+    }
+    
+    return true;
   });
 }
 
 function renderFunctionalRequirementsTable(functionalRequirements) {
   const rows = functionalRequirements.map(fr => {
-    const isEditing = state.editingFunctionalRequirements.has(fr.id);
-    
-    if (isEditing) {
-      return renderFunctionalRequirementTableRowEdit(fr);
-    }
-    
     const project = state.projects.find(p => p.id === fr.projectId);
     const linkedUserReqs = (fr.linkedUserRequirements || []).map(urId => {
       const ur = project ? (project.requirements || []).find(r => r.id === urId) : null;
@@ -1323,50 +1374,6 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
         ${rows}
       </tbody>
     </table>
-  `;
-}
-
-function renderFunctionalRequirementTableRowEdit(fr) {
-  const projects = storage.getAllProjects();
-  const projectOptions = projects.map(p => 
-    `<option value="${p.id}" ${fr.projectId === p.id ? 'selected' : ''}>${escapeHtml(p.title)}</option>`
-  ).join('');
-  
-  const project = state.projects.find(p => p.id === fr.projectId);
-  const userRequirements = project ? (project.requirements || []) : [];
-  const selectedUserReqs = fr.linkedUserRequirements || [];
-  
-  const userReqOptions = userRequirements.map(ur => 
-    `<option value="${ur.id}" ${selectedUserReqs.includes(ur.id) ? 'selected' : ''}>${escapeHtml(ur.title)}</option>`
-  ).join('');
-  
-  return `
-    <tr class="task-table-row task-table-row-edit" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
-      <td colspan="7">
-        <div class="task-edit-form-inline">
-          <div class="task-edit-row">
-            <input type="text" class="edit-tracking-id-functional-requirement-view" value="${escapeHtml(fr.trackingId)}" data-functional-requirement-id="${fr.id}" placeholder="Tracking ID" required>
-            <input type="text" class="edit-title-functional-requirement-view" value="${escapeHtml(fr.title)}" data-functional-requirement-id="${fr.id}" placeholder="Functional requirement title" required>
-          </div>
-          <div class="task-edit-row">
-            <textarea class="edit-description-functional-requirement-view" data-functional-requirement-id="${fr.id}" placeholder="Description (optional)" rows="2">${escapeHtml(fr.description || '')}</textarea>
-          </div>
-          <div class="task-edit-row">
-            <select id="edit-functional-requirement-view-project-${fr.id}" class="edit-functional-requirement-view-project" data-functional-requirement-id="${fr.id}" required>
-              ${projectOptions}
-            </select>
-            <select id="edit-functional-requirement-view-linked-user-requirements-${fr.id}" class="edit-functional-requirement-view-linked-user-requirements" data-functional-requirement-id="${fr.id}" multiple style="min-height: 80px;">
-              ${userReqOptions}
-            </select>
-            <small style="color: var(--text-muted); font-size: 0.75rem;">Hold Ctrl/Cmd to select multiple</small>
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-primary btn-sm save-functional-requirement-view" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">Save</button>
-            <button class="btn btn-secondary btn-sm cancel-edit-functional-requirement-view" data-functional-requirement-id="${fr.id}">Cancel</button>
-          </div>
-        </div>
-      </td>
-    </tr>
   `;
 }
 
@@ -2205,78 +2212,7 @@ function attachMilestoneViewListeners(milestone) {
   
   // Edit milestone
   document.querySelector(`.edit-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    state.editingMilestones.add(milestoneId);
-    renderMilestones();
-    // Populate project select and initialize date picker after rendering
-    setTimeout(() => {
-      const projectSelect = document.querySelector(`.edit-milestone-view-project[data-milestone-id="${milestoneId}"]`);
-      if (projectSelect) {
-        populateProjectSelectForMilestone(projectSelect.id, projectId);
-      }
-      
-      // Initialize date picker for milestone target date - same as add mode
-      const targetDateInput = document.querySelector(`#edit-milestone-view-target-date-${milestoneId}`);
-      if (targetDateInput) {
-        // Destroy existing flatpickr instance if it exists
-        if (targetDateInput.flatpickr) {
-          targetDateInput.flatpickr.destroy();
-        }
-        
-        // Create new flatpickr instance - same as add mode
-        const fp = flatpickr(targetDateInput, {
-          dateFormat: 'Y-m-d',
-          clickOpens: true,
-          allowInput: false,
-        });
-        
-        // Ensure calendar opens on focus - same as add mode
-        targetDateInput.addEventListener('focus', () => {
-          fp.open();
-        });
-        
-        // Also open on click
-        targetDateInput.addEventListener('click', () => {
-          fp.open();
-        });
-      }
-    }, 150);
-  });
-  
-  // Save milestone
-  document.querySelector(`.save-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    const titleInput = document.querySelector(`.edit-title-milestone-view[data-milestone-id="${milestoneId}"]`);
-    const descriptionInput = document.querySelector(`.edit-description-milestone-view[data-milestone-id="${milestoneId}"]`);
-    const projectSelect = document.querySelector(`.edit-milestone-view-project[data-milestone-id="${milestoneId}"]`);
-    const targetDateInput = document.querySelector(`.edit-target-date-milestone-view[data-milestone-id="${milestoneId}"]`);
-    
-    const title = titleInput ? titleInput.value.trim() : '';
-    const description = descriptionInput ? descriptionInput.value.trim() : '';
-    const newProjectId = projectSelect ? projectSelect.value : projectId;
-    const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
-    
-    if (!title || !newProjectId) return;
-    
-    try {
-      // If project changed, we need to handle it differently
-      // For now, just update within the same project
-      storage.updateMilestone(newProjectId, milestoneId, { 
-        title, 
-        description: description || undefined,
-        targetDate: targetDate || undefined
-      });
-      state.editingMilestones.delete(milestoneId);
-      renderMilestones();
-      renderProjects(); // Also update projects view if visible
-    } catch (error) {
-      console.error('Failed to update milestone:', error);
-      alert('Failed to update milestone');
-    }
-  });
-  
-  // Cancel edit milestone
-  document.querySelector(`.cancel-edit-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
-    state.editingMilestones.delete(milestoneId);
-    renderMilestones();
+    openEditMilestoneModal(milestone);
   });
   
   // Delete milestone
@@ -2308,77 +2244,7 @@ function attachRequirementViewListeners(requirement) {
   
   // Edit requirement
   document.querySelector(`.edit-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
-    state.editingRequirements.add(requirementId);
-    renderRequirements();
-    // Populate project select after rendering
-    setTimeout(() => {
-      const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
-      if (projectSelect) {
-        populateProjectSelectForRequirement(projectSelect.id, projectId);
-        // Populate milestone select
-        const milestoneSelect = document.querySelector(`.edit-requirement-view-milestone[data-requirement-id="${requirementId}"]`);
-        if (milestoneSelect) {
-          populateMilestoneSelect(milestoneSelect.id, projectId);
-          // Set selected milestone if exists
-          if (requirement.milestoneId) {
-            setTimeout(() => {
-              milestoneSelect.value = requirement.milestoneId;
-            }, 50);
-          }
-        }
-      }
-      // Handle project change to update milestones
-      const projectSelectChange = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
-      if (projectSelectChange) {
-        projectSelectChange.addEventListener('change', (e) => {
-          const milestoneSelect = document.querySelector(`.edit-requirement-view-milestone[data-requirement-id="${requirementId}"]`);
-          if (milestoneSelect) {
-            populateMilestoneSelect(milestoneSelect.id, e.target.value);
-          }
-        });
-      }
-    }, 100);
-  });
-  
-  // Save requirement
-  document.querySelector(`.save-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
-    const titleInput = document.querySelector(`.edit-title-requirement-view[data-requirement-id="${requirementId}"]`);
-    const descriptionInput = document.querySelector(`.edit-description-requirement-view[data-requirement-id="${requirementId}"]`);
-    const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
-    const milestoneSelect = document.querySelector(`.edit-requirement-view-milestone[data-requirement-id="${requirementId}"]`);
-    const prioritySelect = document.querySelector(`.edit-priority-requirement-view[data-requirement-id="${requirementId}"]`);
-    const categoryInput = document.querySelector(`.edit-category-requirement-view[data-requirement-id="${requirementId}"]`);
-    
-    const title = titleInput ? titleInput.value.trim() : '';
-    const description = descriptionInput ? descriptionInput.value.trim() : '';
-    const newProjectId = projectSelect ? projectSelect.value : projectId;
-    const milestoneId = milestoneSelect ? milestoneSelect.value : '';
-    const priority = prioritySelect ? prioritySelect.value : '';
-    const category = categoryInput ? categoryInput.value.trim() : '';
-    
-    if (!title || !newProjectId) return;
-    
-    try {
-      storage.updateRequirement(newProjectId, requirementId, { 
-        title, 
-        description: description || undefined,
-        category: category || undefined,
-        priority: priority || undefined,
-        milestoneId: milestoneId || undefined
-      });
-      state.editingRequirements.delete(requirementId);
-      renderRequirements();
-      renderProjects(); // Also update projects view if visible
-    } catch (error) {
-      console.error('Failed to update requirement:', error);
-      alert('Failed to update requirement');
-    }
-  });
-  
-  // Cancel edit requirement
-  document.querySelector(`.cancel-edit-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
-    state.editingRequirements.delete(requirementId);
-    renderRequirements();
+    openEditRequirementModal(requirement);
   });
   
   // Delete requirement
