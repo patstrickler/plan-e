@@ -239,6 +239,11 @@ function setupEventListeners() {
     document.getElementById('requirement-title').focus();
   });
 
+  // Handle project change to populate milestones
+  document.getElementById('requirement-project')?.addEventListener('change', (e) => {
+    populateMilestoneSelect('requirement-milestone', e.target.value);
+  });
+
   document.getElementById('cancel-requirement-btn')?.addEventListener('click', () => {
     elements.newRequirementForm.style.display = 'none';
     elements.newRequirementBtn.style.display = 'block';
@@ -247,11 +252,17 @@ function setupEventListeners() {
     document.getElementById('requirement-category').value = '';
     document.getElementById('requirement-priority').value = '';
     document.getElementById('requirement-status').value = '';
+    document.getElementById('requirement-milestone').value = '';
+    const milestoneSelect = document.getElementById('requirement-milestone');
+    if (milestoneSelect) {
+      milestoneSelect.innerHTML = '<option value="">None</option>';
+    }
   });
 
   elements.newRequirementForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const projectId = document.getElementById('requirement-project').value;
+    const milestoneId = document.getElementById('requirement-milestone').value;
     const title = document.getElementById('requirement-title').value.trim();
     const description = document.getElementById('requirement-description').value.trim();
     const category = document.getElementById('requirement-category').value.trim();
@@ -266,13 +277,19 @@ function setupEventListeners() {
         description: description || undefined,
         category: category || undefined,
         priority: priority || undefined,
-        status: status || undefined
+        status: status || undefined,
+        milestoneId: milestoneId || undefined
       });
       document.getElementById('requirement-title').value = '';
       document.getElementById('requirement-description').value = '';
       document.getElementById('requirement-category').value = '';
       document.getElementById('requirement-priority').value = '';
       document.getElementById('requirement-status').value = '';
+      document.getElementById('requirement-milestone').value = '';
+      const milestoneSelect = document.getElementById('requirement-milestone');
+      if (milestoneSelect) {
+        milestoneSelect.innerHTML = '<option value="">None</option>';
+      }
       elements.newRequirementForm.style.display = 'none';
       elements.newRequirementBtn.style.display = 'block';
       renderRequirements();
@@ -954,8 +971,8 @@ function renderRequirements() {
   if (requirements.length === 0) {
     elements.requirementsList.innerHTML = `
       <div class="empty-state">
-        <p>No requirements yet</p>
-        <p class="empty-state-sub">Create your first requirement to get started!</p>
+        <p>No user requirements yet</p>
+        <p class="empty-state-sub">Create your first user requirement to get started!</p>
       </div>
     `;
     return;
@@ -975,12 +992,24 @@ function renderRequirements() {
         `<option value="${s.id}" ${r.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
       ).join('');
       
+      const project = state.projects.find(p => p.id === r.projectId);
+      const milestoneOptions = project ? project.milestones.map(m => 
+        `<option value="${m.id}" ${r.milestoneId === m.id ? 'selected' : ''}>${escapeHtml(m.title)}</option>`
+      ).join('') : '';
+      
       return `
         <div class="form-card" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
-          <h2>Edit Requirement</h2>
+          <h2>Edit User Requirement</h2>
           <div class="form-group">
             <label for="edit-requirement-view-project-${r.id}">Project *</label>
             <select id="edit-requirement-view-project-${r.id}" class="edit-requirement-view-project" data-requirement-id="${r.id}" required></select>
+          </div>
+          <div class="form-group">
+            <label for="edit-requirement-view-milestone-${r.id}">Milestone (optional)</label>
+            <select id="edit-requirement-view-milestone-${r.id}" class="edit-requirement-view-milestone" data-requirement-id="${r.id}">
+              <option value="">None</option>
+              ${milestoneOptions}
+            </select>
           </div>
           <div class="form-group">
             <label for="edit-requirement-view-title-${r.id}">Requirement Title *</label>
@@ -1011,7 +1040,7 @@ function renderRequirements() {
             <input type="text" id="edit-requirement-view-category-${r.id}" class="edit-category-requirement-view" value="${escapeHtml(r.category || '')}" data-requirement-id="${r.id}" placeholder="e.g., Functional, Non-functional, UI/UX">
           </div>
           <div class="form-actions">
-            <button type="button" class="btn btn-primary save-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Save Requirement</button>
+            <button type="button" class="btn btn-primary save-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Save User Requirement</button>
             <button type="button" class="btn btn-secondary cancel-edit-requirement-view" data-requirement-id="${r.id}">Cancel</button>
           </div>
         </div>
@@ -1020,6 +1049,8 @@ function renderRequirements() {
     
     const priority = priorities.find(p => p.id === r.priority);
     const status = statuses.find(s => s.id === r.status);
+    const project = state.projects.find(p => p.id === r.projectId);
+    const milestone = project && r.milestoneId ? project.milestones.find(m => m.id === r.milestoneId) : null;
     
     return `
       <div class="milestone-card" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
@@ -1027,6 +1058,7 @@ function renderRequirements() {
           <div class="project-card-content">
             <h3>${escapeHtml(r.title)}</h3>
             <p class="text-muted">Project: ${escapeHtml(r.project.title)}</p>
+            ${milestone ? `<p class="text-muted">Milestone: ${escapeHtml(milestone.title)}</p>` : ''}
             ${r.description ? `<p>${escapeHtml(r.description)}</p>` : ''}
             ${r.category ? `<p class="text-xs text-muted">Category: ${escapeHtml(r.category)}</p>` : ''}
             <div class="task-meta">
@@ -1858,6 +1890,27 @@ function attachRequirementViewListeners(requirement) {
       const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
       if (projectSelect) {
         populateProjectSelectForRequirement(projectSelect.id, projectId);
+        // Populate milestone select
+        const milestoneSelect = document.querySelector(`.edit-requirement-view-milestone[data-requirement-id="${requirementId}"]`);
+        if (milestoneSelect) {
+          populateMilestoneSelect(milestoneSelect.id, projectId);
+          // Set selected milestone if exists
+          if (requirement.milestoneId) {
+            setTimeout(() => {
+              milestoneSelect.value = requirement.milestoneId;
+            }, 50);
+          }
+        }
+      }
+      // Handle project change to update milestones
+      const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
+      if (projectSelect) {
+        projectSelect.addEventListener('change', (e) => {
+          const milestoneSelect = document.querySelector(`.edit-requirement-view-milestone[data-requirement-id="${requirementId}"]`);
+          if (milestoneSelect) {
+            populateMilestoneSelect(milestoneSelect.id, e.target.value);
+          }
+        });
       }
     }, 100);
   });
@@ -1867,6 +1920,7 @@ function attachRequirementViewListeners(requirement) {
     const titleInput = document.querySelector(`.edit-title-requirement-view[data-requirement-id="${requirementId}"]`);
     const descriptionInput = document.querySelector(`.edit-description-requirement-view[data-requirement-id="${requirementId}"]`);
     const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
+    const milestoneSelect = document.querySelector(`.edit-requirement-view-milestone[data-requirement-id="${requirementId}"]`);
     const prioritySelect = document.querySelector(`.edit-priority-requirement-view[data-requirement-id="${requirementId}"]`);
     const statusSelect = document.querySelector(`.edit-status-requirement-view[data-requirement-id="${requirementId}"]`);
     const categoryInput = document.querySelector(`.edit-category-requirement-view[data-requirement-id="${requirementId}"]`);
@@ -1874,6 +1928,7 @@ function attachRequirementViewListeners(requirement) {
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const newProjectId = projectSelect ? projectSelect.value : projectId;
+    const milestoneId = milestoneSelect ? milestoneSelect.value : '';
     const priority = prioritySelect ? prioritySelect.value : '';
     const status = statusSelect ? statusSelect.value : '';
     const category = categoryInput ? categoryInput.value.trim() : '';
@@ -1886,7 +1941,8 @@ function attachRequirementViewListeners(requirement) {
         description: description || undefined,
         category: category || undefined,
         priority: priority || undefined,
-        status: status || undefined
+        status: status || undefined,
+        milestoneId: milestoneId || undefined
       });
       state.editingRequirements.delete(requirementId);
       renderRequirements();

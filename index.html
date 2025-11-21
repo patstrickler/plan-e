@@ -144,7 +144,7 @@
           <a href="#projects" class="nav-link">Projects</a>
           <a href="#milestones" class="nav-link">Milestones</a>
           <a href="#tasks" class="nav-link">Tasks</a>
-          <a href="#requirements" class="nav-link">Requirements</a>
+          <a href="#requirements" class="nav-link">User Requirements</a>
           <a href="#settings" class="nav-link">Settings</a>
         </nav>
       </div>
@@ -345,17 +345,23 @@
         <div id="tasks-list" class="tasks-table-container"></div>
       </div>
 
-      <!-- Requirements View -->
+      <!-- User Requirements View -->
       <div id="requirements-view" class="view" style="display: none;">
         <div class="mb-6">
-          <h2>All Requirements</h2>
-          <button id="new-requirement-btn" class="btn btn-primary">+ New Requirement</button>
+          <h2>All User Requirements</h2>
+          <button id="new-requirement-btn" class="btn btn-primary">+ New User Requirement</button>
           
           <form id="new-requirement-form" class="form-card" style="display: none;">
-            <h2>Create New Requirement</h2>
+            <h2>Create New User Requirement</h2>
             <div class="form-group">
               <label for="requirement-project">Project *</label>
               <select id="requirement-project" required></select>
+            </div>
+            <div class="form-group">
+              <label for="requirement-milestone">Milestone (optional)</label>
+              <select id="requirement-milestone">
+                <option value="">None</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="requirement-title">Requirement Title *</label>
@@ -384,7 +390,7 @@
               <input type="text" id="requirement-category" placeholder="e.g., Functional, Non-functional, UI/UX">
             </div>
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Create Requirement</button>
+              <button type="submit" class="btn btn-primary">Create User Requirement</button>
               <button type="button" id="cancel-requirement-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
