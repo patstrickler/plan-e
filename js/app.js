@@ -1748,6 +1748,57 @@ function renderFunctionalRequirements() {
   
   // Populate filter dropdowns if not already populated
   populateFunctionalRequirementFilters();
+  
+  // Attach sort listeners
+  attachFunctionalRequirementSortListeners();
+}
+
+function sortFunctionalRequirements(functionalRequirements) {
+  if (!state.functionalRequirementSortColumn) return functionalRequirements;
+  
+  const sorted = [...functionalRequirements].sort((a, b) => {
+    let aVal, bVal;
+    
+    switch (state.functionalRequirementSortColumn) {
+      case 'trackingId':
+        aVal = a.trackingId || '';
+        bVal = b.trackingId || '';
+        break;
+      case 'title':
+        aVal = a.title || '';
+        bVal = b.title || '';
+        break;
+      case 'project':
+        aVal = a.project?.title || '';
+        bVal = b.project?.title || '';
+        break;
+      case 'linkedUserReqs':
+        aVal = (a.linkedUserRequirements || []).length;
+        bVal = (b.linkedUserRequirements || []).length;
+        break;
+      case 'linkedTasks':
+        const allTasks = storage.getAllTasks();
+        const aLinkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === a.id);
+        const bLinkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === b.id);
+        aVal = aLinkedTasks.length;
+        bVal = bLinkedTasks.length;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return state.functionalRequirementSortDirection === 'asc' 
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    } else {
+      return state.functionalRequirementSortDirection === 'asc' 
+        ? aVal - bVal
+        : bVal - aVal;
+    }
+  });
+  
+  return sorted;
 }
 
 function filterFunctionalRequirements(functionalRequirements) {
