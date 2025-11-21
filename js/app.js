@@ -248,7 +248,7 @@ function setupEventListeners() {
   // Requirement form
   elements.newRequirementBtn?.addEventListener('click', () => {
     populateProjectSelect('requirement-project');
-    updateAllSelects(); // Populate priority and status selects
+    updateAllSelects(); // Populate priority selects
     elements.newRequirementForm.style.display = 'block';
     elements.newRequirementBtn.style.display = 'none';
     document.getElementById('requirement-title').focus();
@@ -1078,7 +1078,6 @@ function renderRequirements() {
   elements.requirementsList.innerHTML = requirements.map(r => {
     const isEditing = state.editingRequirements.has(r.id);
     const priorities = storage.getPriorities();
-    const statuses = storage.getStatuses();
     
     if (isEditing) {
       const priorityOptions = priorities.map(p => 
@@ -1134,7 +1133,6 @@ function renderRequirements() {
     }
     
     const priority = priorities.find(p => p.id === r.priority);
-    const status = statuses.find(s => s.id === r.status);
     const project = state.projects.find(p => p.id === r.projectId);
     const milestone = project && r.milestoneId ? project.milestones.find(m => m.id === r.milestoneId) : null;
     
@@ -1164,7 +1162,6 @@ function renderRequirements() {
             ${r.category ? `<p class="text-xs text-muted">Category: ${escapeHtml(r.category)}</p>` : ''}
             <div class="task-meta">
               ${priority ? `<span class="badge" style="background: ${priority.color}15; color: ${priority.color}; border-color: ${priority.color}40;">Priority: ${escapeHtml(priority.label)}</span>` : ''}
-              ${status ? `<span class="badge" style="background: ${status.color}15; color: ${status.color}; border-color: ${status.color}40;">Status: ${escapeHtml(status.label)}</span>` : ''}
             </div>
             ${linkedFunctionalReqs.length > 0 ? `
               <div class="task-meta">
@@ -2037,16 +2034,8 @@ function updateAllSelects() {
   
   // Update new requirement form selects
   const requirementPrioritySelect = document.getElementById('requirement-priority');
-  const requirementStatusSelect = document.getElementById('requirement-status');
   
   if (requirementPrioritySelect) populatePrioritySelect(requirementPrioritySelect);
-  if (requirementStatusSelect) {
-    const statuses = storage.getStatuses();
-    const options = statuses.map(s => 
-      `<option value="${s.id}">${escapeHtml(s.label)}</option>`
-    ).join('');
-    requirementStatusSelect.innerHTML = '<option value="">None</option>' + options;
-  }
   
   // Re-render views to update all dynamic selects
   if (currentView === 'projects') {
@@ -2285,7 +2274,6 @@ function attachRequirementViewListeners(requirement) {
     const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
     const milestoneSelect = document.querySelector(`.edit-requirement-view-milestone[data-requirement-id="${requirementId}"]`);
     const prioritySelect = document.querySelector(`.edit-priority-requirement-view[data-requirement-id="${requirementId}"]`);
-    const statusSelect = document.querySelector(`.edit-status-requirement-view[data-requirement-id="${requirementId}"]`);
     const categoryInput = document.querySelector(`.edit-category-requirement-view[data-requirement-id="${requirementId}"]`);
     
     const title = titleInput ? titleInput.value.trim() : '';
@@ -2293,7 +2281,6 @@ function attachRequirementViewListeners(requirement) {
     const newProjectId = projectSelect ? projectSelect.value : projectId;
     const milestoneId = milestoneSelect ? milestoneSelect.value : '';
     const priority = prioritySelect ? prioritySelect.value : '';
-    const status = statusSelect ? statusSelect.value : '';
     const category = categoryInput ? categoryInput.value.trim() : '';
     
     if (!title || !newProjectId) return;
@@ -2304,7 +2291,6 @@ function attachRequirementViewListeners(requirement) {
         description: description || undefined,
         category: category || undefined,
         priority: priority || undefined,
-        status: status || undefined,
         milestoneId: milestoneId || undefined
       });
       state.editingRequirements.delete(requirementId);
