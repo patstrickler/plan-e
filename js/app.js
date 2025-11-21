@@ -1339,7 +1339,10 @@ function renderMilestones() {
   // Apply filters
   const filteredMilestones = filterMilestones(allMilestones);
   
-  if (filteredMilestones.length === 0) {
+  // Apply sorting
+  const sortedMilestones = sortMilestones(filteredMilestones);
+  
+  if (sortedMilestones.length === 0) {
     elements.milestonesList.innerHTML = `
       <div class="empty-state">
         <p>No milestones found</p>
@@ -1350,15 +1353,63 @@ function renderMilestones() {
   }
   
   // Render table
-  elements.milestonesList.innerHTML = renderMilestonesTable(filteredMilestones);
+  elements.milestonesList.innerHTML = renderMilestonesTable(sortedMilestones);
   
   // Attach event listeners for milestones in the view
-  filteredMilestones.forEach(milestone => {
+  sortedMilestones.forEach(milestone => {
     attachMilestoneViewListeners(milestone);
   });
   
   // Populate filter dropdowns if not already populated
   populateMilestoneFilters();
+  
+  // Attach sort listeners
+  attachMilestoneSortListeners();
+}
+
+function sortMilestones(milestones) {
+  if (!state.milestoneSortColumn) return milestones;
+  
+  const sorted = [...milestones].sort((a, b) => {
+    let aVal, bVal;
+    
+    switch (state.milestoneSortColumn) {
+      case 'title':
+        aVal = a.title || '';
+        bVal = b.title || '';
+        break;
+      case 'project':
+        aVal = a.project?.title || '';
+        bVal = b.project?.title || '';
+        break;
+      case 'targetDate':
+        aVal = a.targetDate ? new Date(a.targetDate).getTime() : 0;
+        bVal = b.targetDate ? new Date(b.targetDate).getTime() : 0;
+        break;
+      case 'progress':
+        const aCompleted = a.tasks ? a.tasks.filter(t => t.status === 'completed').length : 0;
+        const aTotal = a.tasks ? a.tasks.length : 0;
+        const bCompleted = b.tasks ? b.tasks.filter(t => t.status === 'completed').length : 0;
+        const bTotal = b.tasks ? b.tasks.length : 0;
+        aVal = aTotal > 0 ? aCompleted / aTotal : 0;
+        bVal = bTotal > 0 ? bCompleted / bTotal : 0;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return state.milestoneSortDirection === 'asc' 
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    } else {
+      return state.milestoneSortDirection === 'asc' 
+        ? aVal - bVal
+        : bVal - aVal;
+    }
+  });
+  
+  return sorted;
 }
 
 function filterMilestones(milestones) {
@@ -1694,6 +1745,25 @@ function renderTasks() {
   
   // Populate filter dropdowns if not already populated
   populateTaskFilters();
+  
+  // Attach sort listeners
+  attachTaskSortListeners();
+}
+
+function attachTaskSortListeners() {
+  const headers = document.querySelectorAll('#tasks-list .sortable-header');
+  headers.forEach(header => {
+    header.addEventListener('click', () => {
+      const column = header.getAttribute('data-sort-column');
+      if (state.taskSortColumn === column) {
+        state.taskSortDirection = state.taskSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.taskSortColumn = column;
+        state.taskSortDirection = 'asc';
+      }
+      renderTasks();
+    });
+  });
 }
 
 function filterTasks(tasks) {
