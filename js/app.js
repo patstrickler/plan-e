@@ -369,6 +369,7 @@ function setupEventListeners() {
       elements.newFunctionalRequirementForm.style.display = 'none';
       elements.newFunctionalRequirementBtn.style.display = 'block';
       renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to create functional requirement:', error);
       alert('Failed to create functional requirement');
@@ -453,6 +454,11 @@ function setupEventListeners() {
       if (milestoneSelect) {
         milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
         milestoneSelect.value = '';
+      }
+      const functionalReqSelect = document.getElementById('task-functional-requirement');
+      if (functionalReqSelect) {
+        functionalReqSelect.innerHTML = '<option value="">None</option>';
+        functionalReqSelect.value = '';
       }
       // Reset other selects
       const prioritySelect = document.getElementById('task-priority');
@@ -587,6 +593,8 @@ function setupEventListeners() {
       });
       editTaskForm.style.display = 'none';
       renderTasks();
+      renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to update task:', error);
       alert('Failed to update task');
@@ -612,6 +620,7 @@ function setupEventListeners() {
       const effortSelect = document.getElementById('task-effort');
       const resourceSelect = document.getElementById('task-resource');
       const dueDateInput = document.getElementById('task-due-date');
+      const functionalReqSelect = document.getElementById('task-functional-requirement');
       
       const projectId = projectSelect ? projectSelect.value : '';
       const milestoneId = milestoneSelect ? milestoneSelect.value : '';
@@ -620,6 +629,7 @@ function setupEventListeners() {
       const priority = prioritySelect ? prioritySelect.value : '';
       const effort = effortSelect ? effortSelect.value : '';
       const resource = resourceSelect ? resourceSelect.value : '';
+      const linkedFunctionalRequirement = functionalReqSelect ? functionalReqSelect.value : '';
       let dueDate = '';
       if (dueDateInput) {
         if (dueDateInput.flatpickr && dueDateInput.flatpickr.input) {
@@ -654,6 +664,7 @@ function setupEventListeners() {
           effortLevel: effort || undefined,
           assignedResource: resource || undefined,
           dueDate: dueDate || undefined,
+          linkedFunctionalRequirement: linkedFunctionalRequirement || undefined,
         });
         // Reset form fields using cached references
         if (titleInput) titleInput.value = '';
@@ -677,6 +688,8 @@ function setupEventListeners() {
         const taskBtn = document.getElementById('new-task-btn');
         if (taskBtn) taskBtn.style.display = 'block';
         renderTasks();
+        renderFunctionalRequirements();
+        renderRequirements();
       } catch (error) {
         console.error('Failed to create task:', error);
         alert('Failed to create task: ' + (error.message || 'Unknown error'));
@@ -1140,6 +1153,21 @@ function renderRequirements() {
     const project = state.projects.find(p => p.id === r.projectId);
     const milestone = project && r.milestoneId ? project.milestones.find(m => m.id === r.milestoneId) : null;
     
+    // Get all functional requirements linked to this user requirement
+    const allFunctionalRequirements = storage.getAllFunctionalRequirements();
+    const linkedFunctionalReqs = allFunctionalRequirements.filter(fr => 
+      (fr.linkedUserRequirements || []).includes(r.id)
+    );
+    
+    // Get all tasks linked to these functional requirements
+    const allTasks = storage.getAllTasks();
+    const linkedTasks = allTasks.filter(t => 
+      linkedFunctionalReqs.some(fr => fr.id === t.linkedFunctionalRequirement)
+    );
+    
+    // Calculate progress from linked tasks
+    const progressBarHtml = renderUserRequirementProgressBar(r, linkedTasks, true);
+    
     return `
       <div class="milestone-card" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
         <div class="project-card-header">
@@ -1152,6 +1180,15 @@ function renderRequirements() {
             <div class="task-meta">
               ${priority ? `<span class="badge" style="background: ${priority.color}15; color: ${priority.color}; border-color: ${priority.color}40;">Priority: ${escapeHtml(priority.label)}</span>` : ''}
               ${status ? `<span class="badge" style="background: ${status.color}15; color: ${status.color}; border-color: ${status.color}40;">Status: ${escapeHtml(status.label)}</span>` : ''}
+            </div>
+            ${linkedFunctionalReqs.length > 0 ? `
+              <div class="task-meta">
+                <p class="text-xs text-muted">Linked Functional Requirements: ${linkedFunctionalReqs.length}</p>
+                <p class="text-xs text-muted">Linked Tasks: ${linkedTasks.length}</p>
+              </div>
+            ` : ''}
+            <div class="milestone-progress">
+              ${progressBarHtml}
             </div>
           </div>
           <div class="project-card-actions">
@@ -1543,6 +1580,8 @@ function attachTaskListenersForView(task) {
     try {
       storage.updateTask(projectId, milestoneId, taskId, { status: e.target.value });
       renderTasks();
+      renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to update task status:', error);
       alert('Failed to update task status');
@@ -1592,6 +1631,8 @@ function attachTaskListenersForView(task) {
       });
       state.editingTasks.delete(taskId);
       renderTasks();
+      renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to update task:', error);
       alert('Failed to update task');
@@ -1611,6 +1652,8 @@ function attachTaskListenersForView(task) {
     try {
       storage.deleteTask(projectId, milestoneId, taskId);
       renderTasks();
+      renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to delete task:', error);
       alert('Failed to delete task');
@@ -1661,6 +1704,58 @@ function renderMilestoneProgressBar(milestone, includeText = false) {
       <div class="milestone-progress-item">
         <div class="milestone-progress-header">
           <span class="milestone-progress-title">${escapeHtml(milestone.title)}</span>
+          <span class="milestone-progress-stats">${statsText}</span>
+        </div>
+        <div class="progress-bar-container">
+          ${segments.join('')}
+        </div>
+      </div>
+    `;
+  }
+}
+
+function renderUserRequirementProgressBar(userRequirement, linkedTasks, includeText = false) {
+  const statuses = storage.getStatuses();
+  const totalTasks = linkedTasks ? linkedTasks.length : 0;
+  
+  // Count tasks by status
+  const statusCounts = {};
+  statuses.forEach(status => {
+    statusCounts[status.id] = linkedTasks ? linkedTasks.filter(t => t.status === status.id || (!t.status && status.id === 'not-started')).length : 0;
+  });
+  
+  // Calculate percentages and build segments
+  const segments = [];
+  const stats = [];
+  
+  statuses.forEach(status => {
+    const count = statusCounts[status.id] || 0;
+    if (count > 0) {
+      const percent = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
+      segments.push(`<div class="progress-bar-segment" style="width: ${percent}%; background-color: ${status.color};"></div>`);
+      stats.push(`${count} ${status.label.toLowerCase()}`);
+    }
+  });
+  
+  const statsText = stats.length > 0 ? stats.join(', ') : '0 tasks';
+  const completedCount = statusCounts['completed'] || 0;
+  const completedPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+  
+  if (includeText) {
+    return `
+      <div class="progress-bar-container">
+        ${segments.join('')}
+      </div>
+      <div class="progress-text">
+        <span>${statsText}</span>
+        <span class="progress-percentage">${completedPercent}%</span>
+      </div>
+    `;
+  } else {
+    return `
+      <div class="milestone-progress-item">
+        <div class="milestone-progress-header">
+          <span class="milestone-progress-title">${escapeHtml(userRequirement.title)}</span>
           <span class="milestone-progress-stats">${statsText}</span>
         </div>
         <div class="progress-bar-container">
@@ -2077,9 +2172,9 @@ function attachRequirementViewListeners(requirement) {
         }
       }
       // Handle project change to update milestones
-      const projectSelect = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
-      if (projectSelect) {
-        projectSelect.addEventListener('change', (e) => {
+      const projectSelectChange = document.querySelector(`.edit-requirement-view-project[data-requirement-id="${requirementId}"]`);
+      if (projectSelectChange) {
+        projectSelectChange.addEventListener('change', (e) => {
           const milestoneSelect = document.querySelector(`.edit-requirement-view-milestone[data-requirement-id="${requirementId}"]`);
           if (milestoneSelect) {
             populateMilestoneSelect(milestoneSelect.id, e.target.value);
@@ -2190,9 +2285,9 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
         }
       }
       // Handle project change to update user requirements
-      const projectSelect = document.querySelector(`.edit-functional-requirement-view-project[data-functional-requirement-id="${functionalRequirementId}"]`);
-      if (projectSelect) {
-        projectSelect.addEventListener('change', (e) => {
+      const projectSelectChange = document.querySelector(`.edit-functional-requirement-view-project[data-functional-requirement-id="${functionalRequirementId}"]`);
+      if (projectSelectChange) {
+        projectSelectChange.addEventListener('change', (e) => {
           const userReqsSelect = document.querySelector(`.edit-functional-requirement-view-linked-user-requirements[data-functional-requirement-id="${functionalRequirementId}"]`);
           if (userReqsSelect) {
             populateUserRequirementsSelect(userReqsSelect.id, e.target.value);
@@ -2227,6 +2322,7 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
       });
       state.editingFunctionalRequirements.delete(functionalRequirementId);
       renderFunctionalRequirements();
+      renderRequirements();
       renderProjects(); // Also update projects view if visible
     } catch (error) {
       console.error('Failed to update functional requirement:', error);
@@ -2247,6 +2343,7 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
     try {
       storage.deleteFunctionalRequirement(projectId, functionalRequirementId);
       renderFunctionalRequirements();
+      renderRequirements();
       renderProjects(); // Also update projects view if visible
     } catch (error) {
       console.error('Failed to delete functional requirement:', error);
@@ -2345,6 +2442,8 @@ function attachMilestoneListeners(projectId, milestone) {
       });
       state.showAddTask.delete(milestoneId);
       loadProjects();
+      renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to create task:', error);
       alert('Failed to create task');
@@ -2394,6 +2493,8 @@ function attachTaskListeners(projectId, milestoneId, task) {
     try {
       storage.updateTask(projectId, milestoneId, taskId, { status: e.target.value });
       loadProjects();
+      renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to update task status:', error);
       alert('Failed to update task status');
@@ -2446,6 +2547,8 @@ function attachTaskListeners(projectId, milestoneId, task) {
       });
       state.editingTasks.delete(taskId);
       loadProjects();
+      renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to update task:', error);
       alert('Failed to update task');
@@ -2465,6 +2568,8 @@ function attachTaskListeners(projectId, milestoneId, task) {
     try {
       storage.deleteTask(projectId, milestoneId, taskId);
       loadProjects();
+      renderFunctionalRequirements();
+      renderRequirements();
     } catch (error) {
       console.error('Failed to delete task:', error);
       alert('Failed to delete task');

@@ -39,6 +39,7 @@ function migrateData(data) {
         tasks: milestone.tasks?.map((task) => migrateTask(task, project.id)) || [],
       })) || [],
       requirements: project.requirements || [],
+      functionalRequirements: project.functionalRequirements || [],
     })),
   };
   
@@ -99,6 +100,7 @@ export function createProject(project) {
     updatedAt: new Date().toISOString(),
     milestones: [],
     requirements: [],
+    functionalRequirements: [],
   };
   data.projects.push(newProject);
   writeData(data);
@@ -191,6 +193,7 @@ export function createTask(projectId, milestoneId, task) {
     milestoneId,
     projectId,
     status: 'not-started',
+    linkedFunctionalRequirement: task.linkedFunctionalRequirement || undefined,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -355,6 +358,74 @@ export function deleteRequirement(projectId, requirementId) {
   project.updatedAt = new Date().toISOString();
   writeData(data);
   return project.requirements.length < initialLength;
+}
+
+// Functional Requirements
+export function getAllFunctionalRequirements() {
+  const data = readData();
+  const functionalRequirements = [];
+  
+  data.projects.forEach(project => {
+    (project.functionalRequirements || []).forEach(functionalRequirement => {
+      functionalRequirements.push({ ...functionalRequirement, project });
+    });
+  });
+  
+  return functionalRequirements;
+}
+
+export function createFunctionalRequirement(projectId, functionalRequirement) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project) throw new Error('Project not found');
+  
+  if (!project.functionalRequirements) {
+    project.functionalRequirements = [];
+  }
+  
+  const newFunctionalRequirement = {
+    ...functionalRequirement,
+    id: `functional-requirement-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    projectId,
+    linkedUserRequirements: functionalRequirement.linkedUserRequirements || [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  
+  project.functionalRequirements.push(newFunctionalRequirement);
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return newFunctionalRequirement;
+}
+
+export function updateFunctionalRequirement(projectId, functionalRequirementId, updates) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project || !project.functionalRequirements) return null;
+  
+  const functionalRequirementIndex = project.functionalRequirements.findIndex(fr => fr.id === functionalRequirementId);
+  if (functionalRequirementIndex === -1) return null;
+  
+  project.functionalRequirements[functionalRequirementIndex] = {
+    ...project.functionalRequirements[functionalRequirementIndex],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return project.functionalRequirements[functionalRequirementIndex];
+}
+
+export function deleteFunctionalRequirement(projectId, functionalRequirementId) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project || !project.functionalRequirements) return false;
+  
+  const initialLength = project.functionalRequirements.length;
+  project.functionalRequirements = project.functionalRequirements.filter(fr => fr.id !== functionalRequirementId);
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return project.functionalRequirements.length < initialLength;
 }
 
 // ============================================
