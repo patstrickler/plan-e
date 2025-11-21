@@ -568,28 +568,39 @@ function setupEventListeners() {
     populateProjectSelect('edit-milestone-project');
     document.getElementById('edit-milestone-project').value = milestone.projectId;
     
-    // Set target date
+    // Set target date and initialize date picker
     const targetDateInput = document.getElementById('edit-milestone-target-date');
-    if (targetDateInput && milestone.targetDate) {
-      const targetDateValue = new Date(milestone.targetDate).toISOString().split('T')[0];
-      targetDateInput.value = targetDateValue;
-    }
-    
-    // Initialize date picker
-    setTimeout(() => {
-      if (targetDateInput && !targetDateInput.flatpickr) {
-        const fp = flatpickr(targetDateInput, {
+    if (targetDateInput) {
+      // Destroy existing flatpickr instance if it exists
+      if (targetDateInput.flatpickr) {
+        targetDateInput.flatpickr.destroy();
+      }
+      
+      // Set the date value if it exists
+      if (milestone.targetDate) {
+        const targetDateValue = new Date(milestone.targetDate).toISOString().split('T')[0];
+        targetDateInput.value = targetDateValue;
+      } else {
+        targetDateInput.value = '';
+      }
+      
+      // Initialize date picker - same as add new form
+      setTimeout(() => {
+        window.editMilestoneTargetDatePicker = flatpickr(targetDateInput, {
           dateFormat: 'Y-m-d',
           clickOpens: true,
           allowInput: false,
         });
+        // Ensure calendar opens on focus
         targetDateInput.addEventListener('focus', () => {
-          fp.open();
+          window.editMilestoneTargetDatePicker.open();
         });
-      } else if (targetDateInput && targetDateInput.flatpickr && milestone.targetDate) {
-        targetDateInput.flatpickr.setDate(milestone.targetDate);
-      }
-    }, 100);
+        // Also open on click
+        targetDateInput.addEventListener('click', () => {
+          window.editMilestoneTargetDatePicker.open();
+        });
+      }, 100);
+    }
     
     // Show form
     editMilestoneForm.style.display = 'block';
