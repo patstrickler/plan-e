@@ -1077,6 +1077,23 @@ body {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
+}
+
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 1.5rem;
+}
+
+.sortable-header:hover {
+  background-color: var(--gray-50);
+}
+
+.sortable-header.sorted {
+  color: var(--primary);
+  font-weight: 600;
+}
   background: var(--gray-50);
   color: var(--text-primary);
   font-size: 0.875rem;

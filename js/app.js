@@ -1861,15 +1861,24 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
     `;
   }).join('');
   
+  const getSortIndicator = (column) => {
+    if (state.functionalRequirementSortColumn !== column) return '';
+    return state.functionalRequirementSortDirection === 'asc' ? ' ↑' : ' ↓';
+  };
+  
+  const getSortClass = (column) => {
+    return state.functionalRequirementSortColumn === column ? 'sortable-header sorted' : 'sortable-header';
+  };
+  
   return `
     <table class="tasks-table">
       <thead>
         <tr>
-          <th>Tracking ID</th>
-          <th>Functional Requirement</th>
-          <th>Project</th>
-          <th>Linked User Reqs</th>
-          <th>Linked Tasks</th>
+          <th class="${getSortClass('trackingId')}" data-sort-column="trackingId">Tracking ID${getSortIndicator('trackingId')}</th>
+          <th class="${getSortClass('title')}" data-sort-column="title">Functional Requirement${getSortIndicator('title')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('linkedUserReqs')}" data-sort-column="linkedUserReqs">Linked User Reqs${getSortIndicator('linkedUserReqs')}</th>
+          <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
           <th>Progress</th>
           <th>Actions</th>
         </tr>
