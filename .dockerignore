@@ -1,0 +1,37 @@
+# Git files
+.git
+.gitignore
+.github
+
+# Node modules
+node_modules
+npm-debug.log
+package-lock.json
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+
+# Docker files (don't copy into image)
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# CI/CD configs
+vercel.json
+
+# Version files (will be generated at runtime if needed)
+# version.json
+# public/version.json
+

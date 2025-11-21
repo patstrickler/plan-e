@@ -34,6 +34,33 @@ npm run dev
 
 Or simply open `index.html` directly in your browser - no build step required!
 
+## Docker
+
+### Prerequisites
+
+- Docker and Docker Compose installed on your system
+
+### Running with Docker
+
+1. **Build and run with Docker Compose** (recommended):
+```bash
+docker-compose up -d
+```
+
+2. **Or build and run with Docker directly**:
+```bash
+docker build -t plan-e .
+docker run -d -p 3000:80 --name plan-e plan-e
+```
+
+3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Docker Commands
+
+- **Stop the container**: `docker-compose down` or `docker stop plan-e`
+- **View logs**: `docker-compose logs -f` or `docker logs -f plan-e`
+- **Rebuild after changes**: `docker-compose up -d --build`
+
 ## Deployment
 
 ### GitHub Pages
