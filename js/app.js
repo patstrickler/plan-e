@@ -2328,7 +2328,6 @@ function renderTasksTable(tasks) {
       <thead>
         <tr>
           <th class="${getSortClass('status')}" data-sort-column="status">Status${getSortIndicator('status')}</th>
-          <th class="${getSortClass('priority')}" data-sort-column="priority">Priority${getSortIndicator('priority')}</th>
           <th class="${getSortClass('title')}" data-sort-column="title">Task${getSortIndicator('title')}</th>
           <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
           <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
