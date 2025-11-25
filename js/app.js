@@ -1661,10 +1661,14 @@ function sortRequirements(requirements) {
         aVal = aMilestone?.title || '';
         bVal = bMilestone?.title || '';
         break;
-      case 'category':
-        aVal = a.category || '';
-        bVal = b.category || '';
+      case 'priority': {
+        const priorities = storage.getPriorities();
+        const aPriorityLabel = priorities.find(p => p.id === a.priority)?.label || '';
+        const bPriorityLabel = priorities.find(p => p.id === b.priority)?.label || '';
+        aVal = aPriorityLabel;
+        bVal = bPriorityLabel;
         break;
+      }
       case 'linkedFRs':
         const allFRs = storage.getAllFunctionalRequirements();
         const aLinkedFRs = allFRs.filter(fr => (fr.linkedUserRequirements || []).includes(a.id));
@@ -1790,7 +1794,9 @@ function renderRequirementsTable(requirements) {
       <thead>
         <tr>
           <th class="${getSortClass('title')}" data-sort-column="title">Requirement${getSortIndicator('title')}</th>
-        <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
+          <th class="${getSortClass('priority')}" data-sort-column="priority">Priority${getSortIndicator('priority')}</th>
           <th class="${getSortClass('linkedFRs')}" data-sort-column="linkedFRs">Linked FRs${getSortIndicator('linkedFRs')}</th>
           <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
           <th>Progress</th>
