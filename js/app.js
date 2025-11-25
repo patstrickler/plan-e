@@ -691,7 +691,7 @@ function setupEventListeners() {
     
     const taskId = taskIdInput ? taskIdInput.value : '';
     const projectId = projectIdInput ? projectIdInput.value : '';
-    const milestoneId = milestoneIdInput ? milestoneIdInput.value : '';
+    const originalMilestoneId = milestoneIdInput ? milestoneIdInput.value : '';
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const status = statusSelect ? statusSelect.value : '';
@@ -706,6 +706,14 @@ function setupEventListeners() {
       } else {
         dueDate = editDueDateInput.value || '';
       }
+    }
+    
+    let milestoneId = '';
+    if (linkedFunctionalRequirement) {
+      milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, linkedFunctionalRequirement);
+    }
+    if (!milestoneId) {
+      milestoneId = originalMilestoneId;
     }
     
     if (!title || !projectId || !milestoneId) return;
@@ -733,7 +741,6 @@ function setupEventListeners() {
 
   document.getElementById('edit-task-project')?.addEventListener('change', (e) => {
     if (e && e.target && e.target.value !== undefined) {
-      populateMilestoneSelect('edit-task-milestone', e.target.value);
       populateFunctionalRequirementSelect('edit-task-functional-requirement', e.target.value);
     }
   });
@@ -2848,19 +2855,59 @@ function populateUserRequirementsSelect(selectId, projectId) {
 function populateFunctionalRequirementSelect(selectId, projectId, selectedValue = '') {
   const select = document.getElementById(selectId);
   if (!select) return;
-  
-  const project = state.projects.find(p => p.id === projectId);
-  if (!project) {
-    select.innerHTML = '<option value="">None</option>';
+
+  if (!projectId) {
+    select.innerHTML = '<option value="">Select a project first</option>';
     return;
   }
-  
+
+  const project = storage.getProject(projectId);
+  if (!project) {
+    select.innerHTML = '<option value="">Select a project first</option>';
+    return;
+  }
+
   const functionalRequirements = project.functionalRequirements || [];
+  if (functionalRequirements.length === 0) {
+    select.innerHTML = '<option value="">No functional requirements available</option>';
+    return;
+  }
+
   const options = functionalRequirements.map(fr => {
     const trackingLabel = fr.trackingId ? `${escapeHtml(fr.trackingId)} - ` : '';
     return `<option value="${fr.id}" ${selectedValue === fr.id ? 'selected' : ''}>${trackingLabel}${escapeHtml(fr.title)}</option>`;
   }).join('');
-  select.innerHTML = '<option value="">None</option>' + options;
+  select.innerHTML = '<option value="">Select a functional requirement</option>' + options;
+  if (selectedValue) {
+    select.value = selectedValue;
+  }
+}
+
+function getMilestoneIdFromFunctionalRequirement(projectId, functionalRequirementId) {
+  if (!projectId || !functionalRequirementId) return '';
+  const project = storage.getProject(projectId);
+  if (!project) return '';
+
+  const functionalRequirement = (project.functionalRequirements || []).find(fr => fr.id === functionalRequirementId);
+  if (!functionalRequirement) return '';
+
+  if (functionalRequirement.milestoneId) {
+    return functionalRequirement.milestoneId;
+  }
+
+  const requirements = project.requirements || [];
+  const linkedRequirements = Array.isArray(functionalRequirement.linkedUserRequirements)
+    ? functionalRequirement.linkedUserRequirements
+    : [];
+
+  for (const requirementId of linkedRequirements) {
+    const requirement = requirements.find(r => r.id === requirementId);
+    if (requirement?.milestoneId) {
+      return requirement.milestoneId;
+    }
+  }
+
+  return '';
 }
 
 function populatePrioritySelect(select, selectedValue = '') {

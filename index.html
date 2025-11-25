@@ -263,8 +263,11 @@
               <select id="task-project" required></select>
             </div>
             <div class="form-group">
-              <label for="task-milestone">Milestone *</label>
-              <select id="task-milestone" required></select>
+              <label for="task-functional-requirement">Linked Functional Requirement *</label>
+              <select id="task-functional-requirement" required>
+                <option value="">Select a project first</option>
+              </select>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Selecting a functional requirement determines which milestone the task belongs to.</small>
             </div>
             <div class="form-group">
               <label for="task-title">Task Title *</label>
@@ -298,12 +301,6 @@
               <label for="task-due-date">Due Date (optional)</label>
               <input type="text" id="task-due-date" placeholder="Select due date">
             </div>
-            <div class="form-group">
-              <label for="task-functional-requirement">Linked Functional Requirement (optional)</label>
-              <select id="task-functional-requirement">
-                <option value="">None</option>
-              </select>
-            </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Create Task</button>
               <button type="button" id="cancel-task-btn" class="btn btn-secondary">Cancel</button>
@@ -321,8 +318,11 @@
               <select id="edit-task-project" required></select>
             </div>
             <div class="form-group">
-              <label for="edit-task-milestone">Milestone *</label>
-              <select id="edit-task-milestone" required></select>
+              <label for="edit-task-functional-requirement">Linked Functional Requirement *</label>
+              <select id="edit-task-functional-requirement" required>
+                <option value="">Select a project first</option>
+              </select>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Selecting a functional requirement determines which milestone the task belongs to.</small>
             </div>
             <div class="form-group">
               <label for="edit-task-title">Task Title *</label>
@@ -359,12 +359,6 @@
             <div class="form-group">
                <label for="edit-task-due-date">Due Date (optional)</label>
                <input type="text" id="edit-task-due-date" placeholder="Select due date">
-            </div>
-            <div class="form-group">
-              <label for="edit-task-functional-requirement">Linked Functional Requirement (optional)</label>
-              <select id="edit-task-functional-requirement">
-                <option value="">None</option>
-              </select>
             </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Save Task</button>

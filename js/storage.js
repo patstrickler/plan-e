@@ -46,6 +46,22 @@ function migrateData(data) {
   return migrated;
 }
 
+function deriveMilestoneIdForFunctionalRequirement(project, linkedUserRequirements = []) {
+  if (!project || !project.requirements) {
+    return undefined;
+  }
+
+  const requirementIds = Array.isArray(linkedUserRequirements) ? linkedUserRequirements : [];
+  for (const reqId of requirementIds) {
+    const requirement = project.requirements.find(r => r.id === reqId);
+    if (requirement && requirement.milestoneId) {
+      return requirement.milestoneId;
+    }
+  }
+
+  return undefined;
+}
+
 function readData() {
   if (typeof window === 'undefined') {
     return { projects: [] };
@@ -383,11 +399,17 @@ export function createFunctionalRequirement(projectId, functionalRequirement) {
     project.functionalRequirements = [];
   }
   
+  const linkedUserRequirements = Array.isArray(functionalRequirement.linkedUserRequirements)
+    ? functionalRequirement.linkedUserRequirements
+    : [];
+  const milestoneId = deriveMilestoneIdForFunctionalRequirement(project, linkedUserRequirements);
+
   const newFunctionalRequirement = {
     ...functionalRequirement,
     id: `functional-requirement-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     projectId,
-    linkedUserRequirements: functionalRequirement.linkedUserRequirements || [],
+    linkedUserRequirements,
+    milestoneId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -406,9 +428,17 @@ export function updateFunctionalRequirement(projectId, functionalRequirementId, 
   const functionalRequirementIndex = project.functionalRequirements.findIndex(fr => fr.id === functionalRequirementId);
   if (functionalRequirementIndex === -1) return null;
   
+  const existingFunctionalRequirement = project.functionalRequirements[functionalRequirementIndex];
+  const mergedLinkedUserRequirements = Array.isArray(updates.linkedUserRequirements)
+    ? updates.linkedUserRequirements
+    : existingFunctionalRequirement.linkedUserRequirements || [];
+  const milestoneId = deriveMilestoneIdForFunctionalRequirement(project, mergedLinkedUserRequirements);
+
   project.functionalRequirements[functionalRequirementIndex] = {
-    ...project.functionalRequirements[functionalRequirementIndex],
+    ...existingFunctionalRequirement,
     ...updates,
+    linkedUserRequirements: mergedLinkedUserRequirements,
+    milestoneId,
     updatedAt: new Date().toISOString(),
   };
   project.updatedAt = new Date().toISOString();
