@@ -33,6 +33,7 @@ const state = {
   taskSortColumn: '',
   taskSortDirection: 'asc',
   activeRequirementLinkId: null,
+  activeFunctionalRequirementId: null,
 };
 
 let isUpdatingRequirementProjectFilter = false;
@@ -941,15 +942,17 @@ function setupEventListeners() {
         if (projectSelect) projectSelect.focus();
         return;
       }
-      if (!linkedFunctionalRequirement) {
-        alert('Please select a functional requirement to determine the milestone');
-        if (functionalReqSelect) functionalReqSelect.focus();
-        return;
+
+      let milestoneId = '';
+      if (linkedFunctionalRequirement) {
+        milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, linkedFunctionalRequirement);
       }
-      const milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, linkedFunctionalRequirement);
       if (!milestoneId) {
-        alert('The selected functional requirement is not linked to any milestone');
-        if (functionalReqSelect) functionalReqSelect.focus();
+        milestoneId = getDefaultMilestoneIdForProject(projectId);
+      }
+
+      if (!milestoneId) {
+        alert('Please create a milestone for this project before adding a task.');
         return;
       }
       
@@ -1725,23 +1728,22 @@ function renderRequirementsTable(requirements) {
     const project = state.projects.find(p => p.id === r.projectId);
     const milestone = project && r.milestoneId ? project.milestones.find(m => m.id === r.milestoneId) : null;
     
-    // Get all functional requirements linked to this user requirement
     const allFunctionalRequirements = storage.getAllFunctionalRequirements();
     const linkedFunctionalReqs = allFunctionalRequirements.filter(fr => 
       (fr.linkedUserRequirements || []).includes(r.id)
     );
     
-    // Get all tasks linked to these functional requirements
     const allTasks = storage.getAllTasks();
     const linkedTasks = allTasks.filter(t => 
       linkedFunctionalReqs.some(fr => fr.id === t.linkedFunctionalRequirement)
     );
     
-    // Calculate progress from linked tasks
     const progressBarHtml = renderUserRequirementProgressBar(r, linkedTasks, false);
+    const isExpanded = state.activeRequirementLinkId === r.id;
+    const rowClass = `task-table-row requirement-row${isExpanded ? ' expanded' : ''}`;
     
     const rowHtml = `
-      <tr class="task-table-row" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
+      <tr class="${rowClass}" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
         <td class="task-title-cell">
           <strong>${escapeHtml(r.title)}</strong>
           ${r.description ? `<div class="task-description-small">${escapeHtml(r.description)}</div>` : ''}
@@ -1752,19 +1754,18 @@ function renderRequirementsTable(requirements) {
         <td>${linkedFunctionalReqs.length}</td>
         <td>${linkedTasks.length}</td>
         <td>
-          <div class="milestone-progress">
+          <div class="progress-cell">
             ${progressBarHtml}
           </div>
         </td>
         <td class="task-actions-cell">
-          <button class="btn btn-green btn-xs link-functional-requirement" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Link FRS</button>
           <button class="btn btn-blue btn-xs edit-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Edit</button>
           <button class="btn btn-red btn-xs delete-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Delete</button>
         </td>
       </tr>
     `;
 
-    return rowHtml + renderFunctionalRequirementLinkRow(r);
+    return rowHtml + renderRequirementExpansionRow(r);
   }).join('');
   
   const getSortIndicator = (column) => {
@@ -1797,7 +1798,7 @@ function renderRequirementsTable(requirements) {
   `;
 }
 
-function renderFunctionalRequirementLinkRow(requirement) {
+function renderRequirementExpansionRow(requirement) {
   if (state.activeRequirementLinkId !== requirement.id) {
     return '';
   }
@@ -1809,86 +1810,100 @@ function renderFunctionalRequirementLinkRow(requirement) {
     return `<option value="${fr.id}">${trackingLabel}${escapeHtml(fr.title)}</option>`;
   }).join('');
   const hasFunctionalRequirements = functionalRequirements.length > 0;
-  const acceptanceCriteriaHtml = requirement.description ? `
-    <div class="requirements-fr-link-criteria">
+  const acceptanceCriteriaHtml = `
+    <div class="requirements-fr-link-criteria requirement-expansion-criteria">
       <span class="requirements-fr-link-criteria-label">Acceptance Criteria</span>
-      <p class="requirements-fr-link-criteria-text">${escapeHtml(requirement.description)}</p>
-    </div>
-  ` : `
-    <div class="requirements-fr-link-criteria">
-      <span class="requirements-fr-link-criteria-label">Acceptance Criteria</span>
-      <p class="requirements-fr-link-criteria-text requirements-fr-link-criteria-empty">No acceptance criteria provided yet.</p>
+      <p class="requirements-fr-link-criteria-text${requirement.description ? '' : ' requirements-fr-link-criteria-empty'}">
+        ${requirement.description ? escapeHtml(requirement.description) : 'No acceptance criteria provided yet.'}
+      </p>
     </div>
   `;
+
   const allFunctionalRequirements = storage.getAllFunctionalRequirements();
   const linkedFunctionalRequirements = allFunctionalRequirements.filter(fr => 
     (fr.linkedUserRequirements || []).includes(requirement.id)
   );
+  const allTasks = storage.getAllTasks();
   const linkedFunctionalRequirementsList = linkedFunctionalRequirements.length > 0
     ? `<div class="requirements-linked-frs-list">
         ${linkedFunctionalRequirements.map(fr => {
           const trackingLabel = fr.trackingId ? `${escapeHtml(fr.trackingId)} - ` : '';
+          const frLinkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === fr.id);
+          const progressBarHtml = renderFunctionalRequirementProgressBar(fr, frLinkedTasks, false);
+          const milestone = project?.milestones?.find(m => m.id === fr.milestoneId);
+          const milestoneLabel = milestone ? `<span class="linked-fr-milestone">${escapeHtml(milestone.title)}</span>` : '';
+          const taskCount = frLinkedTasks.length;
+          const taskLabel = `${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}`;
           return `
-            <div class="requirements-linked-frs-item">
-              <span class="requirements-linked-frs-name">${trackingLabel}${escapeHtml(fr.title)}</span>
-              <button type="button" class="btn btn-gray btn-xs unlink-functional-requirement" data-requirement-id="${requirement.id}" data-functional-requirement-id="${fr.id}" title="Remove linked FRS">
-                Remove
-              </button>
+            <div class="linked-fr-item">
+              <div class="linked-fr-info">
+                <span class="linked-fr-title">${trackingLabel}${escapeHtml(fr.title)}</span>
+                <span class="linked-fr-meta">${taskLabel}${milestoneLabel ? ' · ' : ''}${milestoneLabel}</span>
+              </div>
+              <div class="linked-fr-progress">
+                ${progressBarHtml}
+                <button type="button" class="btn btn-gray btn-xs unlink-functional-requirement" data-requirement-id="${requirement.id}" data-functional-requirement-id="${fr.id}" title="Remove linked FRS">
+                  Remove
+                </button>
+              </div>
             </div>
           `;
         }).join('')}
       </div>`
     : '<p class="requirements-fr-link-hint requirements-linked-frs-empty">No linked FRSs yet.</p>';
-  const linkedFunctionalRequirementsHtml = `
-    <div class="requirements-linked-frs">
-      <p class="requirements-linked-frs-heading">Linked FRS</p>
-      ${linkedFunctionalRequirementsList}
-    </div>
-  `;
 
   return `
-    <tr class="functional-requirement-link-row" data-requirement-id="${requirement.id}">
+    <tr class="requirement-expansion-row" data-requirement-id="${requirement.id}">
       <td colspan="8">
-        <div class="requirements-fr-link-panel">
-          ${acceptanceCriteriaHtml}
-          <div class="requirements-fr-link-grid">
-            <div class="requirements-fr-link-section">
-              <p class="requirements-fr-link-label">Link existing FRS</p>
-              ${linkedFunctionalRequirementsHtml}
-              <div class="form-group">
-                <label for="existing-fr-select-${requirement.id}">FRS</label>
-                <select id="existing-fr-select-${requirement.id}">
-                  <option value="">Select a functional requirement</option>
-                  ${existingOptions}
-                </select>
-              </div>
-              <button type="button" class="btn btn-primary btn-xs link-existing-fr" data-requirement-id="${requirement.id}" ${hasFunctionalRequirements ? '' : 'disabled'}>
-                Link existing FRS
-              </button>
-              ${!hasFunctionalRequirements ? '<p class="requirements-fr-link-hint">Create a functional requirement below to get started.</p>' : ''}
+        <div class="requirement-expansion-panel">
+          <div class="requirement-expansion-header">
+            <div class="requirement-expansion-criteria-container">
+              ${acceptanceCriteriaHtml}
             </div>
-            <div class="requirements-fr-link-section">
-              <p class="requirements-fr-link-label">Create a new functional requirement</p>
-              <div class="form-group">
-                <label for="new-fr-tracking-${requirement.id}">Tracking ID (optional)</label>
-                <input type="text" id="new-fr-tracking-${requirement.id}" placeholder="Tracking ID">
+            <button type="button" class="btn btn-secondary btn-xs cancel-fr-link" data-requirement-id="${requirement.id}">
+              Close
+            </button>
+          </div>
+          <div class="requirement-expansion-grid">
+            <div class="requirement-expansion-section requirement-linked-frs">
+              <p class="requirements-fr-link-label">Linked FRS</p>
+              ${linkedFunctionalRequirementsList}
+            </div>
+            <div class="requirement-expansion-section requirement-link-forms">
+              <div class="requirements-fr-link-section">
+                <p class="requirements-fr-link-label">Link existing FRS</p>
+                <div class="form-group">
+                  <label for="existing-fr-select-${requirement.id}">FRS</label>
+                  <select id="existing-fr-select-${requirement.id}">
+                    <option value="">Select a functional requirement</option>
+                    ${existingOptions}
+                  </select>
+                </div>
+                <button type="button" class="btn btn-primary btn-xs link-existing-fr" data-requirement-id="${requirement.id}" ${hasFunctionalRequirements ? '' : 'disabled'}>
+                  Link existing FRS
+                </button>
+                ${!hasFunctionalRequirements ? '<p class="requirements-fr-link-hint">Create a functional requirement below to get started.</p>' : ''}
               </div>
-              <div class="form-group">
-                <label for="new-fr-title-${requirement.id}">Title *</label>
-                <input type="text" id="new-fr-title-${requirement.id}" placeholder="Functional requirement title">
+              <div class="requirements-fr-link-section">
+                <p class="requirements-fr-link-label">Create a new functional requirement</p>
+                <div class="form-group">
+                  <label for="new-fr-tracking-${requirement.id}">Tracking ID (optional)</label>
+                  <input type="text" id="new-fr-tracking-${requirement.id}" placeholder="Tracking ID">
+                </div>
+                <div class="form-group">
+                  <label for="new-fr-title-${requirement.id}">Title *</label>
+                  <input type="text" id="new-fr-title-${requirement.id}" placeholder="Functional requirement title">
+                </div>
+                <div class="form-group">
+                  <label for="new-fr-description-${requirement.id}">Description (optional)</label>
+                  <textarea id="new-fr-description-${requirement.id}" rows="2" placeholder="Describe how this functional requirement fulfills the user requirement"></textarea>
+                </div>
+                <button type="button" class="btn btn-green btn-xs create-fr-and-link" data-requirement-id="${requirement.id}">
+                  Create & link new FR
+                </button>
               </div>
-              <div class="form-group">
-                <label for="new-fr-description-${requirement.id}">Description (optional)</label>
-                <textarea id="new-fr-description-${requirement.id}" rows="2" placeholder="Describe how this functional requirement fulfills the user requirement"></textarea>
-              </div>
-              <button type="button" class="btn btn-green btn-xs create-fr-and-link" data-requirement-id="${requirement.id}">
-                Create & link new FR
-              </button>
             </div>
           </div>
-          <button type="button" class="btn btn-secondary btn-xs cancel-fr-link" data-requirement-id="${requirement.id}">
-            Close
-          </button>
         </div>
       </td>
     </tr>
@@ -2044,15 +2059,15 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
       return ur;
     }).filter(Boolean);
     
-    // Get all tasks linked to this functional requirement
     const allTasks = storage.getAllTasks();
     const linkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === fr.id);
     
-    // Calculate progress from linked tasks
     const progressBarHtml = renderFunctionalRequirementProgressBar(fr, linkedTasks, false);
+    const isExpanded = state.activeFunctionalRequirementId === fr.id;
+    const rowClass = `task-table-row functional-requirement-row${isExpanded ? ' expanded' : ''}`;
     
-    return `
-      <tr class="task-table-row" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
+    const rowHtml = `
+      <tr class="${rowClass}" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
         <td>${trackingIdDisplay}</td>
         <td class="task-title-cell">
           <strong>${escapeHtml(fr.title)}</strong>
@@ -2062,7 +2077,7 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
         <td>${linkedUserReqs.length > 0 ? linkedUserReqs.map(ur => `<span class="badge" style="background: var(--gray-100); color: var(--text-primary); border-color: var(--border); margin-right: 0.25rem;">${escapeHtml(ur.title)}</span>`).join('') : '<span class="text-muted">—</span>'}</td>
         <td>${linkedTasks.length}</td>
         <td>
-          <div class="milestone-progress">
+          <div class="progress-cell">
             ${progressBarHtml}
           </div>
         </td>
@@ -2072,6 +2087,8 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
         </td>
       </tr>
     `;
+
+    return rowHtml + renderFunctionalRequirementDetailsRow(fr);
   }).join('');
   
   const getSortIndicator = (column) => {
@@ -2910,6 +2927,14 @@ function getMilestoneIdFromFunctionalRequirement(projectId, functionalRequiremen
   }
 
   return '';
+}
+
+function getDefaultMilestoneIdForProject(projectId) {
+  const project = storage.getProject(projectId);
+  if (!project || !project.milestones || project.milestones.length === 0) {
+    return '';
+  }
+  return project.milestones[0].id;
 }
 
 function populatePrioritySelect(select, selectedValue = '') {
