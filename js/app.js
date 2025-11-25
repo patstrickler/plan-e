@@ -1754,7 +1754,12 @@ function renderRequirementsTable(requirements) {
       <tr class="task-table-row" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
         <td class="task-title-cell">
           <strong>${escapeHtml(r.title)}</strong>
-          ${r.description ? `<div class="task-description-small">${escapeHtml(r.description)}</div>` : ''}
+          ${r.description ? `
+            <div class="requirement-criteria">
+              <span class="requirement-criteria-label">Acceptance Criteria</span>
+              <p class="requirement-criteria-text">${escapeHtml(r.description)}</p>
+            </div>
+          ` : ''}
         </td>
         <td class="task-project-cell">${escapeHtml(r.project.title)}</td>
         <td class="task-milestone-cell">${milestone ? escapeHtml(milestone.title) : '<span class="text-muted">—</span>'}</td>
