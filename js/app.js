@@ -2696,7 +2696,7 @@ function renderTasksTable(tasks) {
           <button class="btn btn-red btn-xs delete-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Delete</button>
         </td>
       </tr>
-    ` + renderMilestoneExpansionRow(m);
+    `;
   }).join('');
   
   const getSortIndicator = (column) => {
