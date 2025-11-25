@@ -404,11 +404,6 @@ function setupEventListeners() {
         functionalReqSelect.innerHTML = '<option value="">Select a project first</option>';
         functionalReqSelect.value = '';
       }
-      const milestoneSelect = document.getElementById('task-milestone');
-      if (milestoneSelect) {
-        milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
-        milestoneSelect.value = '';
-      }
       // Reset project select
       const projectSelect = document.getElementById('task-project');
       if (projectSelect) {
@@ -442,22 +437,7 @@ function setupEventListeners() {
   }
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
-    const projectId = e.target.value;
-    populateFunctionalRequirementSelect('task-functional-requirement', projectId);
-    populateMilestoneSelect('task-milestone', projectId);
-  });
-
-  document.getElementById('task-functional-requirement')?.addEventListener('change', (e) => {
-    const projectSelect = document.getElementById('task-project');
-    const milestoneSelect = document.getElementById('task-milestone');
-    const projectId = projectSelect ? projectSelect.value : '';
-    const functionalRequirementId = e?.target?.value || '';
-    if (!projectId || !functionalRequirementId || !milestoneSelect) return;
-
-    const milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, functionalRequirementId);
-    if (milestoneId) {
-      milestoneSelect.value = milestoneId;
-    }
+    populateFunctionalRequirementSelect('task-functional-requirement', e.target.value);
   });
 
   const cancelTaskBtn = document.getElementById('cancel-task-btn');
@@ -934,7 +914,6 @@ function setupEventListeners() {
       const resourceSelect = document.getElementById('task-resource');
       const dueDateInput = document.getElementById('task-due-date');
       const functionalReqSelect = document.getElementById('task-functional-requirement');
-      const milestoneSelect = document.getElementById('task-milestone');
       
       const projectId = projectSelect ? projectSelect.value : '';
       const title = titleInput ? titleInput.value.trim() : '';
@@ -942,7 +921,6 @@ function setupEventListeners() {
       const effort = effortSelect ? effortSelect.value : '';
       const resource = resourceSelect ? resourceSelect.value : '';
       const linkedFunctionalRequirement = functionalReqSelect ? functionalReqSelect.value : '';
-      const milestoneId = milestoneSelect ? milestoneSelect.value : '';
       let dueDate = '';
       if (dueDateInput) {
         if (dueDateInput.flatpickr && dueDateInput.flatpickr.input) {
@@ -963,9 +941,15 @@ function setupEventListeners() {
         if (projectSelect) projectSelect.focus();
         return;
       }
+      if (!linkedFunctionalRequirement) {
+        alert('Please select a functional requirement to determine the milestone');
+        if (functionalReqSelect) functionalReqSelect.focus();
+        return;
+      }
+      const milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, linkedFunctionalRequirement);
       if (!milestoneId) {
-        alert('Please select a milestone');
-        if (milestoneSelect) milestoneSelect.focus();
+        alert('The selected functional requirement is not linked to any milestone');
+        if (functionalReqSelect) functionalReqSelect.focus();
         return;
       }
       
@@ -983,13 +967,9 @@ function setupEventListeners() {
         if (descriptionInput) descriptionInput.value = '';
         if (effortSelect) effortSelect.value = '';
         if (resourceSelect) resourceSelect.value = '';
-        // Reset project, milestone, and functional requirement selects
+        // Reset project and functional requirement selects
         if (projectSelect) {
           projectSelect.value = '';
-        }
-        if (milestoneSelect) {
-          milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
-          milestoneSelect.value = '';
         }
         if (functionalReqSelect) {
           functionalReqSelect.innerHTML = '<option value="">Select a project first</option>';
