@@ -3008,22 +3008,22 @@ function renderUserRequirementProgressBar(userRequirement, linkedTasks, includeT
   
   // Calculate percentages and build segments
   const segments = [];
-  const stats = [];
-  
   statuses.forEach(status => {
     const count = statusCounts[status.id] || 0;
     if (count > 0) {
       const percent = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
       segments.push(`<div class="progress-bar-segment" style="width: ${percent}%; background-color: ${status.color};"></div>`);
-      stats.push(`${count} ${status.label.toLowerCase()}`);
     }
   });
   
-  const statsText = stats.length > 0 ? stats.join(', ') : '0 tasks';
   const completedCount = statusCounts['completed'] || 0;
   const completedPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
   
   if (includeText) {
+    const statsText = statuses.map(status => {
+      const count = statusCounts[status.id] || 0;
+      return count ? `${count} ${status.label.toLowerCase()}` : null;
+    }).filter(Boolean).join(', ') || '0 tasks';
     return `
       <div class="progress-bar-container">
         ${segments.join('')}
@@ -3035,11 +3035,8 @@ function renderUserRequirementProgressBar(userRequirement, linkedTasks, includeT
     `;
   } else {
     return `
-      <div class="milestone-progress-item">
-        <div class="milestone-progress-header">
-          <span class="milestone-progress-title">${escapeHtml(userRequirement.title)}</span>
-          <span class="milestone-progress-stats">${statsText}</span>
-        </div>
+      <div class="progress-meter">
+        <span class="progress-meter-percentage">${completedPercent}%</span>
         <div class="progress-bar-container">
           ${segments.join('')}
         </div>
@@ -3060,22 +3057,22 @@ function renderFunctionalRequirementProgressBar(functionalRequirement, linkedTas
   
   // Calculate percentages and build segments
   const segments = [];
-  const stats = [];
-  
   statuses.forEach(status => {
     const count = statusCounts[status.id] || 0;
     if (count > 0) {
       const percent = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
       segments.push(`<div class="progress-bar-segment" style="width: ${percent}%; background-color: ${status.color};"></div>`);
-      stats.push(`${count} ${status.label.toLowerCase()}`);
     }
   });
   
-  const statsText = stats.length > 0 ? stats.join(', ') : '0 tasks';
   const completedCount = statusCounts['completed'] || 0;
   const completedPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
   
   if (includeText) {
+    const statsText = statuses.map(status => {
+      const count = statusCounts[status.id] || 0;
+      return count ? `${count} ${status.label.toLowerCase()}` : null;
+    }).filter(Boolean).join(', ') || '0 tasks';
     return `
       <div class="progress-bar-container">
         ${segments.join('')}
@@ -3087,11 +3084,8 @@ function renderFunctionalRequirementProgressBar(functionalRequirement, linkedTas
     `;
   } else {
     return `
-      <div class="milestone-progress-item">
-        <div class="milestone-progress-header">
-          <span class="milestone-progress-title">${escapeHtml(functionalRequirement.title)}</span>
-          <span class="milestone-progress-stats">${statsText}</span>
-        </div>
+      <div class="progress-meter">
+        <span class="progress-meter-percentage">${completedPercent}%</span>
         <div class="progress-bar-container">
           ${segments.join('')}
         </div>
