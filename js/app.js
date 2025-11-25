@@ -77,6 +77,188 @@ const elements = {
   workspaceNameForm: document.getElementById('workspace-name-form'),
 };
 
+const csvTemplates = {
+  milestones: {
+    headers: ['Project Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)'],
+    sampleRow: ['Plan-E Platform', 'Platform Launch', 'Deliver MVP functionality', '2025-12-31'],
+  },
+  requirements: {
+    headers: ['Project Title', 'Milestone Title', 'Requirement Title', 'Acceptance Criteria', 'Priority'],
+    sampleRow: ['Plan-E Platform', 'Platform Launch', 'Users can sign in', 'Allow secure authentication before showing dashboards', 'High'],
+  },
+  functionalRequirements: {
+    headers: ['Project Title', 'Tracking ID', 'Functional Requirement Title', 'Description', 'Linked User Requirements (semicolon separated)'],
+    sampleRow: ['Plan-E Platform', 'FR-101', 'User authentication API', 'Implement OAuth flow for sign-in', 'Users can sign in;Users can reset password'],
+  },
+  tasks: {
+    headers: ['Project Title', 'Functional Requirement Title', 'Milestone Title', 'Task Title', 'Description', 'Effort Level', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'],
+    sampleRow: ['Plan-E Platform', 'User authentication API', 'Platform Launch', 'Create sign-in endpoint', 'Build endpoint to validate credentials', 'Medium', 'Jane Doe', '2025-12-15', 'In Progress'],
+  },
+};
+
+const milestoneExportHeaders = ['Project Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)', 'Tasks Completed', 'Total Tasks', 'Progress (%)'];
+const requirementExportHeaders = ['Project Title', 'Milestone Title', 'Requirement Title', 'Acceptance Criteria', 'Priority', 'Linked Functional Requirements', 'Linked Tasks'];
+const functionalRequirementExportHeaders = ['Project Title', 'Tracking ID', 'Functional Requirement Title', 'Description', 'Linked User Requirements', 'Derived Milestone Title', 'Linked Tasks', 'Progress (%)'];
+const taskExportHeaders = ['Project Title', 'Milestone Title', 'Functional Requirement Title', 'Task Title', 'Description', 'Effort', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'];
+
+function escapeCsvValue(value) {
+  const stringValue = value === undefined || value === null ? '' : String(value);
+  if (/["\r\n,]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
+}
+
+function formatDateForExport(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toISOString().split('T')[0];
+}
+
+function downloadCsv(fileName, headers, rows) {
+  const lines = [headers, ...rows].map(row => row.map(escapeCsvValue).join(','));
+  const csvContent = lines.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+
+function parseCsv(csvText) {
+  const sanitized = csvText.replace(/^\uFEFF/, '').replace(/\r/g, '\n');
+  const lines = sanitized.split('\n').map(line => line.trim()).filter(line => line !== '');
+  if (lines.length === 0) {
+    return { headers: [], rows: [] };
+  }
+  const headers = parseCsvLine(lines[0]).map(header => header.trim());
+  const rows = lines.slice(1).map(line => {
+    const values = parseCsvLine(line);
+    const row = {};
+    headers.forEach((header, index) => {
+      const key = header.toLowerCase().trim();
+      row[key] = values[index] !== undefined ? values[index].trim() : '';
+    });
+    return row;
+  }).filter(row => Object.values(row).some(value => value !== ''));
+  return { headers, rows };
+}
+
+function parseCsvLine(line) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"' && line[i + 1] === '"') {
+      current += '"';
+      i += 1;
+      continue;
+    }
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (char === ',' && !inQuotes) {
+      values.push(current);
+      current = '';
+      continue;
+    }
+    current += char;
+  }
+  values.push(current);
+  return values;
+}
+
+function getRowValue(row, aliases) {
+  if (!row || !Array.isArray(aliases)) return '';
+  for (const alias of aliases) {
+    const normalizedAlias = alias.toLowerCase().trim();
+    if (!normalizedAlias) continue;
+    if (Object.prototype.hasOwnProperty.call(row, normalizedAlias)) {
+      return row[normalizedAlias];
+    }
+  }
+  return '';
+}
+
+function findProjectByTitle(title) {
+  if (!title) return null;
+  const normalizedTitle = title.trim().toLowerCase();
+  return storage.getAllProjects().find(project => (project.title || '').trim().toLowerCase() === normalizedTitle) || null;
+}
+
+function findMilestoneByTitle(projectId, title) {
+  if (!projectId || !title) return null;
+  const project = storage.getProject(projectId);
+  if (!project || !project.milestones) return null;
+  const normalizedTitle = title.trim().toLowerCase();
+  return project.milestones.find(m => (m.title || '').trim().toLowerCase() === normalizedTitle) || null;
+}
+
+function findRequirementByTitle(projectId, title) {
+  if (!projectId || !title) return null;
+  const normalizedTitle = title.trim().toLowerCase();
+  return storage.getAllRequirements().find(req => req.projectId === projectId && (req.title || '').trim().toLowerCase() === normalizedTitle) || null;
+}
+
+function findFunctionalRequirementByTitle(projectId, title) {
+  if (!projectId || !title) return null;
+  const normalizedTitle = title.trim().toLowerCase();
+  return storage.getAllFunctionalRequirements().find(fr => fr.projectId === projectId && (fr.title || '').trim().toLowerCase() === normalizedTitle) || null;
+}
+
+function resolvePriorityId(value) {
+  if (!value) return '';
+  const normalized = value.trim().toLowerCase();
+  const match = storage.getPriorities().find(p => p.id.toLowerCase() === normalized || p.label.toLowerCase() === normalized);
+  return match ? match.id : '';
+}
+
+function resolveStatusId(value) {
+  if (!value) return '';
+  const normalized = value.trim().toLowerCase();
+  const match = storage.getStatuses().find(s => s.id.toLowerCase() === normalized || s.label.toLowerCase() === normalized);
+  return match ? match.id : '';
+}
+
+function resolveEffortLevelId(value) {
+  if (!value) return '';
+  const normalized = value.trim().toLowerCase();
+  const match = storage.getEffortLevels().find(e => e.id.toLowerCase() === normalized || e.label.toLowerCase() === normalized);
+  return match ? match.id : '';
+}
+
+function reportCsvImportResult(label, imported, errors) {
+  if (!imported && errors.length === 0) {
+    alert(`No rows were imported for ${label}.`);
+    return;
+  }
+
+  let message = `${label} import complete. Imported ${imported} row${imported === 1 ? '' : 's'}.`;
+  if (errors.length > 0) {
+    console.warn(`[Plan-E CSV Import] ${label} errors:`, errors);
+    message += ` ${errors.length} row${errors.length === 1 ? '' : 's'} could not be imported. Check console for details.`;
+  }
+  alert(message);
+}
+
 const PAGE_TITLE_SUFFIX = ' - Project Planning Tool';
 
 // Initialize app
@@ -1031,6 +1213,9 @@ function setupEventListeners() {
   
   // Functional requirement search and filter listeners
   setupFunctionalRequirementSearchAndFilterListeners();
+
+  // CSV import/export listeners
+  setupCsvListeners();
 }
 
 function setupTaskSearchAndFilterListeners() {
@@ -1112,6 +1297,449 @@ function setupFunctionalRequirementSearchAndFilterListeners() {
     state.functionalRequirementFilterProject = e.target.value;
     renderFunctionalRequirements();
   });
+}
+
+function setupCsvListeners() {
+  const configs = [
+    {
+      label: 'Milestones',
+      exportId: 'milestones-export-btn',
+      templateKey: 'milestones',
+      templateId: 'milestones-template-btn',
+      importId: 'milestones-import-btn',
+      inputId: 'milestones-csv-input',
+      exportFn: exportMilestonesToCsv,
+      importFn: importMilestonesFromCsv,
+      onImported: () => {
+        renderMilestones();
+        renderProjects();
+        updateAllSelects();
+      },
+    },
+    {
+      label: 'User Requirements',
+      exportId: 'requirements-export-btn',
+      templateKey: 'requirements',
+      templateId: 'requirements-template-btn',
+      importId: 'requirements-import-btn',
+      inputId: 'requirements-csv-input',
+      exportFn: exportRequirementsToCsv,
+      importFn: importRequirementsFromCsv,
+      onImported: () => {
+        renderRequirements();
+        renderFunctionalRequirements();
+        renderProjects();
+        updateAllSelects();
+      },
+    },
+    {
+      label: 'Functional Requirements',
+      exportId: 'functional-requirements-export-btn',
+      templateKey: 'functionalRequirements',
+      templateId: 'functional-requirements-template-btn',
+      importId: 'functional-requirements-import-btn',
+      inputId: 'functional-requirements-csv-input',
+      exportFn: exportFunctionalRequirementsToCsv,
+      importFn: importFunctionalRequirementsFromCsv,
+      onImported: () => {
+        renderFunctionalRequirements();
+        renderRequirements();
+        renderProjects();
+        updateAllSelects();
+      },
+    },
+    {
+      label: 'Tasks',
+      exportId: 'tasks-export-btn',
+      templateKey: 'tasks',
+      templateId: 'tasks-template-btn',
+      importId: 'tasks-import-btn',
+      inputId: 'tasks-csv-input',
+      exportFn: exportTasksToCsv,
+      importFn: importTasksFromCsv,
+      onImported: () => {
+        renderTasks();
+        renderFunctionalRequirements();
+        renderRequirements();
+        renderProjects();
+        updateAllSelects();
+      },
+    },
+  ];
+
+  configs.forEach(config => {
+    document.getElementById(config.exportId)?.addEventListener('click', config.exportFn);
+    document.getElementById(config.templateId)?.addEventListener('click', () => downloadCsvTemplate(config.templateKey));
+    document.getElementById(config.importId)?.addEventListener('click', () => {
+      document.getElementById(config.inputId)?.click();
+    });
+
+    const inputElement = document.getElementById(config.inputId);
+    inputElement?.addEventListener('change', async (event) => {
+      const target = event.target;
+      if (!target || !(target instanceof HTMLInputElement)) return;
+      const file = target.files?.[0];
+      if (!file) {
+        target.value = '';
+        return;
+      }
+
+      try {
+        const fileContent = await readFileAsText(file);
+        const csvText = typeof fileContent === 'string' ? fileContent : '';
+        const { rows } = parseCsv(csvText);
+        if (rows.length === 0) {
+          alert(`No rows found in ${config.label} CSV.`);
+          return;
+        }
+        const { imported, errors } = config.importFn(rows);
+        if (config.onImported) {
+          config.onImported(imported, errors);
+        }
+        reportCsvImportResult(config.label, imported, errors);
+      } catch (error) {
+        console.error(`Failed to import ${config.label} CSV`, error);
+        alert(`Failed to import ${config.label} CSV: ${(error && error.message) || 'Unknown error'}`);
+      } finally {
+        target.value = '';
+      }
+    });
+  });
+}
+
+function buildTemplateFileName(key) {
+  return `plan-e-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}-template.csv`;
+}
+
+function downloadCsvTemplate(key) {
+  const template = csvTemplates[key];
+  if (!template) return;
+  downloadCsv(buildTemplateFileName(key), template.headers, [template.sampleRow]);
+}
+
+function exportMilestonesToCsv() {
+  const rows = sortMilestones(filterMilestones(storage.getAllMilestones())).map(milestone => {
+    const completedTasks = milestone.tasks ? milestone.tasks.filter(task => task.status === 'completed').length : 0;
+    const totalTasks = milestone.tasks ? milestone.tasks.length : 0;
+    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    return [
+      milestone.project?.title || '',
+      milestone.title || '',
+      milestone.description || '',
+      formatDateForExport(milestone.targetDate),
+      completedTasks,
+      totalTasks,
+      progress,
+    ];
+  });
+  downloadCsv('plan-e-milestones.csv', milestoneExportHeaders, rows);
+}
+
+function exportRequirementsToCsv() {
+  const requirements = sortRequirements(filterRequirements(storage.getAllRequirements()));
+  const priorities = storage.getPriorities();
+  const functionalRequirements = storage.getAllFunctionalRequirements();
+  const tasks = storage.getAllTasks();
+  const rows = requirements.map(requirement => {
+    const milestoneTitle = requirement.milestoneId
+      ? (requirement.project?.milestones || []).find(milestone => milestone.id === requirement.milestoneId)?.title || ''
+      : '';
+    const priorityLabel = priorities.find(priority => priority.id === requirement.priority)?.label || '';
+    const linkedFunctionalRequirements = functionalRequirements.filter(fr => Array.isArray(fr.linkedUserRequirements) && fr.linkedUserRequirements.includes(requirement.id));
+    const linkedTasks = tasks.filter(task => linkedFunctionalRequirements.some(fr => fr.id === task.linkedFunctionalRequirement));
+    return [
+      requirement.project?.title || '',
+      milestoneTitle,
+      requirement.title || '',
+      requirement.description || '',
+      priorityLabel,
+      linkedFunctionalRequirements.length,
+      linkedTasks.length,
+    ];
+  });
+  downloadCsv('plan-e-requirements.csv', requirementExportHeaders, rows);
+}
+
+function exportFunctionalRequirementsToCsv() {
+  const functionalRequirements = sortFunctionalRequirements(filterFunctionalRequirements(storage.getAllFunctionalRequirements()));
+  const allRequirements = storage.getAllRequirements();
+  const tasks = storage.getAllTasks();
+  const rows = functionalRequirements.map(fr => {
+    const linkedRequirementTitles = (fr.linkedUserRequirements || []).map(reqId => {
+      const requirement = allRequirements.find(req => req.projectId === fr.projectId && req.id === reqId);
+      return requirement?.title || '';
+    }).filter(Boolean);
+    const milestoneTitle = fr.milestoneId
+      ? (fr.project?.milestones || []).find(milestone => milestone.id === fr.milestoneId)?.title || ''
+      : '';
+    const linkedTasks = tasks.filter(task => task.linkedFunctionalRequirement === fr.id);
+    const completedTasks = linkedTasks.filter(task => task.status === 'completed').length;
+    const progress = linkedTasks.length > 0 ? Math.round((completedTasks / linkedTasks.length) * 100) : 0;
+    return [
+      fr.project?.title || '',
+      fr.trackingId || '',
+      fr.title || '',
+      fr.description || '',
+      linkedRequirementTitles.join('; '),
+      milestoneTitle,
+      linkedTasks.length,
+      progress,
+    ];
+  });
+  downloadCsv('plan-e-functional-requirements.csv', functionalRequirementExportHeaders, rows);
+}
+
+function exportTasksToCsv() {
+  const statuses = storage.getStatuses();
+  const effortLevels = storage.getEffortLevels();
+  const functionalRequirements = storage.getAllFunctionalRequirements();
+  const rows = sortTasks(filterTasks(storage.getAllTasks())).map(task => {
+    const milestoneTitle = task.milestone?.title || '';
+    const functionalRequirement = functionalRequirements.find(fr => fr.id === task.linkedFunctionalRequirement);
+    const statusLabel = statuses.find(status => status.id === task.status)?.label || '';
+    const effortLabel = effortLevels.find(e => e.id === task.effortLevel)?.label || '';
+    return [
+      task.project?.title || '',
+      milestoneTitle,
+      functionalRequirement?.title || '',
+      task.title || '',
+      task.description || '',
+      effortLabel,
+      task.assignedResource || '',
+      formatDateForExport(task.dueDate),
+      statusLabel,
+    ];
+  });
+  downloadCsv('plan-e-tasks.csv', taskExportHeaders, rows);
+}
+
+function importMilestonesFromCsv(rows) {
+  const errors = [];
+  let imported = 0;
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const projectTitle = getRowValue(row, ['project title', 'project']).trim();
+    const milestoneTitle = getRowValue(row, ['milestone title', 'title']).trim();
+    const description = getRowValue(row, ['description', 'details', 'notes']).trim();
+    const targetDate = getRowValue(row, ['target date', 'target date (yyyy-mm-dd)', 'due date']).trim();
+
+    if (!projectTitle || !milestoneTitle) {
+      errors.push(`Row ${rowNumber}: Project and milestone title are required.`);
+      return;
+    }
+
+    const project = findProjectByTitle(projectTitle);
+    if (!project) {
+      errors.push(`Row ${rowNumber}: Project "${projectTitle}" not found.`);
+      return;
+    }
+
+    try {
+      storage.createMilestone(project.id, {
+        title: milestoneTitle,
+        description: description || undefined,
+        targetDate: targetDate || undefined,
+      });
+      imported += 1;
+    } catch (error) {
+      console.error('Milestone CSV import error', error);
+      errors.push(`Row ${rowNumber}: ${error.message || 'Unable to create milestone.'}`);
+    }
+  });
+  return { imported, errors };
+}
+
+function importRequirementsFromCsv(rows) {
+  const errors = [];
+  let imported = 0;
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const projectTitle = getRowValue(row, ['project title', 'project']).trim();
+    const milestoneTitle = getRowValue(row, ['milestone title', 'milestone']).trim();
+    const requirementTitle = getRowValue(row, ['requirement title', 'title', 'requirement']).trim();
+    const acceptanceCriteria = getRowValue(row, ['acceptance criteria', 'criteria', 'description']).trim();
+    const priorityValue = getRowValue(row, ['priority']).trim();
+
+    if (!projectTitle || !requirementTitle) {
+      errors.push(`Row ${rowNumber}: Project and requirement title are required.`);
+      return;
+    }
+
+    const project = findProjectByTitle(projectTitle);
+    if (!project) {
+      errors.push(`Row ${rowNumber}: Project "${projectTitle}" not found.`);
+      return;
+    }
+
+    let milestoneId;
+    if (milestoneTitle) {
+      const milestone = findMilestoneByTitle(project.id, milestoneTitle);
+      if (milestone) {
+        milestoneId = milestone.id;
+      } else {
+        console.warn(`Row ${rowNumber}: Milestone "${milestoneTitle}" not found for project "${projectTitle}".`);
+      }
+    }
+
+    const priorityId = resolvePriorityId(priorityValue);
+    if (priorityValue && !priorityId) {
+      console.warn(`Row ${rowNumber}: Priority "${priorityValue}" not recognized.`);
+    }
+
+    try {
+      storage.createRequirement(project.id, {
+        title: requirementTitle,
+        description: acceptanceCriteria || undefined,
+        priority: priorityId || undefined,
+        milestoneId: milestoneId || undefined,
+      });
+      imported += 1;
+    } catch (error) {
+      console.error('Requirement CSV import error', error);
+      errors.push(`Row ${rowNumber}: ${error.message || 'Unable to create requirement.'}`);
+    }
+  });
+  return { imported, errors };
+}
+
+function importFunctionalRequirementsFromCsv(rows) {
+  const errors = [];
+  let imported = 0;
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const projectTitle = getRowValue(row, ['project title', 'project']).trim();
+    const trackingId = getRowValue(row, ['tracking id', 'tracking identifier', 'tracking number']).trim();
+    const title = getRowValue(row, ['functional requirement title', 'title']).trim();
+    const description = getRowValue(row, ['description', 'details']).trim();
+    const linkedUserRequirementsValue = getRowValue(row, ['linked user requirements', 'linked requirements']).trim();
+
+    if (!projectTitle || !title) {
+      errors.push(`Row ${rowNumber}: Project and functional requirement title are required.`);
+      return;
+    }
+
+    const project = findProjectByTitle(projectTitle);
+    if (!project) {
+      errors.push(`Row ${rowNumber}: Project "${projectTitle}" not found.`);
+      return;
+    }
+
+    const linkedRequirementTitles = linkedUserRequirementsValue
+      ? linkedUserRequirementsValue.split(/[,;]+/).map(value => value.trim()).filter(Boolean)
+      : [];
+
+    const linkedRequirementIds = linkedRequirementTitles.map(reqTitle => {
+      const requirement = findRequirementByTitle(project.id, reqTitle);
+      if (!requirement) {
+        console.warn(`Row ${rowNumber}: User requirement "${reqTitle}" not found.`);
+        return null;
+      }
+      return requirement.id;
+    }).filter(Boolean);
+
+    try {
+      storage.createFunctionalRequirement(project.id, {
+        trackingId: trackingId || undefined,
+        title,
+        description: description || undefined,
+        linkedUserRequirements: linkedRequirementIds,
+      });
+      imported += 1;
+    } catch (error) {
+      console.error('Functional requirement CSV import error', error);
+      errors.push(`Row ${rowNumber}: ${error.message || 'Unable to create functional requirement.'}`);
+    }
+  });
+  return { imported, errors };
+}
+
+function importTasksFromCsv(rows) {
+  const errors = [];
+  let imported = 0;
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const projectTitle = getRowValue(row, ['project title', 'project']).trim();
+    const taskTitle = getRowValue(row, ['task title', 'title']).trim();
+    const functionalRequirementTitle = getRowValue(row, ['functional requirement title', 'linked functional requirement', 'functional requirement']).trim();
+    const milestoneTitle = getRowValue(row, ['milestone title', 'milestone']).trim();
+    const description = getRowValue(row, ['description', 'details', 'notes']).trim();
+    const effortValue = getRowValue(row, ['effort level', 'effort']).trim();
+    const assignedResource = getRowValue(row, ['assigned resource', 'resource']).trim();
+    const dueDate = getRowValue(row, ['due date', 'target date', 'target date (YYYY-MM-DD)']).trim();
+    const statusValue = getRowValue(row, ['status']).trim();
+
+    if (!projectTitle || !taskTitle) {
+      errors.push(`Row ${rowNumber}: Project and task title are required.`);
+      return;
+    }
+
+    const project = findProjectByTitle(projectTitle);
+    if (!project) {
+      errors.push(`Row ${rowNumber}: Project "${projectTitle}" not found.`);
+      return;
+    }
+
+    let milestoneId = '';
+    let linkedFunctionalRequirementId;
+    if (functionalRequirementTitle) {
+      const linkedFR = findFunctionalRequirementByTitle(project.id, functionalRequirementTitle);
+      if (linkedFR) {
+        linkedFunctionalRequirementId = linkedFR.id;
+        milestoneId = linkedFR.milestoneId || getMilestoneIdFromFunctionalRequirement(project.id, linkedFR.id);
+      } else {
+        console.warn(`Row ${rowNumber}: Functional requirement "${functionalRequirementTitle}" not found.`);
+      }
+    }
+
+    if (!milestoneId && milestoneTitle) {
+      const milestone = findMilestoneByTitle(project.id, milestoneTitle);
+      if (milestone) {
+        milestoneId = milestone.id;
+      } else {
+        console.warn(`Row ${rowNumber}: Milestone "${milestoneTitle}" not found for project "${projectTitle}".`);
+      }
+    }
+
+    if (!milestoneId) {
+      milestoneId = getDefaultMilestoneIdForProject(project.id);
+    }
+
+    if (!milestoneId) {
+      errors.push(`Row ${rowNumber}: Unable to resolve a milestone for this task; add a milestone to the project first.`);
+      return;
+    }
+
+    const effortId = resolveEffortLevelId(effortValue);
+    if (effortValue && !effortId) {
+      console.warn(`Row ${rowNumber}: Effort level "${effortValue}" not recognized.`);
+    }
+
+    const statusId = resolveStatusId(statusValue);
+    if (statusValue && !statusId) {
+      console.warn(`Row ${rowNumber}: Status "${statusValue}" not recognized.`);
+    }
+
+    try {
+      const newTask = storage.createTask(project.id, milestoneId, {
+        title: taskTitle,
+        description: description || undefined,
+        effortLevel: effortId || undefined,
+        assignedResource: assignedResource || undefined,
+        dueDate: dueDate || undefined,
+        linkedFunctionalRequirement: linkedFunctionalRequirementId || undefined,
+      });
+
+      if (newTask && statusId && statusId !== 'not-started') {
+        storage.updateTask(project.id, milestoneId, newTask.id, { status: statusId });
+      }
+
+      imported += 1;
+    } catch (error) {
+      console.error('Task CSV import error', error);
+      errors.push(`Row ${rowNumber}: ${error.message || 'Unable to create task.'}`);
+    }
+  });
+  return { imported, errors };
 }
 
 // Render functions
