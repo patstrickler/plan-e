@@ -13,7 +13,6 @@ function migrateTask(task, projectId) {
     ...task,
     projectId: task.projectId || projectId,
     status: task.status || (task.completed ? 'completed' : 'not-started'),
-    priority: task.priority || undefined,
     effortLevel: task.effortLevel || undefined,
     assignedResource: task.assignedResource || undefined,
     startDate: task.startDate || undefined,

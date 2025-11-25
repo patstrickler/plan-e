@@ -719,7 +719,6 @@ function setupEventListeners() {
         title,
         description: description || undefined,
         status,
-        priority: priority || undefined,
         effortLevel: effort || undefined,
         assignedResource: resource || undefined,
         dueDate: dueDate || undefined,
@@ -1206,16 +1205,11 @@ function renderTaskCard(task, projectId, milestoneId) {
   
   if (isEditing) {
     const statuses = storage.getStatuses();
-    const priorities = storage.getPriorities();
     const effortLevels = storage.getEffortLevels();
     const users = storage.getUsers();
     
     const statusOptions = statuses.map(s => 
       `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
-    ).join('');
-    
-    const priorityOptions = priorities.map(p => 
-      `<option value="${p.id}" ${task.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
     ).join('');
     
     const effortOptions = effortLevels.map(e => 
@@ -1235,13 +1229,6 @@ function renderTaskCard(task, projectId, milestoneId) {
             <label>Status</label>
             <select class="edit-status" data-task-id="${task.id}">
               ${statusOptions}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Priority</label>
-            <select class="edit-priority" data-task-id="${task.id}">
-              <option value="">None</option>
-              ${priorityOptions}
             </select>
           </div>
           <div class="form-group">
@@ -1271,10 +1258,6 @@ function renderTaskCard(task, projectId, milestoneId) {
   const status = statuses.find(s => s.id === task.status);
   const statusColorStyle = status?.color ? getStatusSelectStyle(status.color) : '';
   
-  const priorities = storage.getPriorities();
-  const priority = priorities.find(p => p.id === task.priority);
-  const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
-  
   const statusOptions = statuses.map(s => 
     `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
   ).join('');
@@ -1286,7 +1269,6 @@ function renderTaskCard(task, projectId, milestoneId) {
           <select class="task-status-select" style="${statusColorStyle}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
             ${statusOptions}
           </select>
-          ${task.priority && priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : ''}
           <h4>${escapeHtml(task.title)}</h4>
           ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
           <div class="task-meta">
@@ -2365,7 +2347,6 @@ function renderTaskTableRowEdit(task, statuses, effortLevels) {
 
 function populateTaskFilters() {
   const statuses = storage.getStatuses();
-  const priorities = storage.getPriorities();
   const projects = storage.getAllProjects();
   const users = storage.getUsers();
   
@@ -2381,21 +2362,6 @@ function populateTaskFilters() {
       option.value = status.id;
       option.textContent = status.label;
       statusFilter.appendChild(option);
-    });
-  }
-  
-  // Populate priority filter
-  const priorityFilter = document.getElementById('task-filter-priority');
-  if (priorityFilter) {
-    // Clear existing options except the first one
-    while (priorityFilter.options.length > 1) {
-      priorityFilter.remove(1);
-    }
-    priorities.forEach(priority => {
-      const option = document.createElement('option');
-      option.value = priority.id;
-      option.textContent = priority.label;
-      priorityFilter.appendChild(option);
     });
   }
   
@@ -2446,10 +2412,6 @@ function renderTaskCardForView(task) {
       `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
     ).join('');
     
-    const priorityOptions = priorities.map(p => 
-      `<option value="${p.id}" ${task.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
-    ).join('');
-    
     const effortOptions = effortLevels.map(e => 
       `<option value="${e.id}" ${task.effortLevel === e.id ? 'selected' : ''}>${escapeHtml(e.label)}</option>`
     ).join('');
@@ -2467,13 +2429,6 @@ function renderTaskCardForView(task) {
             <label>Status</label>
             <select class="edit-status" data-task-id="${task.id}">
               ${statusOptions}
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Priority</label>
-            <select class="edit-priority" data-task-id="${task.id}">
-              <option value="">None</option>
-              ${priorityOptions}
             </select>
           </div>
           <div class="form-group">
@@ -2503,10 +2458,6 @@ function renderTaskCardForView(task) {
   const status = statuses.find(s => s.id === task.status);
   const statusColorStyle = status?.color ? getStatusSelectStyle(status.color) : '';
   
-  const priorities = storage.getPriorities();
-  const priority = priorities.find(p => p.id === task.priority);
-  const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
-  
   const statusOptions = statuses.map(s => 
     `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
   ).join('');
@@ -2518,7 +2469,6 @@ function renderTaskCardForView(task) {
           <select class="task-status-select-view" style="${statusColorStyle}" data-task-id="${task.id}" data-project-id="${projectId}" data-milestone-id="${milestoneId}">
             ${statusOptions}
           </select>
-          ${task.priority && priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : ''}
           <h4>${escapeHtml(task.title)}</h4>
           <p class="text-muted">Project: ${escapeHtml(task.project.title)} | Milestone: ${escapeHtml(task.milestone.title)}</p>
           ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
@@ -2944,11 +2894,9 @@ function populateUserSelect(select, selectedValue = '') {
 
 function updateAllSelects() {
   // Update new task form selects
-  const taskPrioritySelect = document.getElementById('task-priority');
   const taskEffortSelect = document.getElementById('task-effort');
   const taskResourceSelect = document.getElementById('task-resource');
   
-  if (taskPrioritySelect) populatePrioritySelect(taskPrioritySelect);
   if (taskEffortSelect) populateEffortSelect(taskEffortSelect);
   if (taskResourceSelect) populateUserSelect(taskResourceSelect);
   
