@@ -2884,12 +2884,23 @@ function attachTaskListenersForView(task) {
   
   // Save task
   document.querySelector(`.save-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
-    const title = document.querySelector(`.edit-title[data-task-id="${taskId}"]`).value.trim();
-    const description = document.querySelector(`.edit-description[data-task-id="${taskId}"]`).value.trim();
-    const status = document.querySelector(`.edit-status[data-task-id="${taskId}"]`).value;
-    const effort = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`).value;
-    const resource = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`).value;
-    
+    const titleInput = document.querySelector(`.edit-title[data-task-id="${taskId}"]`);
+    if (!titleInput) {
+      console.warn(`Edit form not found for task ${taskId}`);
+      return;
+    }
+
+    const descriptionInput = document.querySelector(`.edit-description[data-task-id="${taskId}"]`);
+    const statusSelect = document.querySelector(`.edit-status[data-task-id="${taskId}"]`);
+    const effortSelect = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`);
+    const resourceInput = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`);
+
+    const title = titleInput.value.trim();
+    const description = descriptionInput?.value.trim() ?? '';
+    const status = statusSelect?.value;
+    const effort = effortSelect?.value;
+    const resource = resourceInput?.value;
+
     if (!title) return;
     
     try {
