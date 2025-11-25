@@ -237,6 +237,8 @@
           </form>
         </div>
 
+        <div id="requirements-progress-view" class="progress-summary-wrapper"></div>
+
         <!-- Search and Filter Controls -->
         <div class="tasks-controls mb-4">
           <div class="tasks-search-filter">
@@ -263,11 +265,11 @@
               <select id="task-project" required></select>
             </div>
             <div class="form-group">
-              <label for="task-functional-requirement">Linked Functional Requirement *</label>
-              <select id="task-functional-requirement" required>
+              <label for="task-functional-requirement">Linked Functional Requirement (optional)</label>
+              <select id="task-functional-requirement">
                 <option value="">Select a project first</option>
               </select>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Selecting a functional requirement determines which milestone the task belongs to.</small>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Choosing one will keep this task synced to that milestone when available.</small>
             </div>
             <div class="form-group">
               <label for="task-title">Task Title *</label>
@@ -354,6 +356,8 @@
             </div>
           </form>
         </div>
+
+        <div id="functional-requirements-progress-view" class="progress-summary-wrapper"></div>
 
         <!-- Search and Filter Controls -->
         <div class="tasks-controls mb-4">
