@@ -54,6 +54,8 @@ const elements = {
   tasksList: document.getElementById('tasks-list'),
   requirementsList: document.getElementById('requirements-list'),
   functionalRequirementsList: document.getElementById('functional-requirements-list'),
+  requirementsProgressView: document.getElementById('requirements-progress-view'),
+  functionalRequirementsProgressView: document.getElementById('functional-requirements-progress-view'),
   newProjectBtn: document.getElementById('new-project-btn'),
   newProjectForm: document.getElementById('new-project-form'),
   newMilestoneBtn: document.getElementById('new-milestone-btn'),
@@ -1498,6 +1500,61 @@ function attachMilestoneSortListeners() {
   });
 }
 
+function getUniqueTasks(tasks) {
+  const unique = new Map();
+  tasks.forEach(task => {
+    if (task && task.id) {
+      unique.set(task.id, task);
+    }
+  });
+  return Array.from(unique.values());
+}
+
+function renderProgressSummaryCard(completedCount, totalCount, label) {
+  const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  return `
+    <div class="progress-summary-card">
+      <div class="progress-summary-header">
+        <span>${label}</span>
+        <span class="progress-summary-percentage">${percentage}%</span>
+      </div>
+      <div class="progress-summary-bar">
+        <div class="progress-summary-bar-fill" style="width: ${percentage}%;"></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRequirementsProgressSummary(requirements) {
+  const container = elements.requirementsProgressView;
+  if (!container) return;
+  const requirementIds = requirements.map(req => req.id);
+  const allFunctionalRequirements = storage.getAllFunctionalRequirements();
+  const linkedFRs = allFunctionalRequirements.filter(fr =>
+    (fr.linkedUserRequirements || []).some(reqId => requirementIds.includes(reqId))
+  );
+  const allTasks = storage.getAllTasks();
+  const relevantTasks = allTasks.filter(task =>
+    linkedFRs.some(fr => fr.id === task.linkedFunctionalRequirement)
+  );
+  const uniqueTasks = getUniqueTasks(relevantTasks);
+  const completed = uniqueTasks.filter(task => task.status === 'completed').length;
+  container.innerHTML = renderProgressSummaryCard(completed, uniqueTasks.length, 'URS Progress');
+}
+
+function renderFunctionalRequirementsProgressSummary(functionalRequirements) {
+  const container = elements.functionalRequirementsProgressView;
+  if (!container) return;
+  const allTasks = storage.getAllTasks();
+  const relevantTasks = allTasks.filter(task =>
+    functionalRequirements.some(fr => fr.id === task.linkedFunctionalRequirement)
+  );
+  const uniqueTasks = getUniqueTasks(relevantTasks);
+  const completed = uniqueTasks.filter(task => task.status === 'completed').length;
+  container.innerHTML = renderProgressSummaryCard(completed, uniqueTasks.length, 'FRS Progress');
+}
+
 function renderRequirements() {
   if (!elements.requirementsList) return;
   
@@ -1509,6 +1566,12 @@ function renderRequirements() {
   // Apply sorting
   const sortedRequirements = sortRequirements(filteredRequirements);
   
+  if (!sortedRequirements.some(req => req.id === state.activeRequirementLinkId)) {
+    state.activeRequirementLinkId = null;
+  }
+
+  renderRequirementsProgressSummary(sortedRequirements);
+
   if (sortedRequirements.length === 0) {
     elements.requirementsList.innerHTML = `
       <div class="empty-state">
@@ -1580,6 +1643,117 @@ function populateRequirementFilters() {
     } finally {
       isUpdatingRequirementProjectFilter = false;
     }
+  }
+}
+
+function attachFunctionalRequirementExpansionListeners(functionalRequirement) {
+  const frId = functionalRequirement.id;
+
+  document.querySelector(`.fr-create-task-form[data-functional-requirement-id="${frId}"]`)?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleCreateTaskFromFunctionalRequirement(functionalRequirement);
+  });
+
+  document.querySelector(`.link-task-to-fr[data-functional-requirement-id="${frId}"]`)?.addEventListener('click', () => {
+    handleLinkTaskToFunctionalRequirement(functionalRequirement);
+  });
+
+  document.querySelectorAll(`.unlink-task-from-fr[data-functional-requirement-id="${frId}"]`).forEach(button => {
+    button.addEventListener('click', () => {
+      const taskId = button.getAttribute('data-task-id');
+      if (!taskId) return;
+      handleUnlinkTaskFromFunctionalRequirement(functionalRequirement, taskId);
+    });
+  });
+
+  document.querySelector(`.cancel-fr-task[data-functional-requirement-id="${frId}"]`)?.addEventListener('click', () => {
+    state.activeFunctionalRequirementId = null;
+    renderFunctionalRequirements();
+  });
+}
+
+function handleCreateTaskFromFunctionalRequirement(functionalRequirement) {
+  const frId = functionalRequirement.id;
+  const form = document.querySelector(`.fr-create-task-form[data-functional-requirement-id="${frId}"]`);
+  if (!form) return;
+  const title = form.querySelector('.fr-task-title')?.value.trim();
+  const description = form.querySelector('.fr-task-description')?.value.trim();
+  let milestoneId = form.querySelector('.fr-task-milestone')?.value;
+  if (!title) {
+    alert('Please enter a title for the task.');
+    return;
+  }
+  if (!milestoneId) {
+    if (functionalRequirement.milestoneId) {
+      milestoneId = functionalRequirement.milestoneId;
+    } else {
+      alert('Please select a milestone for the new task.');
+      return;
+    }
+  }
+
+  try {
+    storage.createTask(functionalRequirement.projectId, milestoneId, {
+      title,
+      description: description || undefined,
+      linkedFunctionalRequirement: frId,
+    });
+    state.activeFunctionalRequirementId = frId;
+    renderFunctionalRequirements();
+    renderRequirements();
+    renderProjects();
+  } catch (error) {
+    console.error('Failed to create task from functional requirement view:', error);
+    alert('Failed to create task');
+  }
+}
+
+function handleLinkTaskToFunctionalRequirement(functionalRequirement) {
+  const select = document.getElementById(`existing-task-select-${functionalRequirement.id}`);
+  if (!select) return;
+  const taskId = select.value;
+  if (!taskId) {
+    alert('Please select a task to link.');
+    return;
+  }
+
+  const allTasks = storage.getAllTasks();
+  const task = allTasks.find(t => t.id === taskId);
+  if (!task) {
+    alert('The selected task could not be found.');
+    return;
+  }
+
+  try {
+    storage.updateTask(task.projectId, task.milestoneId, taskId, {
+      linkedFunctionalRequirement: functionalRequirement.id,
+    });
+    state.activeFunctionalRequirementId = functionalRequirement.id;
+    renderFunctionalRequirements();
+    renderRequirements();
+    renderProjects();
+  } catch (error) {
+    console.error('Failed to link task to functional requirement:', error);
+    alert('Failed to link task');
+  }
+}
+
+function handleUnlinkTaskFromFunctionalRequirement(functionalRequirement, taskId) {
+  const allTasks = storage.getAllTasks();
+  const task = allTasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  try {
+    storage.updateTask(task.projectId, task.milestoneId, taskId, {
+      linkedFunctionalRequirement: undefined,
+    });
+    state.activeFunctionalRequirementId = functionalRequirement.id;
+    renderFunctionalRequirements();
+    renderRequirements();
+    renderProjects();
+  } catch (error) {
+    console.error('Failed to unlink task from functional requirement:', error);
+    alert('Failed to unlink task');
   }
 }
 
@@ -1937,6 +2111,12 @@ function renderFunctionalRequirements() {
   // Apply sorting
   const sortedFunctionalRequirements = sortFunctionalRequirements(filteredFunctionalRequirements);
   
+  if (!sortedFunctionalRequirements.some(fr => fr.id === state.activeFunctionalRequirementId)) {
+    state.activeFunctionalRequirementId = null;
+  }
+
+  renderFunctionalRequirementsProgressSummary(sortedFunctionalRequirements);
+
   if (sortedFunctionalRequirements.length === 0) {
     elements.functionalRequirementsList.innerHTML = `
       <div class="empty-state">
@@ -2048,6 +2228,10 @@ function filterFunctionalRequirements(functionalRequirements) {
   });
 }
 
+function renderFunctionalRequirementDetailsRow(functionalRequirement) {
+  return renderFunctionalRequirementDetailsRowImpl(functionalRequirement);
+}
+
 function renderFunctionalRequirementsTable(functionalRequirements) {
   const rows = functionalRequirements.map(fr => {
     const project = state.projects.find(p => p.id === fr.projectId);
@@ -2120,6 +2304,100 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
   `;
 }
 
+function renderFunctionalRequirementDetailsRowImpl(functionalRequirement) {
+  if (state.activeFunctionalRequirementId !== functionalRequirement.id) {
+    return '';
+  }
+
+  const project = storage.getProject(functionalRequirement.projectId);
+  const allTasks = storage.getAllTasks();
+  const linkedTasks = allTasks.filter(task => task.linkedFunctionalRequirement === functionalRequirement.id);
+  const statuses = storage.getStatuses();
+  const taskItemsHtml = linkedTasks.length > 0
+    ? `<div class="functional-requirement-task-list">
+        ${linkedTasks.map(task => {
+          const statusLabel = statuses.find(status => status.id === task.status)?.label || 'No status';
+          const dueDate = task.dueDate ? ` · Due ${new Date(task.dueDate).toLocaleDateString()}` : '';
+          return `
+            <div class="functional-requirement-task-item">
+              <div class="functional-requirement-task-info">
+                <span class="functional-requirement-task-title">${escapeHtml(task.title)}</span>
+                <span class="functional-requirement-task-status">${statusLabel}${dueDate}</span>
+              </div>
+              <div class="functional-requirement-task-actions">
+                <button type="button" class="btn btn-gray btn-xs unlink-task-from-fr" data-functional-requirement-id="${functionalRequirement.id}" data-task-id="${task.id}">
+                  Unlink
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>`
+    : '<p class="requirements-fr-link-hint">No tasks linked yet.</p>';
+
+  const availableTasks = allTasks.filter(task =>
+    task.projectId === functionalRequirement.projectId && !task.linkedFunctionalRequirement
+  );
+  const existingTaskOptions = availableTasks.map(task => `<option value="${task.id}">${escapeHtml(task.title)}</option>`).join('');
+  const milestoneOptions = (project?.milestones || []).map(milestone => `<option value="${milestone.id}" ${functionalRequirement.milestoneId === milestone.id ? 'selected' : ''}>${escapeHtml(milestone.title)}</option>`).join('');
+
+  return `
+    <tr class="functional-requirement-expansion-row" data-functional-requirement-id="${functionalRequirement.id}">
+      <td colspan="7">
+        <div class="functional-requirement-expansion-panel">
+          <div class="functional-requirement-expansion-header">
+            <div>
+              <p class="requirements-fr-link-label">Linked Tasks</p>
+              ${taskItemsHtml}
+            </div>
+            <button type="button" class="btn btn-secondary btn-xs cancel-fr-task" data-functional-requirement-id="${functionalRequirement.id}">
+              Close
+            </button>
+          </div>
+          <div class="functional-requirement-expansion-grid">
+            <div class="functional-requirement-expansion-section">
+              <form class="fr-create-task-form" data-functional-requirement-id="${functionalRequirement.id}">
+                <p class="requirements-fr-link-label">Add a new task</p>
+                <div class="form-group">
+                  <label for="fr-task-title-${functionalRequirement.id}">Title *</label>
+                  <input type="text" id="fr-task-title-${functionalRequirement.id}" class="fr-task-title" placeholder="Task title" required>
+                </div>
+                <div class="form-group">
+                  <label for="fr-task-description-${functionalRequirement.id}">Description (optional)</label>
+                  <textarea id="fr-task-description-${functionalRequirement.id}" class="fr-task-description" rows="2" placeholder="Describe the work"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="fr-task-milestone-${functionalRequirement.id}">Milestone *</label>
+                  <select id="fr-task-milestone-${functionalRequirement.id}" class="fr-task-milestone" required>
+                    <option value="">Select a milestone</option>
+                    ${milestoneOptions}
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-green btn-xs create-task-from-fr" data-functional-requirement-id="${functionalRequirement.id}">
+                  Create task
+                </button>
+              </form>
+            </div>
+            <div class="functional-requirement-expansion-section">
+              <p class="requirements-fr-link-label">Link an existing task</p>
+              <div class="form-group">
+                <label for="existing-task-select-${functionalRequirement.id}">Task</label>
+                <select id="existing-task-select-${functionalRequirement.id}" class="existing-task-select" data-functional-requirement-id="${functionalRequirement.id}">
+                  <option value="">Select a task</option>
+                  ${existingTaskOptions}
+                </select>
+              </div>
+              <button type="button" class="btn btn-primary btn-xs link-task-to-fr" data-functional-requirement-id="${functionalRequirement.id}" ${availableTasks.length === 0 ? 'disabled' : ''}>
+                Link task
+              </button>
+              ${availableTasks.length === 0 ? '<p class="requirements-fr-link-hint">No unlinked tasks available.</p>' : ''}
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
 function renderTasks() {
   if (!elements.tasksList) return;
   
@@ -3126,15 +3404,18 @@ function attachRequirementViewListeners(requirement) {
     }
   });
 
-  // Link requirement to functional requirement
-  document.querySelector(`.link-functional-requirement[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
-    state.activeRequirementLinkId = state.activeRequirementLinkId === requirementId ? null : requirementId;
-    renderRequirements();
-  });
-
   if (state.activeRequirementLinkId === requirementId) {
     attachFunctionalRequirementLinkFormListeners(requirement);
   }
+
+  const row = document.querySelector(`.requirement-row[data-requirement-id="${requirementId}"]`);
+  row?.addEventListener('click', (e) => {
+    if (e.target.closest('.task-actions-cell') || e.target.closest('button')) {
+      return;
+    }
+    state.activeRequirementLinkId = state.activeRequirementLinkId === requirementId ? null : requirementId;
+    renderRequirements();
+  });
 }
 
 function attachFunctionalRequirementLinkFormListeners(requirement) {
@@ -3295,6 +3576,19 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
       alert('Failed to delete functional requirement');
     }
   });
+
+  const row = document.querySelector(`.functional-requirement-row[data-functional-requirement-id="${functionalRequirementId}"]`);
+  row?.addEventListener('click', (e) => {
+    if (e.target.closest('.task-actions-cell') || e.target.closest('button')) {
+      return;
+    }
+    state.activeFunctionalRequirementId = state.activeFunctionalRequirementId === functionalRequirementId ? null : functionalRequirementId;
+    renderFunctionalRequirements();
+  });
+
+  if (state.activeFunctionalRequirementId === functionalRequirementId) {
+    attachFunctionalRequirementExpansionListeners(functionalRequirement);
+  }
 }
 
 function attachMilestoneListeners(projectId, milestone) {
