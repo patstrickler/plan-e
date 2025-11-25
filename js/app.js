@@ -1460,7 +1460,7 @@ function renderMilestonesTable(milestones) {
           <button class="btn btn-red btn-xs delete-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Delete</button>
         </td>
       </tr>
-    `;
+    ` + renderMilestoneExpansionRow(m);
   }).join('');
   
   const getSortIndicator = (column) => {
