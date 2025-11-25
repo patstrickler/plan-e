@@ -37,6 +37,7 @@ const state = {
 
 let isUpdatingRequirementProjectFilter = false;
 let isUpdatingFunctionalRequirementProjectFilter = false;
+let isUpdatingRequirementPriorityFilter = false;
 
 // DOM elements
 const elements = {
@@ -1088,6 +1089,7 @@ function setupRequirementSearchAndFilterListeners() {
   });
   
   priorityFilter?.addEventListener('change', (e) => {
+    if (isUpdatingRequirementPriorityFilter) return;
     state.requirementFilterPriority = e.target.value;
     renderRequirements();
   });
@@ -1557,17 +1559,22 @@ function populateRequirementFilters() {
   const priorityFilter = document.getElementById('requirement-filter-priority');
   if (priorityFilter) {
     const selectedValue = state.requirementFilterPriority || priorityFilter.value || '';
-    // Clear existing options except the first one
-    while (priorityFilter.options.length > 1) {
-      priorityFilter.remove(1);
+    isUpdatingRequirementPriorityFilter = true;
+    try {
+      // Clear existing options except the first one
+      while (priorityFilter.options.length > 1) {
+        priorityFilter.remove(1);
+      }
+      priorities.forEach(priority => {
+        const option = document.createElement('option');
+        option.value = priority.id;
+        option.textContent = priority.label;
+        priorityFilter.appendChild(option);
+      });
+      priorityFilter.value = selectedValue;
+    } finally {
+      isUpdatingRequirementPriorityFilter = false;
     }
-    priorities.forEach(priority => {
-      const option = document.createElement('option');
-      option.value = priority.id;
-      option.textContent = priority.label;
-      priorityFilter.appendChild(option);
-    });
-    priorityFilter.value = selectedValue;
   }
   
   // Populate project filter
