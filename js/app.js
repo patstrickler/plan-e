@@ -1692,11 +1692,16 @@ function handleCreateTaskFromFunctionalRequirement(functionalRequirement) {
     }
   }
 
+  const effort = form.querySelector('.fr-task-effort')?.value || '';
+  const resource = form.querySelector('.fr-task-resource')?.value || '';
+
   try {
     storage.createTask(functionalRequirement.projectId, milestoneId, {
       title,
       description: description || undefined,
       linkedFunctionalRequirement: frId,
+      effortLevel: effort || undefined,
+      assignedResource: resource || undefined,
     });
     state.activeFunctionalRequirementId = frId;
     renderFunctionalRequirements();
@@ -2344,6 +2349,8 @@ function renderFunctionalRequirementDetailsRowImpl(functionalRequirement) {
   );
   const existingTaskOptions = availableTasks.map(task => `<option value="${task.id}">${escapeHtml(task.title)}</option>`).join('');
   const milestoneOptions = (project?.milestones || []).map(milestone => `<option value="${milestone.id}" ${functionalRequirement.milestoneId === milestone.id ? 'selected' : ''}>${escapeHtml(milestone.title)}</option>`).join('');
+  const effortOptionsHtml = getEffortOptionsHtml();
+  const resourceOptionsHtml = getUserOptionsHtml();
 
   return `
     <tr class="functional-requirement-expansion-row" data-functional-requirement-id="${functionalRequirement.id}">
@@ -2376,6 +2383,20 @@ function renderFunctionalRequirementDetailsRowImpl(functionalRequirement) {
                     <option value="">Select a milestone</option>
                     ${milestoneOptions}
                   </select>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="fr-task-effort-${functionalRequirement.id}">Effort</label>
+                    <select id="fr-task-effort-${functionalRequirement.id}" class="fr-task-effort">
+                      ${effortOptionsHtml}
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="fr-task-resource-${functionalRequirement.id}">Assigned Resource</label>
+                    <select id="fr-task-resource-${functionalRequirement.id}" class="fr-task-resource">
+                      ${resourceOptionsHtml}
+                    </select>
+                  </div>
                 </div>
                 <button type="submit" class="btn btn-green btn-xs create-task-from-fr" data-functional-requirement-id="${functionalRequirement.id}">
                   Create task
@@ -3240,20 +3261,28 @@ function populateStatusSelect(select, selectedValue = '') {
   select.innerHTML = options;
 }
 
-function populateEffortSelect(select, selectedValue = '') {
+function getEffortOptionsHtml(selectedValue = '') {
   const effortLevels = storage.getEffortLevels();
   const options = effortLevels.map(e => 
     `<option value="${e.id}" ${selectedValue === e.id ? 'selected' : ''}>${escapeHtml(e.label)}</option>`
   ).join('');
-  select.innerHTML = '<option value="">None</option>' + options;
+  return '<option value="">None</option>' + options;
 }
 
-function populateUserSelect(select, selectedValue = '') {
+function populateEffortSelect(select, selectedValue = '') {
+  select.innerHTML = getEffortOptionsHtml(selectedValue);
+}
+
+function getUserOptionsHtml(selectedValue = '') {
   const users = storage.getUsers();
   const options = users.map(u => 
     `<option value="${u.name}" ${selectedValue === u.name ? 'selected' : ''}>${escapeHtml(u.name)}</option>`
   ).join('');
-  select.innerHTML = '<option value="">None</option>' + options;
+  return '<option value="">None</option>' + options;
+}
+
+function populateUserSelect(select, selectedValue = '') {
+  select.innerHTML = getUserOptionsHtml(selectedValue);
 }
 
 function updateAllSelects() {
