@@ -137,7 +137,7 @@
     <header class="header">
       <div class="header-content">
         <div>
-          <h1>Plan-E</h1>
+          <h1 id="workspace-title">Plan-E</h1>
           <p class="subtitle">Organize your projects, milestones, and tasks</p>
         </div>
         <nav class="nav-links">
@@ -563,6 +563,20 @@
         </div>
 
         <div class="settings-sections">
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <h3>Workspace</h3>
+            </div>
+            <form id="workspace-name-form" class="form-card">
+              <div class="form-group">
+                <label for="workspace-name-input">Workspace Name</label>
+                <input type="text" id="workspace-name-input" placeholder="Enter workspace name">
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Save Name</button>
+              </div>
+            </form>
+          </div>
           <!-- Users Section -->
           <div class="settings-section">
             <div class="settings-section-header">

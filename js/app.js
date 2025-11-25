@@ -72,7 +72,12 @@ const elements = {
   prioritiesList: document.getElementById('priorities-list'),
   statusesList: document.getElementById('statuses-list'),
   effortLevelsList: document.getElementById('effort-levels-list'),
+  workspaceTitle: document.getElementById('workspace-title'),
+  workspaceNameInput: document.getElementById('workspace-name-input'),
+  workspaceNameForm: document.getElementById('workspace-name-form'),
 };
+
+const PAGE_TITLE_SUFFIX = ' - Project Planning Tool';
 
 // Initialize app
 function init() {
@@ -80,6 +85,7 @@ function init() {
     loadProjects();
     setupEventListeners();
     updateAllSelects(); // Initialize all selects with metadata
+    updateWorkspaceTitle();
     showView('projects'); // Ensure initial view is shown
   } catch (error) {
     console.error('Error during initialization:', error);
@@ -91,6 +97,17 @@ function init() {
 function hideLoading() {
   if (elements.loading) {
     elements.loading.style.display = 'none';
+  }
+}
+
+function updateWorkspaceTitle() {
+  const workspaceName = storage.getWorkspaceName();
+  if (elements.workspaceTitle) {
+    elements.workspaceTitle.textContent = workspaceName;
+  }
+
+  if (typeof document !== 'undefined') {
+    document.title = `${workspaceName}${PAGE_TITLE_SUFFIX}`;
   }
 }
 
@@ -3882,10 +3899,17 @@ function attachTaskListeners(projectId, milestoneId, task) {
 // ============================================
 
 function renderSettings() {
+  renderWorkspaceSection();
   renderUsers();
   renderPriorities();
   renderStatuses();
   renderEffortLevels();
+}
+
+function renderWorkspaceSection() {
+  const input = elements.workspaceNameInput;
+  if (!input) return;
+  input.value = storage.getWorkspaceName();
 }
 
 function renderUsers() {
@@ -4208,6 +4232,21 @@ function getDragAfterElement(container, y) {
 }
 
 function setupSettingsEventListeners() {
+  elements.workspaceNameForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = elements.workspaceNameInput;
+    if (!input) return;
+
+    try {
+      storage.setWorkspaceName(input.value.trim());
+      updateWorkspaceTitle();
+      renderSettings();
+    } catch (error) {
+      console.error('Failed to update workspace name:', error);
+      alert('Failed to update workspace name');
+    }
+  });
+
   // Users
   document.getElementById('add-user-btn')?.addEventListener('click', () => {
     document.getElementById('add-user-form').style.display = 'block';

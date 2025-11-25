@@ -463,6 +463,7 @@ export function deleteFunctionalRequirement(projectId, functionalRequirementId) 
 
 function getDefaultMetadata() {
   return {
+    workspaceName: 'Plan-E',
     users: [],
     priorities: [
       { id: 'low', label: 'Low', order: 1, color: '#10b981' },
@@ -513,6 +514,10 @@ function readMetadata() {
 function migrateMetadata(metadata) {
   const defaultMetadata = getDefaultMetadata();
   const migrated = { ...metadata };
+
+  if (!migrated.workspaceName) {
+    migrated.workspaceName = defaultMetadata.workspaceName;
+  }
   
   // Migrate priorities
   if (migrated.priorities) {
@@ -568,6 +573,18 @@ export function getMetadata() {
 }
 
 export function updateMetadata(metadata) {
+  writeMetadata(metadata);
+}
+
+export function getWorkspaceName() {
+  const metadata = readMetadata();
+  return metadata.workspaceName || getDefaultMetadata().workspaceName;
+}
+
+export function setWorkspaceName(name) {
+  const metadata = readMetadata();
+  const sanitized = (typeof name === 'string' ? name.trim() : '') || getDefaultMetadata().workspaceName;
+  metadata.workspaceName = sanitized;
   writeMetadata(metadata);
 }
 
