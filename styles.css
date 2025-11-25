@@ -1283,15 +1283,6 @@ body {
   text-overflow: ellipsis;
 }
 
-.task-milestone-cell {
-  width: 12%;
-  max-width: 150px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-
 .task-actions-cell {
   white-space: nowrap;
 }
@@ -1526,8 +1517,7 @@ body {
   }
 
   .task-title-cell,
-  .task-project-cell,
-  .task-milestone-cell {
+  .task-project-cell {
     max-width: 120px;
   }
 }

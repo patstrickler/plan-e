@@ -1556,6 +1556,7 @@ function populateRequirementFilters() {
   // Populate priority filter
   const priorityFilter = document.getElementById('requirement-filter-priority');
   if (priorityFilter) {
+    const selectedValue = state.requirementFilterPriority || priorityFilter.value || '';
     // Clear existing options except the first one
     while (priorityFilter.options.length > 1) {
       priorityFilter.remove(1);
@@ -1566,6 +1567,7 @@ function populateRequirementFilters() {
       option.textContent = priority.label;
       priorityFilter.appendChild(option);
     });
+    priorityFilter.value = selectedValue;
   }
   
   // Populate project filter
@@ -1788,8 +1790,7 @@ function renderRequirementsTable(requirements) {
       <thead>
         <tr>
           <th class="${getSortClass('title')}" data-sort-column="title">Requirement${getSortIndicator('title')}</th>
-          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
-          <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
+        <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
           <th class="${getSortClass('linkedFRs')}" data-sort-column="linkedFRs">Linked FRs${getSortIndicator('linkedFRs')}</th>
           <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
           <th>Progress</th>
@@ -2170,7 +2171,6 @@ function filterTasks(tasks) {
         task.title.toLowerCase().includes(searchLower) ||
         (task.description && task.description.toLowerCase().includes(searchLower)) ||
         task.project.title.toLowerCase().includes(searchLower) ||
-        task.milestone.title.toLowerCase().includes(searchLower) ||
         (task.assignedResource && task.assignedResource.toLowerCase().includes(searchLower));
       if (!matchesSearch) return false;
     }
@@ -2222,10 +2222,6 @@ function sortTasks(tasks) {
       case 'project':
         aVal = a.project?.title || '';
         bVal = b.project?.title || '';
-        break;
-      case 'milestone':
-        aVal = a.milestone?.title || '';
-        bVal = b.milestone?.title || '';
         break;
       case 'effort':
         const effortLevels = storage.getEffortLevels();
@@ -2298,7 +2294,6 @@ function renderTasksTable(tasks) {
           ${task.description ? `<div class="task-description-small">${escapeHtml(task.description)}</div>` : ''}
         </td>
         <td class="task-project-cell">${escapeHtml(task.project.title)}</td>
-        <td class="task-milestone-cell">${escapeHtml(task.milestone.title)}</td>
         <td>${effort ? `<span class="badge" style="${effortBadgeStyle}">${escapeHtml(effort.label)}</span>` : '<span class="text-muted">—</span>'}</td>
         <td>${task.assignedResource ? escapeHtml(task.assignedResource) : '<span class="text-muted">—</span>'}</td>
         <td class="task-dates-cell">
@@ -2330,7 +2325,6 @@ function renderTasksTable(tasks) {
           <th class="${getSortClass('status')}" data-sort-column="status">Status${getSortIndicator('status')}</th>
           <th class="${getSortClass('title')}" data-sort-column="title">Task${getSortIndicator('title')}</th>
           <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
-          <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
           <th class="${getSortClass('effort')}" data-sort-column="effort">Effort${getSortIndicator('effort')}</th>
           <th class="${getSortClass('assigned')}" data-sort-column="assigned">Assigned${getSortIndicator('assigned')}</th>
           <th class="${getSortClass('startDate')}" data-sort-column="startDate">Dates${getSortIndicator('startDate')}</th>
@@ -2515,7 +2509,7 @@ function renderTaskCardForView(task) {
             ${statusOptions}
           </select>
           <h4>${escapeHtml(task.title)}</h4>
-          <p class="text-muted">Project: ${escapeHtml(task.project.title)} | Milestone: ${escapeHtml(task.milestone.title)}</p>
+          <p class="text-muted">Project: ${escapeHtml(task.project.title)}</p>
           ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ''}
           <div class="task-meta">
             ${(() => {
