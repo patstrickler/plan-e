@@ -1919,6 +1919,22 @@ function renderFunctionalRequirements() {
   attachFunctionalRequirementSortListeners();
 }
 
+function attachFunctionalRequirementSortListeners() {
+  const headers = document.querySelectorAll('#functional-requirements-list .sortable-header');
+  headers.forEach(header => {
+    header.addEventListener('click', () => {
+      const column = header.getAttribute('data-sort-column');
+      if (state.functionalRequirementSortColumn === column) {
+        state.functionalRequirementSortDirection = state.functionalRequirementSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.functionalRequirementSortColumn = column;
+        state.functionalRequirementSortDirection = 'asc';
+      }
+      renderFunctionalRequirements();
+    });
+  });
+}
+
 function sortFunctionalRequirements(functionalRequirements) {
   if (!state.functionalRequirementSortColumn) return functionalRequirements;
   
