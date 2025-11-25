@@ -34,6 +34,7 @@ const state = {
   taskSortDirection: 'asc',
   activeRequirementLinkId: null,
   activeFunctionalRequirementId: null,
+  activeMilestoneId: null,
 };
 
 let isUpdatingRequirementProjectFilter = false;
@@ -1337,6 +1338,10 @@ function renderMilestones() {
   // Apply sorting
   const sortedMilestones = sortMilestones(filteredMilestones);
   
+  if (!sortedMilestones.some(m => m.id === state.activeMilestoneId)) {
+    state.activeMilestoneId = null;
+  }
+
   if (sortedMilestones.length === 0) {
     elements.milestonesList.innerHTML = `
       <div class="empty-state">
@@ -1352,7 +1357,7 @@ function renderMilestones() {
   
   // Attach event listeners for milestones in the view
   sortedMilestones.forEach(milestone => {
-    attachMilestoneViewListeners(milestone);
+    attachMilestoneTableListeners(milestone);
   });
   
   // Populate filter dropdowns if not already populated
@@ -1432,10 +1437,12 @@ function renderMilestonesTable(milestones) {
   const rows = milestones.map(m => {
     const completedTasks = m.tasks ? m.tasks.filter(t => t.status === 'completed').length : 0;
     const totalTasks = m.tasks ? m.tasks.length : 0;
-    const progressBarHtml = renderMilestoneProgressBar(m, false);
+    const { segmentsHtml, completedPercent } = buildProgressSegments(m.tasks || []);
+    const progressBarHtml = renderProgressMeter(segmentsHtml, completedPercent);
+    const rowClass = `task-table-row milestone-row${state.activeMilestoneId === m.id ? ' expanded' : ''}`;
     
     return `
-      <tr class="task-table-row" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
+      <tr class="${rowClass}" data-milestone-id="${m.id}" data-project-id="${m.projectId}">
         <td class="task-title-cell">
           <strong>${escapeHtml(m.title)}</strong>
           ${m.description ? `<div class="task-description-small">${escapeHtml(m.description)}</div>` : ''}
@@ -1453,7 +1460,7 @@ function renderMilestonesTable(milestones) {
           <button class="btn btn-red btn-xs delete-milestone-view" data-milestone-id="${m.id}" data-project-id="${m.projectId}">Delete</button>
         </td>
       </tr>
-    `;
+    ` + renderMilestoneExpansionRow(m);
   }).join('');
   
   const getSortIndicator = (column) => {
@@ -1481,6 +1488,76 @@ function renderMilestonesTable(milestones) {
         ${rows}
       </tbody>
     </table>
+  `;
+}
+
+function attachMilestoneTableListeners(milestone) {
+  const milestoneId = milestone.id;
+  const row = document.querySelector(`.milestone-row[data-milestone-id="${milestoneId}"]`);
+  row?.addEventListener('click', (e) => {
+    if (e.target.closest('.task-actions-cell') || e.target.closest('button')) {
+      return;
+    }
+    state.activeMilestoneId = state.activeMilestoneId === milestoneId ? null : milestoneId;
+    renderMilestones();
+  });
+
+  if (state.activeMilestoneId === milestoneId) {
+    document.querySelector(`.cancel-milestone-expansion[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', () => {
+      state.activeMilestoneId = null;
+      renderMilestones();
+    });
+  }
+}
+
+function renderMilestoneExpansionRow(milestone) {
+  if (state.activeMilestoneId !== milestone.id) {
+    return '';
+  }
+
+  const allRequirements = storage.getAllRequirements();
+  const milestoneRequirements = allRequirements.filter(req => req.milestoneId === milestone.id);
+  const requirementItems = milestoneRequirements.map(req => {
+    const project = storage.getProject(req.projectId);
+    const allFunctionalRequirements = storage.getAllFunctionalRequirements();
+    const linkedFunctionalReqs = allFunctionalRequirements.filter(fr => (fr.linkedUserRequirements || []).includes(req.id));
+    const allTasks = storage.getAllTasks();
+    const linkedTasks = allTasks.filter(task => linkedFunctionalReqs.some(fr => fr.id === task.linkedFunctionalRequirement));
+    const progressBarHtml = renderUserRequirementProgressBar(req, linkedTasks, false);
+    return `
+      <div class="milestone-urs-item">
+        <div class="milestone-urs-info">
+          <strong>${escapeHtml(req.title)}</strong>
+          <p class="milestone-urs-meta">
+            ${linkedFunctionalReqs.length} FRS${linkedFunctionalReqs.length !== 1 ? 's' : ''} · ${linkedTasks.length} task${linkedTasks.length !== 1 ? 's' : ''}
+          </p>
+          ${req.description ? `<p class="milestone-urs-description">${escapeHtml(req.description)}</p>` : ''}
+        </div>
+        <div class="milestone-urs-progress">
+          ${progressBarHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const content = requirementItems || '<p class="milestone-expansion-empty">No URSs linked to this milestone yet.</p>';
+
+  return `
+    <tr class="milestone-expansion-row" data-milestone-id="${milestone.id}">
+      <td colspan="7">
+        <div class="milestone-expansion-panel">
+          <div class="milestone-expansion-header">
+            <h3>Linked URSs</h3>
+            <button type="button" class="btn btn-secondary btn-xs cancel-milestone-expansion" data-milestone-id="${milestone.id}">
+              Close
+            </button>
+          </div>
+          <div class="milestone-expansion-body">
+            ${content}
+          </div>
+        </div>
+      </td>
+    </tr>
   `;
 }
 
@@ -2619,7 +2696,7 @@ function renderTasksTable(tasks) {
           <button class="btn btn-red btn-xs delete-task-view" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">Delete</button>
         </td>
       </tr>
-    `;
+    ` + renderMilestoneExpansionRow(m);
   }).join('');
   
   const getSortIndicator = (column) => {
@@ -2966,153 +3043,99 @@ function attachTaskListenersForView(task) {
 
 // Helper functions
 function renderMilestoneProgressBar(milestone, includeText = false) {
-  const statuses = storage.getStatuses();
-  const totalTasks = milestone.tasks ? milestone.tasks.length : 0;
-  
-  // Count tasks by status
-  const statusCounts = {};
-  statuses.forEach(status => {
-    statusCounts[status.id] = milestone.tasks ? milestone.tasks.filter(t => t.status === status.id || (!t.status && status.id === 'not-started')).length : 0;
-  });
-  
-  // Calculate percentages and build segments
-  const segments = [];
-  const stats = [];
-  
-  statuses.forEach(status => {
-    const count = statusCounts[status.id] || 0;
-    if (count > 0) {
-      const percent = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
-      segments.push(`<div class="progress-bar-segment" style="width: ${percent}%; background-color: ${status.color};"></div>`);
-      stats.push(`${count} ${status.label.toLowerCase()}`);
-    }
-  });
-  
-  const statsText = stats.length > 0 ? stats.join(', ') : '0 tasks';
-  const completedCount = statusCounts['completed'] || 0;
-  const completedPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
-  
+  const { segmentsHtml, completedPercent, statsText } = buildProgressSegments(milestone.tasks || []);
   if (includeText) {
     return `
       <div class="progress-bar-container">
-        ${segments.join('')}
+        ${segmentsHtml}
       </div>
       <div class="progress-text">
         <span>${statsText}</span>
         <span class="progress-percentage">${completedPercent}%</span>
       </div>
     `;
-  } else {
-    return `
-      <div class="milestone-progress-item">
-        <div class="milestone-progress-header">
-          <span class="milestone-progress-title">${escapeHtml(milestone.title)}</span>
-          <span class="milestone-progress-stats">${statsText}</span>
-        </div>
-        <div class="progress-bar-container">
-          ${segments.join('')}
-        </div>
-      </div>
-    `;
   }
+  return `
+    <div class="milestone-progress-item">
+      <div class="milestone-progress-header">
+        <span class="milestone-progress-title">${escapeHtml(milestone.title)}</span>
+        <span class="milestone-progress-stats">${statsText}</span>
+      </div>
+      ${renderProgressMeter(segmentsHtml, completedPercent)}
+    </div>
+  `;
 }
 
 function renderUserRequirementProgressBar(userRequirement, linkedTasks, includeText = false) {
-  const statuses = storage.getStatuses();
-  const totalTasks = linkedTasks ? linkedTasks.length : 0;
-  
-  // Count tasks by status
-  const statusCounts = {};
-  statuses.forEach(status => {
-    statusCounts[status.id] = linkedTasks ? linkedTasks.filter(t => t.status === status.id || (!t.status && status.id === 'not-started')).length : 0;
-  });
-  
-  // Calculate percentages and build segments
-  const segments = [];
-  statuses.forEach(status => {
-    const count = statusCounts[status.id] || 0;
-    if (count > 0) {
-      const percent = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
-      segments.push(`<div class="progress-bar-segment" style="width: ${percent}%; background-color: ${status.color};"></div>`);
-    }
-  });
-  
-  const completedCount = statusCounts['completed'] || 0;
-  const completedPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
-  
+  const { segmentsHtml, completedPercent, statsText } = buildProgressSegments(linkedTasks || []);
   if (includeText) {
-    const statsText = statuses.map(status => {
-      const count = statusCounts[status.id] || 0;
-      return count ? `${count} ${status.label.toLowerCase()}` : null;
-    }).filter(Boolean).join(', ') || '0 tasks';
     return `
       <div class="progress-bar-container">
-        ${segments.join('')}
+        ${segmentsHtml}
       </div>
       <div class="progress-text">
         <span>${statsText}</span>
         <span class="progress-percentage">${completedPercent}%</span>
       </div>
     `;
-  } else {
-    return `
-      <div class="progress-meter">
-        <span class="progress-meter-percentage">${completedPercent}%</span>
-        <div class="progress-bar-container">
-          ${segments.join('')}
-        </div>
-      </div>
-    `;
   }
+  return renderProgressMeter(segmentsHtml, completedPercent);
 }
 
 function renderFunctionalRequirementProgressBar(functionalRequirement, linkedTasks, includeText = false) {
-  const statuses = storage.getStatuses();
-  const totalTasks = linkedTasks ? linkedTasks.length : 0;
-  
-  // Count tasks by status
-  const statusCounts = {};
-  statuses.forEach(status => {
-    statusCounts[status.id] = linkedTasks ? linkedTasks.filter(t => t.status === status.id || (!t.status && status.id === 'not-started')).length : 0;
-  });
-  
-  // Calculate percentages and build segments
-  const segments = [];
-  statuses.forEach(status => {
-    const count = statusCounts[status.id] || 0;
-    if (count > 0) {
-      const percent = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
-      segments.push(`<div class="progress-bar-segment" style="width: ${percent}%; background-color: ${status.color};"></div>`);
-    }
-  });
-  
-  const completedCount = statusCounts['completed'] || 0;
-  const completedPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
-  
+  const { segmentsHtml, completedPercent, statsText } = buildProgressSegments(linkedTasks || []);
   if (includeText) {
-    const statsText = statuses.map(status => {
-      const count = statusCounts[status.id] || 0;
-      return count ? `${count} ${status.label.toLowerCase()}` : null;
-    }).filter(Boolean).join(', ') || '0 tasks';
     return `
       <div class="progress-bar-container">
-        ${segments.join('')}
+        ${segmentsHtml}
       </div>
       <div class="progress-text">
         <span>${statsText}</span>
         <span class="progress-percentage">${completedPercent}%</span>
       </div>
     `;
-  } else {
-    return `
-      <div class="progress-meter">
-        <span class="progress-meter-percentage">${completedPercent}%</span>
-        <div class="progress-bar-container">
-          ${segments.join('')}
-        </div>
-      </div>
-    `;
   }
+  return renderProgressMeter(segmentsHtml, completedPercent);
+}
+
+function buildProgressSegments(tasks = []) {
+  const statuses = storage.getStatuses();
+  const totalTasks = tasks.length;
+  const statusCounts = {};
+  statuses.forEach(status => {
+    statusCounts[status.id] = tasks.filter(t => t.status === status.id || (!t.status && status.id === 'not-started')).length;
+  });
+
+  const segments = statuses.map(status => {
+    const count = statusCounts[status.id] || 0;
+    if (!count) return '';
+    const percent = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0;
+    return `<div class="progress-bar-segment" style="width: ${percent}%; background-color: ${status.color};"></div>`;
+  }).filter(Boolean);
+
+  const completedCount = statusCounts['completed'] || 0;
+  const completedPercent = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+  const statsText = statuses.map(status => {
+    const count = statusCounts[status.id] || 0;
+    return count ? `${count} ${status.label.toLowerCase()}` : null;
+  }).filter(Boolean).join(', ') || '0 tasks';
+
+  return {
+    segmentsHtml: segments.join(''),
+    completedPercent,
+    statsText,
+  };
+}
+
+function renderProgressMeter(segmentsHtml, completedPercent) {
+  return `
+    <div class="progress-meter">
+      <span class="progress-meter-percentage">${completedPercent}%</span>
+      <div class="progress-bar-container">
+        ${segmentsHtml}
+      </div>
+    </div>
+  `;
 }
 
 function escapeHtml(text) {
