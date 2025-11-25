@@ -3963,8 +3963,10 @@ function updateAllSelects() {
   
   // Update new requirement form selects
   const requirementPrioritySelect = document.getElementById('requirement-priority');
+  const editRequirementPrioritySelect = document.getElementById('edit-requirement-priority');
   
   if (requirementPrioritySelect) populatePrioritySelect(requirementPrioritySelect);
+  if (editRequirementPrioritySelect) populatePrioritySelect(editRequirementPrioritySelect);
   
   // Re-render views to update all dynamic selects
   if (currentView === 'projects') {
