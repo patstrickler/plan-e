@@ -1346,6 +1346,52 @@ body {
   color: var(--text-muted);
 }
 
+.requirements-linked-frs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.requirements-linked-frs-heading {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.requirements-linked-frs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.requirements-linked-frs-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--gray-50);
+}
+
+.requirements-linked-frs-name {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.requirements-linked-frs-empty {
+  margin: 0.25rem 0 0;
+}
+
 .task-table-row-edit td {
   padding: 1rem;
   background: var(--gray-50);

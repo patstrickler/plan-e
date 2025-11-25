@@ -403,6 +403,11 @@ function setupEventListeners() {
         functionalReqSelect.innerHTML = '<option value="">Select a project first</option>';
         functionalReqSelect.value = '';
       }
+      const milestoneSelect = document.getElementById('task-milestone');
+      if (milestoneSelect) {
+        milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
+        milestoneSelect.value = '';
+      }
       // Reset project select
       const projectSelect = document.getElementById('task-project');
       if (projectSelect) {
@@ -436,7 +441,22 @@ function setupEventListeners() {
   }
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
-    populateFunctionalRequirementSelect('task-functional-requirement', e.target.value);
+    const projectId = e.target.value;
+    populateFunctionalRequirementSelect('task-functional-requirement', projectId);
+    populateMilestoneSelect('task-milestone', projectId);
+  });
+
+  document.getElementById('task-functional-requirement')?.addEventListener('change', (e) => {
+    const projectSelect = document.getElementById('task-project');
+    const milestoneSelect = document.getElementById('task-milestone');
+    const projectId = projectSelect ? projectSelect.value : '';
+    const functionalRequirementId = e?.target?.value || '';
+    if (!projectId || !functionalRequirementId || !milestoneSelect) return;
+
+    const milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, functionalRequirementId);
+    if (milestoneId) {
+      milestoneSelect.value = milestoneId;
+    }
   });
 
   const cancelTaskBtn = document.getElementById('cancel-task-btn');
@@ -913,6 +933,7 @@ function setupEventListeners() {
       const resourceSelect = document.getElementById('task-resource');
       const dueDateInput = document.getElementById('task-due-date');
       const functionalReqSelect = document.getElementById('task-functional-requirement');
+      const milestoneSelect = document.getElementById('task-milestone');
       
       const projectId = projectSelect ? projectSelect.value : '';
       const title = titleInput ? titleInput.value.trim() : '';
@@ -920,6 +941,7 @@ function setupEventListeners() {
       const effort = effortSelect ? effortSelect.value : '';
       const resource = resourceSelect ? resourceSelect.value : '';
       const linkedFunctionalRequirement = functionalReqSelect ? functionalReqSelect.value : '';
+      const milestoneId = milestoneSelect ? milestoneSelect.value : '';
       let dueDate = '';
       if (dueDateInput) {
         if (dueDateInput.flatpickr && dueDateInput.flatpickr.input) {
@@ -940,15 +962,9 @@ function setupEventListeners() {
         if (projectSelect) projectSelect.focus();
         return;
       }
-      if (!linkedFunctionalRequirement) {
-        alert('Please select a functional requirement to determine the milestone');
-        if (functionalReqSelect) functionalReqSelect.focus();
-        return;
-      }
-      const milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, linkedFunctionalRequirement);
       if (!milestoneId) {
-        alert('The selected functional requirement is not linked to any milestone');
-        if (functionalReqSelect) functionalReqSelect.focus();
+        alert('Please select a milestone');
+        if (milestoneSelect) milestoneSelect.focus();
         return;
       }
       
@@ -966,9 +982,13 @@ function setupEventListeners() {
         if (descriptionInput) descriptionInput.value = '';
         if (effortSelect) effortSelect.value = '';
         if (resourceSelect) resourceSelect.value = '';
-        // Reset project and functional requirement selects
+        // Reset project, milestone, and functional requirement selects
         if (projectSelect) {
           projectSelect.value = '';
+        }
+        if (milestoneSelect) {
+          milestoneSelect.innerHTML = '<option value="">Select a project first</option>';
+          milestoneSelect.value = '';
         }
         if (functionalReqSelect) {
           functionalReqSelect.innerHTML = '<option value="">Select a project first</option>';
@@ -1744,7 +1764,7 @@ function renderRequirementsTable(requirements) {
           </div>
         </td>
         <td class="task-actions-cell">
-          <button class="btn btn-green btn-xs link-functional-requirement" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Link FR</button>
+          <button class="btn btn-green btn-xs link-functional-requirement" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Link FRS</button>
           <button class="btn btn-blue btn-xs edit-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Edit</button>
           <button class="btn btn-red btn-xs delete-requirement-view" data-requirement-id="${r.id}" data-project-id="${r.projectId}">Delete</button>
         </td>
@@ -1806,6 +1826,31 @@ function renderFunctionalRequirementLinkRow(requirement) {
       <p class="requirements-fr-link-criteria-text requirements-fr-link-criteria-empty">No acceptance criteria provided yet.</p>
     </div>
   `;
+  const allFunctionalRequirements = storage.getAllFunctionalRequirements();
+  const linkedFunctionalRequirements = allFunctionalRequirements.filter(fr => 
+    (fr.linkedUserRequirements || []).includes(requirement.id)
+  );
+  const linkedFunctionalRequirementsList = linkedFunctionalRequirements.length > 0
+    ? `<div class="requirements-linked-frs-list">
+        ${linkedFunctionalRequirements.map(fr => {
+          const trackingLabel = fr.trackingId ? `${escapeHtml(fr.trackingId)} - ` : '';
+          return `
+            <div class="requirements-linked-frs-item">
+              <span class="requirements-linked-frs-name">${trackingLabel}${escapeHtml(fr.title)}</span>
+              <button type="button" class="btn btn-gray btn-xs unlink-functional-requirement" data-requirement-id="${requirement.id}" data-functional-requirement-id="${fr.id}" title="Remove linked FRS">
+                Remove
+              </button>
+            </div>
+          `;
+        }).join('')}
+      </div>`
+    : '<p class="requirements-fr-link-hint requirements-linked-frs-empty">No linked FRSs yet.</p>';
+  const linkedFunctionalRequirementsHtml = `
+    <div class="requirements-linked-frs">
+      <p class="requirements-linked-frs-heading">Linked FRSs</p>
+      ${linkedFunctionalRequirementsList}
+    </div>
+  `;
 
   return `
     <tr class="functional-requirement-link-row" data-requirement-id="${requirement.id}">
@@ -1814,16 +1859,17 @@ function renderFunctionalRequirementLinkRow(requirement) {
           ${acceptanceCriteriaHtml}
           <div class="requirements-fr-link-grid">
             <div class="requirements-fr-link-section">
-              <p class="requirements-fr-link-label">Link to an existing functional requirement</p>
+              <p class="requirements-fr-link-label">Link existing FRS</p>
+              ${linkedFunctionalRequirementsHtml}
               <div class="form-group">
-                <label for="existing-fr-select-${requirement.id}">Functional requirement</label>
+                <label for="existing-fr-select-${requirement.id}">FRS</label>
                 <select id="existing-fr-select-${requirement.id}">
                   <option value="">Select a functional requirement</option>
                   ${existingOptions}
                 </select>
               </div>
               <button type="button" class="btn btn-primary btn-xs link-existing-fr" data-requirement-id="${requirement.id}" ${hasFunctionalRequirements ? '' : 'disabled'}>
-                Link existing FR
+                Link existing FRS
               </button>
               ${!hasFunctionalRequirements ? '<p class="requirements-fr-link-hint">Create a functional requirement below to get started.</p>' : ''}
             </div>
@@ -3071,6 +3117,14 @@ function attachFunctionalRequirementLinkFormListeners(requirement) {
     handleCreateFunctionalRequirementFromRequirement(requirement);
   });
 
+  document.querySelectorAll(`.unlink-functional-requirement[data-requirement-id="${requirementId}"]`).forEach(button => {
+    button.addEventListener('click', () => {
+      const functionalRequirementId = button.getAttribute('data-functional-requirement-id');
+      if (!functionalRequirementId) return;
+      handleUnlinkFunctionalRequirementFromRequirement(requirement, functionalRequirementId);
+    });
+  });
+
   document.querySelector(`.cancel-fr-link[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
     state.activeRequirementLinkId = null;
     renderRequirements();
@@ -3114,6 +3168,33 @@ function handleLinkRequirementToExistingFunctionalRequirement(requirement) {
   }
 }
 
+function handleUnlinkFunctionalRequirementFromRequirement(requirement, functionalRequirementId) {
+  const project = storage.getProject(requirement.projectId);
+  const functionalRequirement = project?.functionalRequirements?.find(fr => fr.id === functionalRequirementId);
+  if (!project || !functionalRequirement) {
+    alert('The linked FRS could not be found.');
+    return;
+  }
+
+  const linkedReqs = new Set(functionalRequirement.linkedUserRequirements || []);
+  if (!linkedReqs.has(requirement.id)) {
+    return;
+  }
+  linkedReqs.delete(requirement.id);
+
+  try {
+    storage.updateFunctionalRequirement(project.id, functionalRequirementId, {
+      linkedUserRequirements: Array.from(linkedReqs),
+    });
+    refreshProjectsState();
+    renderFunctionalRequirements();
+    renderRequirements();
+  } catch (error) {
+    console.error('Failed to remove linked FRS:', error);
+    alert('Failed to remove linked FRS');
+  }
+}
+
 function handleCreateFunctionalRequirementFromRequirement(requirement) {
   const titleInput = document.getElementById(`new-fr-title-${requirement.id}`);
   const title = titleInput ? titleInput.value.trim() : '';
@@ -3135,7 +3216,6 @@ function handleCreateFunctionalRequirementFromRequirement(requirement) {
       linkedUserRequirements: [requirement.id],
     });
     refreshProjectsState();
-    state.activeRequirementLinkId = null;
     renderFunctionalRequirements();
     renderRequirements();
   } catch (error) {
