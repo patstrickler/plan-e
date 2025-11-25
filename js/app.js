@@ -1847,7 +1847,7 @@ function renderFunctionalRequirementLinkRow(requirement) {
     : '<p class="requirements-fr-link-hint requirements-linked-frs-empty">No linked FRSs yet.</p>';
   const linkedFunctionalRequirementsHtml = `
     <div class="requirements-linked-frs">
-      <p class="requirements-linked-frs-heading">Linked FRSs</p>
+      <p class="requirements-linked-frs-heading">Linked FRS</p>
       ${linkedFunctionalRequirementsList}
     </div>
   `;
