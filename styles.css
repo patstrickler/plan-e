@@ -1665,6 +1665,56 @@ body {
   background: var(--gray-50);
 }
 
+.requirement-edit-row td,
+.functional-requirement-edit-row td {
+  padding: 1rem;
+  background: var(--gray-50);
+}
+
+.requirement-edit-form,
+.functional-requirement-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.requirement-edit-form .form-row,
+.functional-requirement-edit-form .form-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.requirement-edit-form .form-group,
+.functional-requirement-edit-form .form-group {
+  flex: 1;
+  min-width: 200px;
+}
+
+.functional-requirement-edit-user-requirements {
+  min-height: 120px;
+}
+
+.requirement-edit-form textarea,
+.functional-requirement-edit-form textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--card-bg);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.requirement-edit-actions,
+.functional-requirement-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .task-edit-form-inline {
   display: flex;
   flex-direction: column;

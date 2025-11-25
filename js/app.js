@@ -2623,6 +2623,10 @@ function filterRequirements(requirements) {
 
 function renderRequirementsTable(requirements) {
   const rows = requirements.map(r => {
+    if (state.editingRequirements.has(r.id)) {
+      return renderRequirementEditRow(r);
+    }
+
     const priorities = storage.getPriorities();
     const priority = priorities.find(p => p.id === r.priority);
     const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
@@ -2697,6 +2701,85 @@ function renderRequirementsTable(requirements) {
       </tbody>
     </table>
   `;
+}
+
+function getRequirementProjectOptions(selectedProjectId) {
+  const options = state.projects.map(project =>
+    `<option value="${project.id}" ${project.id === selectedProjectId ? 'selected' : ''}>${escapeHtml(project.title)}</option>`
+  ).join('');
+  return `<option value="">Select a project</option>${options}`;
+}
+
+function getRequirementMilestoneOptions(projectId, selectedMilestoneId = '') {
+  const project = state.projects.find(p => p.id === projectId);
+  if (!project) {
+    return '<option value="">Select a project first</option>';
+  }
+  const milestoneOptions = project.milestones.map(milestone =>
+    `<option value="${milestone.id}" ${milestone.id === selectedMilestoneId ? 'selected' : ''}>${escapeHtml(milestone.title)}</option>`
+  ).join('');
+  return '<option value="">None</option>' + milestoneOptions;
+}
+
+function renderRequirementEditRow(requirement) {
+  const projectOptions = getRequirementProjectOptions(requirement.projectId);
+  const milestoneOptions = getRequirementMilestoneOptions(requirement.projectId, requirement.milestoneId);
+  const priorities = storage.getPriorities();
+  const priorityOptions = priorities.map(priority =>
+    `<option value="${priority.id}" ${priority.id === requirement.priority ? 'selected' : ''}>${escapeHtml(priority.label)}</option>`
+  ).join('');
+
+  return `
+    <tr class="task-table-row requirement-edit-row" data-requirement-id="${requirement.id}">
+      <td colspan="8">
+        <div class="requirement-edit-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="requirement-edit-project-${requirement.id}">Project *</label>
+              <select id="requirement-edit-project-${requirement.id}" class="requirement-edit-project-select" data-requirement-id="${requirement.id}">
+                ${projectOptions}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="requirement-edit-milestone-${requirement.id}">Milestone</label>
+              <select id="requirement-edit-milestone-${requirement.id}" class="requirement-edit-milestone-select" data-requirement-id="${requirement.id}">
+                ${milestoneOptions}
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group requirement-edit-title-group">
+              <label for="requirement-edit-title-${requirement.id}">Requirement Title *</label>
+              <input type="text" id="requirement-edit-title-${requirement.id}" class="requirement-edit-title" data-requirement-id="${requirement.id}" value="${escapeHtml(requirement.title)}" placeholder="Enter requirement title">
+            </div>
+            <div class="form-group requirement-edit-priority-group">
+              <label for="requirement-edit-priority-${requirement.id}">Priority</label>
+              <select id="requirement-edit-priority-${requirement.id}" class="requirement-edit-priority" data-requirement-id="${requirement.id}">
+                <option value="">None</option>
+                ${priorityOptions}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="requirement-edit-description-${requirement.id}">Acceptance Criteria (optional)</label>
+            <textarea id="requirement-edit-description-${requirement.id}" class="requirement-edit-description" data-requirement-id="${requirement.id}" rows="3" placeholder="Enter acceptance criteria">${escapeHtml(requirement.description || '')}</textarea>
+          </div>
+          <div class="form-actions requirement-edit-actions">
+            <button type="button" class="btn btn-primary btn-sm save-edit-requirement" data-requirement-id="${requirement.id}">Save</button>
+            <button type="button" class="btn btn-secondary btn-sm cancel-edit-requirement" data-requirement-id="${requirement.id}">Cancel</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function refreshRequirementMilestoneOptions(requirementId, projectId, selectedMilestoneId = '') {
+  const milestoneSelect = document.querySelector(`.requirement-edit-milestone-select[data-requirement-id="${requirementId}"]`);
+  if (!milestoneSelect) return;
+  milestoneSelect.innerHTML = projectId
+    ? getRequirementMilestoneOptions(projectId, selectedMilestoneId)
+    : '<option value="">Select a project first</option>';
 }
 
 function renderRequirementExpansionRow(requirement) {
@@ -2956,6 +3039,10 @@ function filterFunctionalRequirements(functionalRequirements) {
 }
 
 function renderFunctionalRequirementDetailsRow(functionalRequirement) {
+  if (state.editingFunctionalRequirements.has(functionalRequirement.id)) {
+    return '';
+  }
+
   if (typeof renderFunctionalRequirementDetailsRowImpl !== 'function') {
     return '';
   }
@@ -2963,8 +3050,90 @@ function renderFunctionalRequirementDetailsRow(functionalRequirement) {
   return renderFunctionalRequirementDetailsRowImpl(functionalRequirement);
 }
 
+function getFunctionalRequirementProjectOptions(selectedProjectId) {
+  const options = state.projects.map(project =>
+    `<option value="${project.id}" ${project.id === selectedProjectId ? 'selected' : ''}>${escapeHtml(project.title)}</option>`
+  ).join('');
+  return `<option value="">Select a project</option>${options}`;
+}
+
+function getFunctionalRequirementUserRequirementOptions(projectId, selectedIds = []) {
+  const project = state.projects.find(p => p.id === projectId);
+  if (!project) {
+    return '<option value="" disabled>Select a project first</option>';
+  }
+  const requirements = project.requirements || [];
+  if (requirements.length === 0) {
+    return '<option value="" disabled>No user requirements available</option>';
+  }
+  const selectedSet = new Set(Array.isArray(selectedIds) ? selectedIds : []);
+  return requirements.map(requirement =>
+    `<option value="${requirement.id}" ${selectedSet.has(requirement.id) ? 'selected' : ''}>${escapeHtml(requirement.title)}</option>`
+  ).join('');
+}
+
+function renderFunctionalRequirementEditRow(functionalRequirement) {
+  const projectOptions = getFunctionalRequirementProjectOptions(functionalRequirement.projectId);
+  const userRequirementOptions = getFunctionalRequirementUserRequirementOptions(
+    functionalRequirement.projectId,
+    functionalRequirement.linkedUserRequirements || []
+  );
+
+  return `
+    <tr class="task-table-row functional-requirement-edit-row" data-functional-requirement-id="${functionalRequirement.id}">
+      <td colspan="7">
+        <div class="functional-requirement-edit-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="functional-requirement-edit-project-${functionalRequirement.id}">Project *</label>
+              <select id="functional-requirement-edit-project-${functionalRequirement.id}" class="functional-requirement-edit-project-select" data-functional-requirement-id="${functionalRequirement.id}">
+                ${projectOptions}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="functional-requirement-edit-tracking-${functionalRequirement.id}">Tracking ID</label>
+              <input type="text" id="functional-requirement-edit-tracking-${functionalRequirement.id}" class="functional-requirement-edit-tracking" data-functional-requirement-id="${functionalRequirement.id}" value="${escapeHtml(functionalRequirement.trackingId || '')}" placeholder="Tracking ID (optional)">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="functional-requirement-edit-title-${functionalRequirement.id}">Title *</label>
+            <input type="text" id="functional-requirement-edit-title-${functionalRequirement.id}" class="functional-requirement-edit-title" data-functional-requirement-id="${functionalRequirement.id}" value="${escapeHtml(functionalRequirement.title)}" placeholder="Functional requirement title">
+          </div>
+          <div class="form-group">
+            <label for="functional-requirement-edit-description-${functionalRequirement.id}">Description (optional)</label>
+            <textarea id="functional-requirement-edit-description-${functionalRequirement.id}" class="functional-requirement-edit-description" data-functional-requirement-id="${functionalRequirement.id}" rows="3" placeholder="Describe how this FR fulfills the linked user requirements">${escapeHtml(functionalRequirement.description || '')}</textarea>
+          </div>
+          <div class="form-group">
+            <label for="functional-requirement-edit-user-reqs-${functionalRequirement.id}">Linked User Requirements</label>
+            <select id="functional-requirement-edit-user-reqs-${functionalRequirement.id}" class="functional-requirement-edit-user-requirements" data-functional-requirement-id="${functionalRequirement.id}" multiple>
+              ${userRequirementOptions}
+            </select>
+            <small>Hold Ctrl/Cmd to select multiple</small>
+          </div>
+          <div class="form-actions functional-requirement-edit-actions">
+            <button type="button" class="btn btn-primary btn-sm save-edit-functional-requirement" data-functional-requirement-id="${functionalRequirement.id}">Save</button>
+            <button type="button" class="btn btn-secondary btn-sm cancel-edit-functional-requirement" data-functional-requirement-id="${functionalRequirement.id}">Cancel</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function refreshFunctionalRequirementUserRequirementOptions(functionalRequirementId, projectId, selectedIds = []) {
+  const select = document.querySelector(`.functional-requirement-edit-user-requirements[data-functional-requirement-id="${functionalRequirementId}"]`);
+  if (!select) return;
+  select.innerHTML = projectId
+    ? getFunctionalRequirementUserRequirementOptions(projectId, selectedIds)
+    : '<option value="" disabled>Select a project first</option>';
+}
+
 function renderFunctionalRequirementsTable(functionalRequirements) {
   const rows = functionalRequirements.map(fr => {
+    if (state.editingFunctionalRequirements.has(fr.id)) {
+      return renderFunctionalRequirementEditRow(fr);
+    }
+
     const project = state.projects.find(p => p.id === fr.projectId);
     const trackingIdDisplay = fr.trackingId
       ? `<strong>${escapeHtml(fr.trackingId)}</strong>`
@@ -4093,11 +4262,17 @@ function attachRequirementViewListeners(requirement) {
   const requirementId = requirement.id;
   const projectId = requirement.projectId;
   
-  // Edit requirement
+  // Edit requirement inline
   document.querySelector(`.edit-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
-    openEditRequirementModal(requirement);
+    if (state.editingRequirements.has(requirementId)) {
+      return;
+    }
+    state.editingRequirements.clear();
+    state.editingRequirements.add(requirementId);
+    state.activeRequirementLinkId = null;
+    renderRequirements();
   });
-  
+
   // Delete requirement
   document.querySelector(`.delete-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
     if (!confirm(`Are you sure you want to delete "${requirement.title}"?`)) return;
@@ -4106,10 +4281,55 @@ function attachRequirementViewListeners(requirement) {
       storage.deleteRequirement(projectId, requirementId);
       renderRequirements();
       renderProjects(); // Also update projects view if visible
+      renderFunctionalRequirements();
     } catch (error) {
       console.error('Failed to delete requirement:', error);
       alert('Failed to delete requirement');
     }
+  });
+
+  // Project change should refresh milestone options
+  document.querySelector(`.requirement-edit-project-select[data-requirement-id="${requirementId}"]`)?.addEventListener('change', (e) => {
+    refreshRequirementMilestoneOptions(requirementId, e.target.value);
+  });
+
+  // Save requirement
+  document.querySelector(`.save-edit-requirement[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
+    const projectSelect = document.querySelector(`.requirement-edit-project-select[data-requirement-id="${requirementId}"]`);
+    const milestoneSelect = document.querySelector(`.requirement-edit-milestone-select[data-requirement-id="${requirementId}"]`);
+    const titleInput = document.querySelector(`.requirement-edit-title[data-requirement-id="${requirementId}"]`);
+    const descriptionInput = document.querySelector(`.requirement-edit-description[data-requirement-id="${requirementId}"]`);
+    const prioritySelect = document.querySelector(`.requirement-edit-priority[data-requirement-id="${requirementId}"]`);
+    
+    const newProjectId = projectSelect ? projectSelect.value : '';
+    const milestoneId = milestoneSelect ? milestoneSelect.value : '';
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const priority = prioritySelect ? prioritySelect.value : '';
+    
+    if (!title || !newProjectId) return;
+    
+    try {
+      storage.updateRequirement(newProjectId, requirementId, {
+        title,
+        description: description || undefined,
+        priority: priority || undefined,
+        milestoneId: milestoneId || undefined
+      });
+      state.editingRequirements.delete(requirementId);
+      renderRequirements();
+      renderProjects();
+      renderFunctionalRequirements();
+    } catch (error) {
+      console.error('Failed to update requirement:', error);
+      alert('Failed to update requirement');
+    }
+  });
+
+  // Cancel edit
+  document.querySelector(`.cancel-edit-requirement[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
+    state.editingRequirements.delete(requirementId);
+    renderRequirements();
   });
 
   if (state.activeRequirementLinkId === requirementId) {
@@ -4265,9 +4485,58 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
   const functionalRequirementId = functionalRequirement.id;
   const projectId = functionalRequirement.projectId;
   
-  // Edit functional requirement
+  // Edit functional requirement inline
   document.querySelector(`.edit-functional-requirement-view[data-functional-requirement-id="${functionalRequirementId}"]`)?.addEventListener('click', () => {
-    openEditFunctionalRequirementModal(functionalRequirement);
+    if (state.editingFunctionalRequirements.has(functionalRequirementId)) {
+      return;
+    }
+    state.editingFunctionalRequirements.clear();
+    state.editingFunctionalRequirements.add(functionalRequirementId);
+    state.activeFunctionalRequirementId = null;
+    renderFunctionalRequirements();
+  });
+
+  document.querySelector(`.functional-requirement-edit-project-select[data-functional-requirement-id="${functionalRequirementId}"]`)?.addEventListener('change', (e) => {
+    refreshFunctionalRequirementUserRequirementOptions(functionalRequirementId, e.target.value);
+  });
+
+  document.querySelector(`.save-edit-functional-requirement[data-functional-requirement-id="${functionalRequirementId}"]`)?.addEventListener('click', () => {
+    const projectSelect = document.querySelector(`.functional-requirement-edit-project-select[data-functional-requirement-id="${functionalRequirementId}"]`);
+    const trackingInput = document.querySelector(`.functional-requirement-edit-tracking[data-functional-requirement-id="${functionalRequirementId}"]`);
+    const titleInput = document.querySelector(`.functional-requirement-edit-title[data-functional-requirement-id="${functionalRequirementId}"]`);
+    const descriptionInput = document.querySelector(`.functional-requirement-edit-description[data-functional-requirement-id="${functionalRequirementId}"]`);
+    const userReqSelect = document.querySelector(`.functional-requirement-edit-user-requirements[data-functional-requirement-id="${functionalRequirementId}"]`);
+
+    const newProjectId = projectSelect ? projectSelect.value : '';
+    const trackingId = trackingInput ? trackingInput.value.trim() : '';
+    const title = titleInput ? titleInput.value.trim() : '';
+    const description = descriptionInput ? descriptionInput.value.trim() : '';
+    const linkedUserRequirements = userReqSelect
+      ? Array.from(userReqSelect.selectedOptions).map(option => option.value).filter(Boolean)
+      : [];
+
+    if (!title || !newProjectId) return;
+
+    try {
+      storage.updateFunctionalRequirement(newProjectId, functionalRequirementId, {
+        trackingId: trackingId || undefined,
+        title,
+        description: description || undefined,
+        linkedUserRequirements
+      });
+      state.editingFunctionalRequirements.delete(functionalRequirementId);
+      renderFunctionalRequirements();
+      renderRequirements();
+      renderProjects();
+    } catch (error) {
+      console.error('Failed to update functional requirement:', error);
+      alert('Failed to update functional requirement');
+    }
+  });
+
+  document.querySelector(`.cancel-edit-functional-requirement[data-functional-requirement-id="${functionalRequirementId}"]`)?.addEventListener('click', () => {
+    state.editingFunctionalRequirements.delete(functionalRequirementId);
+    renderFunctionalRequirements();
   });
   
   // Delete functional requirement
