@@ -36,6 +36,9 @@ const state = {
   activeRequirementLinkId: null,
 };
 
+let isUpdatingRequirementProjectFilter = false;
+let isUpdatingFunctionalRequirementProjectFilter = false;
+
 // DOM elements
 const elements = {
   loading: document.getElementById('loading'),
@@ -1077,6 +1080,7 @@ function setupRequirementSearchAndFilterListeners() {
   });
   
   projectFilter?.addEventListener('change', (e) => {
+    if (isUpdatingRequirementProjectFilter) return;
     state.requirementFilterProject = e.target.value;
     renderRequirements();
   });
@@ -1097,6 +1101,7 @@ function setupFunctionalRequirementSearchAndFilterListeners() {
   });
   
   projectFilter?.addEventListener('change', (e) => {
+    if (isUpdatingFunctionalRequirementProjectFilter) return;
     state.functionalRequirementFilterProject = e.target.value;
     renderFunctionalRequirements();
   });
@@ -1581,16 +1586,23 @@ function populateRequirementFilters() {
   // Populate project filter
   const projectFilter = document.getElementById('requirement-filter-project');
   if (projectFilter) {
-    // Clear existing options except the first one
-    while (projectFilter.options.length > 1) {
-      projectFilter.remove(1);
+    const selectedValue = state.requirementFilterProject || projectFilter.value || '';
+    isUpdatingRequirementProjectFilter = true;
+    try {
+      // Clear existing options except the first one
+      while (projectFilter.options.length > 1) {
+        projectFilter.remove(1);
+      }
+      projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.id;
+        option.textContent = project.title;
+        projectFilter.appendChild(option);
+      });
+      projectFilter.value = selectedValue;
+    } finally {
+      isUpdatingRequirementProjectFilter = false;
     }
-    projects.forEach(project => {
-      const option = document.createElement('option');
-      option.value = project.id;
-      option.textContent = project.title;
-      projectFilter.appendChild(option);
-    });
   }
 }
 
@@ -1619,16 +1631,23 @@ function populateFunctionalRequirementFilters() {
   // Populate project filter
   const projectFilter = document.getElementById('functional-requirement-filter-project');
   if (projectFilter) {
-    // Clear existing options except the first one
-    while (projectFilter.options.length > 1) {
-      projectFilter.remove(1);
+    const selectedValue = state.functionalRequirementFilterProject || projectFilter.value || '';
+    isUpdatingFunctionalRequirementProjectFilter = true;
+    try {
+      // Clear existing options except the first one
+      while (projectFilter.options.length > 1) {
+        projectFilter.remove(1);
+      }
+      projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.id;
+        option.textContent = project.title;
+        projectFilter.appendChild(option);
+      });
+      projectFilter.value = selectedValue;
+    } finally {
+      isUpdatingFunctionalRequirementProjectFilter = false;
     }
-    projects.forEach(project => {
-      const option = document.createElement('option');
-      option.value = project.id;
-      option.textContent = project.title;
-      projectFilter.appendChild(option);
-    });
   }
 }
 
