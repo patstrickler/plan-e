@@ -2229,6 +2229,10 @@ function filterFunctionalRequirements(functionalRequirements) {
 }
 
 function renderFunctionalRequirementDetailsRow(functionalRequirement) {
+  if (typeof renderFunctionalRequirementDetailsRowImpl !== 'function') {
+    return '';
+  }
+
   return renderFunctionalRequirementDetailsRowImpl(functionalRequirement);
 }
 
