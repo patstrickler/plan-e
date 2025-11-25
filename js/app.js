@@ -2377,6 +2377,23 @@ function renderTaskTableRowEdit(task, statuses, effortLevels) {
   `;
 }
 
+function restoreTaskFilterSelect(filterElement, stateKey) {
+  if (!filterElement) return;
+  const desiredValue = state[stateKey];
+  if (!desiredValue) {
+    filterElement.value = '';
+    return;
+  }
+
+  const optionExists = Array.from(filterElement.options).some(option => option.value === desiredValue);
+  if (optionExists) {
+    filterElement.value = desiredValue;
+  } else {
+    filterElement.value = '';
+    state[stateKey] = '';
+  }
+}
+
 function populateTaskFilters() {
   const statuses = storage.getStatuses();
   const projects = storage.getAllProjects();
@@ -2395,6 +2412,7 @@ function populateTaskFilters() {
       option.textContent = status.label;
       statusFilter.appendChild(option);
     });
+    restoreTaskFilterSelect(statusFilter, 'taskFilterStatus');
   }
   
   // Populate project filter
@@ -2410,6 +2428,7 @@ function populateTaskFilters() {
       option.textContent = project.title;
       projectFilter.appendChild(option);
     });
+    restoreTaskFilterSelect(projectFilter, 'taskFilterProject');
   }
   
   // Populate resource filter
@@ -2425,6 +2444,7 @@ function populateTaskFilters() {
       option.textContent = user.name;
       resourceFilter.appendChild(option);
     });
+    restoreTaskFilterSelect(resourceFilter, 'taskFilterResource');
   }
 }
 
