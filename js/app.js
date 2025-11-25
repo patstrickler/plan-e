@@ -3158,7 +3158,7 @@ function handleLinkRequirementToExistingFunctionalRequirement(requirement) {
       linkedUserRequirements: Array.from(linkedReqs),
     });
     refreshProjectsState();
-    state.activeRequirementLinkId = null;
+    state.activeRequirementLinkId = requirement.id;
     renderFunctionalRequirements();
     renderRequirements();
   } catch (error) {
@@ -3215,6 +3215,7 @@ function handleCreateFunctionalRequirementFromRequirement(requirement) {
       linkedUserRequirements: [requirement.id],
     });
     refreshProjectsState();
+    state.activeRequirementLinkId = requirement.id;
     renderFunctionalRequirements();
     renderRequirements();
   } catch (error) {
