@@ -356,11 +356,11 @@ function setupEventListeners() {
     const linkedUserReqsSelect = document.getElementById('functional-requirement-linked-user-requirements');
     const linkedUserRequirements = Array.from(linkedUserReqsSelect.selectedOptions).map(opt => opt.value);
     
-    if (!trackingId || !title || !projectId) return;
+    if (!title || !projectId) return;
     
     try {
       storage.createFunctionalRequirement(projectId, { 
-        trackingId,
+        trackingId: trackingId || undefined,
         title, 
         description: description || undefined,
         linkedUserRequirements: linkedUserRequirements || []
@@ -886,11 +886,11 @@ function setupEventListeners() {
     const newProjectId = projectSelect ? projectSelect.value : projectId;
     const linkedUserRequirements = userReqsSelect ? Array.from(userReqsSelect.selectedOptions).map(opt => opt.value) : [];
     
-    if (!trackingId || !title || !newProjectId || !functionalRequirementId) return;
+    if (!title || !newProjectId || !functionalRequirementId) return;
     
     try {
       storage.updateFunctionalRequirement(newProjectId, functionalRequirementId, {
-        trackingId,
+        trackingId: trackingId || undefined,
         title,
         description: description || undefined,
         linkedUserRequirements: linkedUserRequirements || []
@@ -1929,6 +1929,9 @@ function filterFunctionalRequirements(functionalRequirements) {
 function renderFunctionalRequirementsTable(functionalRequirements) {
   const rows = functionalRequirements.map(fr => {
     const project = state.projects.find(p => p.id === fr.projectId);
+    const trackingIdDisplay = fr.trackingId
+      ? `<strong>${escapeHtml(fr.trackingId)}</strong>`
+      : '<span class="text-muted">—</span>';
     const linkedUserReqs = (fr.linkedUserRequirements || []).map(urId => {
       const ur = project ? (project.requirements || []).find(r => r.id === urId) : null;
       return ur;
@@ -1943,7 +1946,7 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
     
     return `
       <tr class="task-table-row" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
-        <td><strong>${escapeHtml(fr.trackingId)}</strong></td>
+        <td>${trackingIdDisplay}</td>
         <td class="task-title-cell">
           <strong>${escapeHtml(fr.title)}</strong>
           ${fr.description ? `<div class="task-description-small">${escapeHtml(fr.description)}</div>` : ''}
@@ -2797,9 +2800,10 @@ function populateFunctionalRequirementSelect(selectId, projectId, selectedValue 
   }
   
   const functionalRequirements = project.functionalRequirements || [];
-  const options = functionalRequirements.map(fr => 
-    `<option value="${fr.id}" ${selectedValue === fr.id ? 'selected' : ''}>${escapeHtml(fr.trackingId)} - ${escapeHtml(fr.title)}</option>`
-  ).join('');
+  const options = functionalRequirements.map(fr => {
+    const trackingLabel = fr.trackingId ? `${escapeHtml(fr.trackingId)} - ` : '';
+    return `<option value="${fr.id}" ${selectedValue === fr.id ? 'selected' : ''}>${trackingLabel}${escapeHtml(fr.title)}</option>`;
+  }).join('');
   select.innerHTML = '<option value="">None</option>' + options;
 }
 
