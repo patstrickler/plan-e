@@ -15,7 +15,6 @@ const state = {
   editingMetadata: new Map(), // For editing metadata items in settings
   taskSearch: '',
   taskFilterStatus: '',
-  taskFilterPriority: '',
   taskFilterProject: '',
   taskFilterResource: '',
   milestoneSearch: '',
@@ -397,7 +396,7 @@ function setupEventListeners() {
   if (newTaskBtn && newTaskForm) {
     newTaskBtn.addEventListener('click', () => {
       populateProjectSelect('task-project');
-      updateAllSelects(); // Populate priority, effort, and resource selects
+      updateAllSelects(); // Populate effort and resource selects
       // Clear and reset functional requirement select
       const functionalReqSelect = document.getElementById('task-functional-requirement');
       if (functionalReqSelect) {
@@ -464,8 +463,6 @@ function setupEventListeners() {
         functionalReqSelect.value = '';
       }
       // Reset other selects
-      const prioritySelect = document.getElementById('task-priority');
-      if (prioritySelect) prioritySelect.value = '';
       const effortSelect = document.getElementById('task-effort');
       if (effortSelect) effortSelect.value = '';
       const resourceSelect = document.getElementById('task-resource');
@@ -506,15 +503,13 @@ function setupEventListeners() {
     document.getElementById('edit-task-project').value = task.projectId;
     populateFunctionalRequirementSelect('edit-task-functional-requirement', task.projectId, task.linkedFunctionalRequirement || '');
     
-    updateAllSelects(); // Populate priority, effort, and resource selects
+    updateAllSelects(); // Populate effort and resource selects
     setTimeout(() => {
       const statusSelect = document.getElementById('edit-task-status');
-      const prioritySelect = document.getElementById('edit-task-priority');
       const effortSelect = document.getElementById('edit-task-effort');
       const resourceSelect = document.getElementById('edit-task-resource');
       
       if (statusSelect) statusSelect.value = task.status || '';
-      if (prioritySelect) prioritySelect.value = task.priority || '';
       if (effortSelect) effortSelect.value = task.effortLevel || '';
       if (resourceSelect) resourceSelect.value = task.assignedResource || '';
       
@@ -686,7 +681,6 @@ function setupEventListeners() {
     const titleInput = document.getElementById('edit-task-title');
     const descriptionInput = document.getElementById('edit-task-description');
     const statusSelect = document.getElementById('edit-task-status');
-    const prioritySelect = document.getElementById('edit-task-priority');
     const effortSelect = document.getElementById('edit-task-effort');
     const resourceSelect = document.getElementById('edit-task-resource');
     const editDueDateInput = document.getElementById('edit-task-due-date');
@@ -698,7 +692,6 @@ function setupEventListeners() {
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const status = statusSelect ? statusSelect.value : '';
-    const priority = prioritySelect ? prioritySelect.value : '';
     const effort = effortSelect ? effortSelect.value : '';
     const resource = resourceSelect ? resourceSelect.value : '';
     const linkedFunctionalRequirement = functionalReqSelect ? functionalReqSelect.value : '';
@@ -917,7 +910,6 @@ function setupEventListeners() {
       const projectSelect = document.getElementById('task-project');
       const titleInput = document.getElementById('task-title');
       const descriptionInput = document.getElementById('task-description');
-      const prioritySelect = document.getElementById('task-priority');
       const effortSelect = document.getElementById('task-effort');
       const resourceSelect = document.getElementById('task-resource');
       const dueDateInput = document.getElementById('task-due-date');
@@ -926,7 +918,6 @@ function setupEventListeners() {
       const projectId = projectSelect ? projectSelect.value : '';
       const title = titleInput ? titleInput.value.trim() : '';
       const description = descriptionInput ? descriptionInput.value.trim() : '';
-      const priority = prioritySelect ? prioritySelect.value : '';
       const effort = effortSelect ? effortSelect.value : '';
       const resource = resourceSelect ? resourceSelect.value : '';
       const linkedFunctionalRequirement = functionalReqSelect ? functionalReqSelect.value : '';
@@ -966,7 +957,6 @@ function setupEventListeners() {
         storage.createTask(projectId, milestoneId, {
           title,
           description: description || undefined,
-          priority: priority || undefined,
           effortLevel: effort || undefined,
           assignedResource: resource || undefined,
           dueDate: dueDate || undefined,
@@ -975,7 +965,6 @@ function setupEventListeners() {
         // Reset form fields using cached references
         if (titleInput) titleInput.value = '';
         if (descriptionInput) descriptionInput.value = '';
-        if (prioritySelect) prioritySelect.value = '';
         if (effortSelect) effortSelect.value = '';
         if (resourceSelect) resourceSelect.value = '';
         // Reset project and functional requirement selects
@@ -1024,7 +1013,6 @@ function setupEventListeners() {
 function setupTaskSearchAndFilterListeners() {
   const searchInput = document.getElementById('task-search');
   const statusFilter = document.getElementById('task-filter-status');
-  const priorityFilter = document.getElementById('task-filter-priority');
   const projectFilter = document.getElementById('task-filter-project');
   const resourceFilter = document.getElementById('task-filter-resource');
   
@@ -1035,11 +1023,6 @@ function setupTaskSearchAndFilterListeners() {
   
   statusFilter?.addEventListener('change', (e) => {
     state.taskFilterStatus = e.target.value;
-    renderTasks();
-  });
-  
-  priorityFilter?.addEventListener('change', (e) => {
-    state.taskFilterPriority = e.target.value;
     renderTasks();
   });
   
@@ -1674,13 +1657,6 @@ function sortRequirements(requirements) {
         aVal = aMilestone?.title || '';
         bVal = bMilestone?.title || '';
         break;
-      case 'priority':
-        const priorities = storage.getPriorities();
-        const aPriority = priorities.find(p => p.id === a.priority);
-        const bPriority = priorities.find(p => p.id === b.priority);
-        aVal = aPriority?.label || '';
-        bVal = bPriority?.label || '';
-        break;
       case 'category':
         aVal = a.category || '';
         bVal = b.category || '';
@@ -1773,12 +1749,7 @@ function renderRequirementsTable(requirements) {
       <tr class="task-table-row" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
         <td class="task-title-cell">
           <strong>${escapeHtml(r.title)}</strong>
-          ${r.description ? `
-            <div class="requirement-criteria">
-              <span class="requirement-criteria-label">Acceptance Criteria</span>
-              <p class="requirement-criteria-text">${escapeHtml(r.description)}</p>
-            </div>
-          ` : ''}
+          ${r.description ? `<div class="task-description-small">${escapeHtml(r.description)}</div>` : ''}
         </td>
         <td class="task-project-cell">${escapeHtml(r.project.title)}</td>
         <td class="task-milestone-cell">${milestone ? escapeHtml(milestone.title) : '<span class="text-muted">—</span>'}</td>
@@ -1817,7 +1788,6 @@ function renderRequirementsTable(requirements) {
           <th class="${getSortClass('title')}" data-sort-column="title">Requirement${getSortIndicator('title')}</th>
           <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
           <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
-          <th class="${getSortClass('priority')}" data-sort-column="priority">Priority${getSortIndicator('priority')}</th>
           <th class="${getSortClass('linkedFRs')}" data-sort-column="linkedFRs">Linked FRs${getSortIndicator('linkedFRs')}</th>
           <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
           <th>Progress</th>
@@ -1843,11 +1813,23 @@ function renderFunctionalRequirementLinkRow(requirement) {
     return `<option value="${fr.id}">${trackingLabel}${escapeHtml(fr.title)}</option>`;
   }).join('');
   const hasFunctionalRequirements = functionalRequirements.length > 0;
+  const acceptanceCriteriaHtml = requirement.description ? `
+    <div class="requirements-fr-link-criteria">
+      <span class="requirements-fr-link-criteria-label">Acceptance Criteria</span>
+      <p class="requirements-fr-link-criteria-text">${escapeHtml(requirement.description)}</p>
+    </div>
+  ` : `
+    <div class="requirements-fr-link-criteria">
+      <span class="requirements-fr-link-criteria-label">Acceptance Criteria</span>
+      <p class="requirements-fr-link-criteria-text requirements-fr-link-criteria-empty">No acceptance criteria provided yet.</p>
+    </div>
+  `;
 
   return `
     <tr class="functional-requirement-link-row" data-requirement-id="${requirement.id}">
       <td colspan="8">
         <div class="requirements-fr-link-panel">
+          ${acceptanceCriteriaHtml}
           <div class="requirements-fr-link-grid">
             <div class="requirements-fr-link-section">
               <p class="requirements-fr-link-label">Link to an existing functional requirement</p>
@@ -2170,11 +2152,6 @@ function filterTasks(tasks) {
       return false;
     }
     
-    // Priority filter
-    if (state.taskFilterPriority && task.priority !== state.taskFilterPriority) {
-      return false;
-    }
-    
     // Project filter
     if (state.taskFilterProject && task.projectId !== state.taskFilterProject) {
       return false;
@@ -2261,7 +2238,6 @@ function sortTasks(tasks) {
 
 function renderTasksTable(tasks) {
   const statuses = storage.getStatuses();
-  const priorities = storage.getPriorities();
   const effortLevels = storage.getEffortLevels();
   
   const rows = tasks.map(task => {
@@ -2269,14 +2245,11 @@ function renderTasksTable(tasks) {
     const isCompleted = task.status === 'completed';
     
     if (isEditing) {
-      return renderTaskTableRowEdit(task, statuses, priorities, effortLevels);
+      return renderTaskTableRowEdit(task, statuses, effortLevels);
     }
     
     const status = statuses.find(s => s.id === task.status);
     const statusColorStyle = status?.color ? getStatusSelectStyle(status.color) : '';
-    
-    const priority = priorities.find(p => p.id === task.priority);
-    const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
     
     const effort = effortLevels.find(e => e.id === task.effortLevel);
     const effortBadgeStyle = effort?.color ? getBadgeStyle(effort.color) : '';
@@ -2291,9 +2264,6 @@ function renderTasksTable(tasks) {
           <select class="task-status-select-view" style="${statusColorStyle}" data-task-id="${task.id}" data-project-id="${task.projectId}" data-milestone-id="${task.milestoneId}">
             ${statusOptions}
           </select>
-        </td>
-        <td>
-          ${task.priority && priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : '<span class="text-muted">—</span>'}
         </td>
         <td class="task-title-cell">
           <strong>${escapeHtml(task.title)}</strong>
@@ -2347,15 +2317,11 @@ function renderTasksTable(tasks) {
   `;
 }
 
-function renderTaskTableRowEdit(task, statuses, priorities, effortLevels) {
+function renderTaskTableRowEdit(task, statuses, effortLevels) {
   const usersList = storage.getUsers();
   
   const statusOptions = statuses.map(s => 
     `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`
-  ).join('');
-  
-  const priorityOptions = priorities.map(p => 
-    `<option value="${p.id}" ${task.priority === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
   ).join('');
   
   const effortOptions = effortLevels.map(e => 
@@ -2377,10 +2343,6 @@ function renderTaskTableRowEdit(task, statuses, priorities, effortLevels) {
           <div class="task-edit-row">
             <select class="edit-status" data-task-id="${task.id}">
               ${statusOptions}
-            </select>
-            <select class="edit-priority" data-task-id="${task.id}">
-              <option value="">None</option>
-              ${priorityOptions}
             </select>
             <select class="edit-effort" data-task-id="${task.id}">
               <option value="">None</option>
@@ -2624,7 +2586,6 @@ function attachTaskListenersForView(task) {
     const title = document.querySelector(`.edit-title[data-task-id="${taskId}"]`).value.trim();
     const description = document.querySelector(`.edit-description[data-task-id="${taskId}"]`).value.trim();
     const status = document.querySelector(`.edit-status[data-task-id="${taskId}"]`).value;
-    const priority = document.querySelector(`.edit-priority[data-task-id="${taskId}"]`).value;
     const effort = document.querySelector(`.edit-effort[data-task-id="${taskId}"]`).value;
     const resource = document.querySelector(`.edit-resource[data-task-id="${taskId}"]`).value;
     
@@ -2635,7 +2596,6 @@ function attachTaskListenersForView(task) {
         title,
         description: description || undefined,
         status,
-        priority: priority || undefined,
         effortLevel: effort || undefined,
         assignedResource: resource || undefined,
       });

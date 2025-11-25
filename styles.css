@@ -1244,27 +1244,35 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
-.requirement-criteria {
-  margin-top: 0.35rem;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  line-height: 1.45;
+.requirements-fr-link-criteria {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.75rem 0.5rem;
+  background: var(--gray-50);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  line-height: 1.4;
 }
 
-.requirement-criteria-label {
+.requirements-fr-link-criteria-label {
   display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.7rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  font-weight: 600;
   color: var(--text-muted);
 }
 
-.requirement-criteria-text {
-  margin: 0.25rem 0 0;
+.requirements-fr-link-criteria-text {
+  margin: 0.35rem 0 0;
   white-space: pre-wrap;
   word-break: break-word;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.requirements-fr-link-criteria-empty {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .task-project-cell {
