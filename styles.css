@@ -1219,7 +1219,7 @@ body {
 .metadata-item-points {
   font-size: 0.85rem;
   color: var(--text-secondary);
-  margin-left: auto;
+  margin-left: 0.5rem;
 }
 
 .metadata-item-order {
