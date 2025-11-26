@@ -3435,27 +3435,33 @@ function renderStackedEffortBar(stat, effortLevels, maxPoints) {
     return '<div class="capacity-bar-track capacity-bar-stacked capacity-bar-empty"><span class="text-muted">No effort levels defined</span></div>';
   }
 
+  const rowWidth = stat.points ? Math.min(100, Math.max(0, (stat.points / maxPoints) * 100)) : 0;
   const segmentsHtml = effortLevels.map(level => {
     const levelPoints = stat.effortBreakdown[level.id] || 0;
-    if (levelPoints <= 0) return '';
-    const widthPercent = Math.min(100, Math.max(0, (levelPoints / maxPoints) * 100));
+    if (levelPoints <= 0 || !stat.points) return '';
     const color = level.color || 'var(--primary)';
     const tooltip = `${escapeHtml(level.label)} · ${formatCapacityPoints(levelPoints)} pts`;
+    const widthPercent = (levelPoints / stat.points) * 100;
     return `<span class="capacity-bar-segment" style="width:${widthPercent}%;background:${color}" title="${tooltip}"></span>`;
   }).join('');
 
-  if (!segmentsHtml) {
+  if (!segmentsHtml || rowWidth <= 0) {
     return '<div class="capacity-bar-track capacity-bar-stacked capacity-bar-empty"><span>No effort assigned</span></div>';
   }
 
-  return `<div class="capacity-bar-track capacity-bar-stacked">${segmentsHtml}</div>`;
+  return `
+    <div class="capacity-bar-track capacity-bar-stacked">
+      <div class="capacity-bar-stacked-inner" style="width:${rowWidth}%">
+        ${segmentsHtml}
+      </div>
+    </div>`;
 }
 
 function renderTaskCountBar(stat, maxTasks) {
   const widthPercent = Math.min(100, Math.max(0, (stat.tasks / maxTasks) * 100));
   return `
     <div class="capacity-task-bar-track">
-      <span class="capacity-task-bar-fill" style="width:${widthPercent}%;"></span>
+      <span class="capacity-task-bar-fill" style="width:${widthPercent}%"></span>
     </div>
     <div class="capacity-task-bar-label">
       ${stat.tasks} ${stat.tasks === 1 ? 'task' : 'tasks'}
@@ -3463,11 +3469,14 @@ function renderTaskCountBar(stat, maxTasks) {
   `;
 }
 
-function renderCompletionBar(stat) {
+function renderCompletionBar(stat, color) {
   const completion = Math.min(100, Math.max(0, stat.completedPercent));
   return `
     <div class="capacity-progress-bar-track" role="img" aria-label="${Math.round(completion)}% complete">
-      <span class="capacity-progress-bar-fill" style="width:${completion}%;"></span>
+      <span class="capacity-progress-bar-fill" style="width:${completion}%; background:${color};"></span>
+    </div>
+    <div class="capacity-progress-bar-label">
+      ${Math.round(completion)}% complete
     </div>
   `;
 }
@@ -3655,6 +3664,10 @@ function renderCapacity() {
 
   const maxPoints = Math.max(1, ...sortedStats.map(stat => stat.points));
   const maxTasks = Math.max(1, ...sortedStats.map(stat => stat.tasks));
+  const statusesMeta = storage.getStatuses();
+  const completedStatus = statusesMeta.find(s => s.id === 'completed') 
+    || statusesMeta.find(s => (s.label || '').toLowerCase().includes('complete'));
+  const completionColor = completedStatus?.color || 'var(--success)';
   const filteredBanner = filteredTasks.length === 0
     ? '<p class="capacity-empty-msg">No tasks match the selected filters.</p>'
     : '';
@@ -3669,7 +3682,7 @@ function renderCapacity() {
     const tagsHtml = tags.map(tag => `<span class="capacity-resource-tag">${tag}</span>`).join('');
     const effortBarHtml = renderStackedEffortBar(stat, effortLevels, maxPoints);
     const taskBarHtml = renderTaskCountBar(stat, maxTasks);
-    const completionBar = renderCompletionBar(stat);
+    const completionBar = renderCompletionBar(stat, completionColor);
     return `
       <tr>
         <td>
