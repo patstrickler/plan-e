@@ -2034,14 +2034,15 @@ body {
   gap: 0.5rem;
 }
 .progress-card .progress-chart {
-  background: var(--gray-50);
+  background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 0.75rem;
   min-height: 220px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
 }
 .progress-line-wrapper {
   width: 100%;
