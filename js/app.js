@@ -118,8 +118,7 @@ const elements = {
   workspaceNameForm: document.getElementById('workspace-name-form'),
 };
 
-let progressStartDatePicker;
-let progressEndDatePicker;
+const progressDatePickers = { start: null, end: null };
 
 const csvTemplates = {
   milestones: {
@@ -3843,26 +3842,26 @@ function initializeProgressDatePickers() {
   if (typeof flatpickr !== 'function') return;
 
   const startInput = elements.progressFilterStartDate;
-  if (startInput && !progressStartDatePicker) {
-    progressStartDatePicker = flatpickr(startInput, {
+  if (startInput && !progressDatePickers.start) {
+    progressDatePickers.start = flatpickr(startInput, {
       dateFormat: 'Y-m-d',
       clickOpens: true,
       allowInput: false,
     });
     startInput.addEventListener('focus', () => {
-      progressStartDatePicker?.open();
+      progressDatePickers.start?.open();
     });
   }
 
   const endInput = elements.progressFilterEndDate;
-  if (endInput && !progressEndDatePicker) {
-    progressEndDatePicker = flatpickr(endInput, {
+  if (endInput && !progressDatePickers.end) {
+    progressDatePickers.end = flatpickr(endInput, {
       dateFormat: 'Y-m-d',
       clickOpens: true,
       allowInput: false,
     });
     endInput.addEventListener('focus', () => {
-      progressEndDatePicker?.open();
+      progressDatePickers.end?.open();
     });
   }
 }
