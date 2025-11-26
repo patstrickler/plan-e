@@ -2,6 +2,20 @@ import * as storage from './storage.js';
 
 // State management
 let currentView = 'projects';
+const DEFAULT_VIEW = 'projects';
+const VIEW_HASH_MAP = {
+  projects: '#projects',
+  milestones: '#milestones',
+  tasks: '#tasks',
+  capacity: '#capacity',
+  progress: '#progress',
+  requirements: '#requirements',
+  'functional-requirements': '#functional-requirements',
+  settings: '#settings',
+};
+const HASH_VIEW_MAP = Object.fromEntries(
+  Object.entries(VIEW_HASH_MAP).map(([view, hash]) => [hash.toLowerCase(), view])
+);
 const state = {
   projects: [],
   expandedProjects: new Set(),
@@ -298,7 +312,7 @@ function init() {
     setupEventListeners();
     updateAllSelects(); // Initialize all selects with metadata
     updateWorkspaceTitle();
-    showView('projects'); // Ensure initial view is shown
+    initializeViewFromHash(); // Sync view with URL hash state
   } catch (error) {
     console.error('Error during initialization:', error);
   } finally {
@@ -334,6 +348,70 @@ function loadProjects() {
 
 function refreshProjectsState() {
   state.projects = storage.getAllProjects();
+}
+
+function normalizeHashValue(hash) {
+  if (!hash) return '';
+  const trimmed = String(hash).trim().toLowerCase();
+  if (!trimmed) return '';
+  return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+}
+
+function getViewFromHash(hash) {
+  const normalized = normalizeHashValue(hash);
+  if (!normalized) return null;
+  return HASH_VIEW_MAP[normalized] || null;
+}
+
+function getHashForView(viewName) {
+  return VIEW_HASH_MAP[viewName] ?? VIEW_HASH_MAP[DEFAULT_VIEW];
+}
+
+function updateHashForView(viewName, { replace = false } = {}) {
+  if (typeof window === 'undefined' || !window.location) return false;
+  const targetHash = normalizeHashValue(getHashForView(viewName));
+  if (!targetHash) return false;
+  const baseUrl = `${window.location.pathname}${window.location.search}`;
+  const targetUrl = `${baseUrl}${targetHash}`;
+  const currentHash = normalizeHashValue(window.location.hash);
+  if (replace) {
+    if (window.history && typeof window.history.replaceState === 'function') {
+      window.history.replaceState(null, '', targetUrl);
+    } else {
+      window.location.hash = targetHash;
+    }
+    return true;
+  }
+  if (currentHash === targetHash) {
+    return false;
+  }
+  window.location.hash = targetHash;
+  return true;
+}
+
+function handleHashChange() {
+  if (typeof window === 'undefined') return;
+  const viewFromHash = getViewFromHash(window.location.hash);
+  const viewName = viewFromHash || DEFAULT_VIEW;
+  if (viewName === currentView) {
+    return;
+  }
+  showView(viewName);
+}
+
+function initializeViewFromHash() {
+  if (typeof window === 'undefined') {
+    showView(DEFAULT_VIEW);
+    return;
+  }
+  const viewFromHash = getViewFromHash(window.location.hash);
+  const initialView = viewFromHash || DEFAULT_VIEW;
+  showView(initialView);
+  const desiredHash = normalizeHashValue(getHashForView(initialView));
+  const currentHash = normalizeHashValue(window.location.hash);
+  if (currentHash !== desiredHash) {
+    updateHashForView(initialView, { replace: true });
+  }
 }
 
 // View switching
@@ -383,17 +461,18 @@ function setupEventListeners() {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       const href = link.getAttribute('href');
-      if (href === '#projects') showView('projects');
-      if (href === '#milestones') showView('milestones');
-      if (href === '#tasks') showView('tasks');
-      if (href === '#capacity') showView('capacity');
-      if (href === '#requirements') showView('requirements');
-      if (href === '#functional-requirements') showView('functional-requirements');
-      if (href === '#progress') showView('progress');
-      if (href === '#settings') showView('settings');
+      const targetView = getViewFromHash(href);
+      if (targetView) {
+        const hashChanged = updateHashForView(targetView);
+        if (!hashChanged) {
+          showView(targetView);
+        }
+      }
       closeNavDropdowns();
     });
   });
+
+  window.addEventListener('hashchange', handleHashChange);
 
   const reportsToggle = document.querySelector('.nav-dropdown-toggle');
   reportsToggle?.addEventListener('click', (event) => {
@@ -420,7 +499,10 @@ function setupEventListeners() {
   document.querySelectorAll('.back-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      showView('projects');
+      const hashChanged = updateHashForView('projects');
+      if (!hashChanged) {
+        showView('projects');
+      }
     });
   });
 
