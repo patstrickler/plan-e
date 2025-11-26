@@ -104,6 +104,9 @@ const elements = {
   workspaceNameForm: document.getElementById('workspace-name-form'),
 };
 
+let progressStartDatePicker;
+let progressEndDatePicker;
+
 const csvTemplates = {
   milestones: {
     headers: ['Project Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)'],
@@ -3688,8 +3691,8 @@ function renderCapacity() {
   if (sortedStats.length === 0) {
     elements.capacityList.innerHTML = `
       <div class="empty-state">
-        <p>No workload data yet</p>
-        <p class="empty-state-sub">Add users and assign tasks to start tracking team workload.</p>
+        <p>No capacity data yet</p>
+        <p class="empty-state-sub">Add users and assign tasks to start tracking team capacity.</p>
       </div>
     `;
     return;
