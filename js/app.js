@@ -3893,11 +3893,14 @@ function getProgressWeekDates(tasks, startOverride, endOverride) {
   const latestFromData = completionDates.length > 0
     ? completionDates.reduce((current, date) => (date > current ? date : current))
     : null;
-  const defaultEnd = endOverride ? getWeekStart(endOverride) : (latestFromData || nowWeek);
-  const fallbackStart = new Date(defaultEnd);
-  fallbackStart.setDate(fallbackStart.getDate() - 7 * 4);
-  const startWeekCandidate = startOverride ? getWeekStart(startOverride) : (earliestFromData || fallbackStart);
-  let endWeekCandidate = defaultEnd;
+  const defaultStart = new Date(nowWeek);
+  defaultStart.setDate(defaultStart.getDate() - 7 * 4);
+  const defaultEnd = new Date(nowWeek);
+  defaultEnd.setDate(defaultEnd.getDate() + 7 * 4);
+  const resolvedStart = startOverride ? getWeekStart(startOverride) : (earliestFromData && earliestFromData < defaultStart ? earliestFromData : defaultStart);
+  const resolvedEnd = endOverride ? getWeekStart(endOverride) : (latestFromData && latestFromData > defaultEnd ? latestFromData : defaultEnd);
+  let startWeekCandidate = resolvedStart;
+  let endWeekCandidate = resolvedEnd;
   if (startWeekCandidate > endWeekCandidate) {
     endWeekCandidate = new Date(startWeekCandidate);
   }
