@@ -3688,8 +3688,8 @@ function renderCapacity() {
   if (sortedStats.length === 0) {
     elements.capacityList.innerHTML = `
       <div class="empty-state">
-        <p>No capacity data yet</p>
-        <p class="empty-state-sub">Add users and assign tasks to start tracking team capacity.</p>
+        <p>No workload data yet</p>
+        <p class="empty-state-sub">Add users and assign tasks to start tracking team workload.</p>
       </div>
     `;
     return;
