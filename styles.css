@@ -1949,6 +1949,27 @@ body {
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+.progress-filter-row {
+  align-items: center;
+}
+.progress-date-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.progress-date-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.875rem;
+  min-width: 150px;
+  appearance: none;
+}
 .progress-date-range {
   display: flex;
   flex-wrap: wrap;

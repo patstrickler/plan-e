@@ -3736,8 +3736,10 @@ function renderProgress() {
     return true;
   });
 
-  const startDate = parseDateValue(state.progressFilterStartDate);
-  const endDate = parseDateValue(state.progressFilterEndDate);
+  const defaultRange = getProgressDefaultRange();
+  const startDate = parseDateValue(state.progressFilterStartDate) || defaultRange.start;
+  const endDate = parseDateValue(state.progressFilterEndDate) || defaultRange.end;
+  updateProgressDateInputs(startDate, endDate);
   const progressData = buildProgressData(filteredTasks, { startDate, endDate });
 
   if (elements.progressTasksChart) {
@@ -3773,6 +3775,31 @@ function renderProgress() {
     const remaining = progressData.leftPoints[progressData.leftPoints.length - 1] ?? progressData.totalEffort;
     elements.progressEffortLeft.textContent = `${formatPoints(remaining)} pts`;
   }
+}
+
+function updateProgressDateInputs(startDate, endDate) {
+  if (elements.progressFilterStartDate) {
+    elements.progressFilterStartDate.value = formatDateInputValue(startDate);
+  }
+  if (elements.progressFilterEndDate) {
+    elements.progressFilterEndDate.value = formatDateInputValue(endDate);
+  }
+}
+
+function getProgressDefaultRange() {
+  const nowWeek = getWeekStart(new Date());
+  const start = new Date(nowWeek);
+  start.setDate(start.getDate() - 7 * 4);
+  const end = new Date(nowWeek);
+  end.setDate(end.getDate() + 7 * 4);
+  return { start, end };
+}
+
+function formatDateInputValue(date) {
+  if (!date) return '';
+  const normalized = date instanceof Date ? date : new Date(date);
+  if (!Number.isFinite(normalized.getTime())) return '';
+  return normalized.toISOString().split('T')[0];
 }
 
 function populateProgressFilters() {
