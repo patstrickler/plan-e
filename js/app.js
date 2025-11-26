@@ -3749,6 +3749,7 @@ function renderProgress() {
       values: progressData.tasksCompleted,
     }], {
       ariaLabel: 'Tasks completed by week',
+      panelClass: 'progress-burndown-panel',
     });
   }
 
@@ -3764,6 +3765,7 @@ function renderProgress() {
       { label: 'Effort Left', color: 'var(--warning)', values: progressData.leftPoints },
     ], {
       ariaLabel: 'Effort completed versus effort remaining',
+      panelClass: 'progress-burndown-panel',
     });
   }
 
@@ -4026,23 +4028,31 @@ function renderStackedEffortChart(container, weeks, maxStack) {
     container.innerHTML = '<p class="text-muted text-sm">No effort data yet.</p>';
     return;
   }
-  const maxValue = Math.max(1, maxStack);
-  const rowsHtml = weeks.map(week => {
+  const columnsHtml = weeks.map(week => {
     const totalLabel = formatPoints(week.total);
-    const widthPercent = week.total > 0 ? Math.min(100, (week.total / maxValue) * 100) : 0;
+    const columnHeight = Math.max(140, (maxStack > 0 ? (week.total / maxStack) * 200 : 0));
+    const segments = week.segments.length > 0
+      ? week.segments.map(segment => {
+        const heightPercent = week.total > 0 ? (segment.value / week.total) * 100 : 0;
+        const color = segment.color;
+        const tooltip = `${escapeHtml(segment.label)} · ${formatPoints(segment.value)} pts`;
+        return `<span class="progress-stacked-segment" style="height:${heightPercent}%;background:${color}" title="${tooltip}"></span>`;
+      }).join('')
+      : '';
+    const emptyState = week.total === 0 ? '<span class="progress-stacked-empty">No effort</span>' : '';
     return `
-      <article class="progress-point-row" title="${escapeHtml(week.label)} · ${totalLabel} pts completed">
-        <div class="progress-point-info">
-          <span class="progress-point-week">${escapeHtml(week.label)}</span>
-          <span class="progress-point-value">${week.total > 0 ? `${totalLabel} pts` : '0 pts'}</span>
+      <div class="progress-stacked-column" title="${escapeHtml(week.label)} · ${totalLabel} pts completed">
+        <div class="progress-stacked-column-inner" style="height:${columnHeight}px">
+          ${segments || emptyState}
         </div>
-        <div class="progress-point-track" aria-hidden="true">
-          <span class="progress-point-fill" style="width:${widthPercent}%;"></span>
+        <div class="progress-stacked-column-labels">
+          <span class="progress-stacked-label">${week.label}</span>
+          <span class="progress-stacked-value">${week.total > 0 ? `${totalLabel} pts` : '0 pts'}</span>
         </div>
-      </article>
+      </div>
     `;
   }).join('');
-  container.innerHTML = `<div class="progress-point-bars">${rowsHtml}</div>`;
+  container.innerHTML = renderChartPanel(`<div class="progress-stacked-columns">${columnsHtml}</div>`, 'progress-stacked-panel');
 }
 
 function updateEffortLegend(legendItems) {
@@ -4112,11 +4122,19 @@ function renderLineChart(container, labels, series, options = {}) {
     </svg>
   `;
   const legendHtml = options.hideLegend ? '' : `<div class="progress-chart-legend">${series.map(serie => `<span class="progress-chart-legend-item"><span class="progress-chart-legend-swatch" style="background:${serie.color};"></span>${escapeHtml(serie.label)}</span>`).join('')}</div>`;
-  container.innerHTML = `<div class="progress-line-wrapper">${svg}</div>${legendHtml}`;
+  container.innerHTML = `${renderChartPanel(svg, options.panelClass)}${legendHtml}`;
   if (options.ariaLabel) {
     container.setAttribute('aria-label', options.ariaLabel);
   }
   container.setAttribute('role', 'img');
+}
+
+function renderChartPanel(content, panelClass = '') {
+  const classes = ['progress-chart-panel'];
+  if (panelClass) {
+    classes.push(panelClass);
+  }
+  return `<div class="${classes.join(' ')}">${content}</div>`;
 }
 
 function formatAxisValue(value) {
