@@ -24,6 +24,8 @@ const state = {
   capacityFilterStatus: '',
   progressFilterProject: '',
   progressFilterMilestone: '',
+  progressFilterStartDate: '',
+  progressFilterEndDate: '',
   milestoneSearch: '',
   milestoneFilterProject: '',
   milestoneSortColumn: '',
@@ -74,6 +76,8 @@ const elements = {
   progressView: document.getElementById('progress-view'),
   progressFilterProject: document.getElementById('progress-filter-project'),
   progressFilterMilestone: document.getElementById('progress-filter-milestone'),
+  progressFilterStartDate: document.getElementById('progress-filter-start-date'),
+  progressFilterEndDate: document.getElementById('progress-filter-end-date'),
   progressTasksChart: document.getElementById('progress-tasks-chart'),
   progressEffortChart: document.getElementById('progress-effort-chart'),
   progressEffortLegend: document.getElementById('progress-effort-legend'),
@@ -397,6 +401,20 @@ function setupEventListeners() {
     const select = event.target;
     if (!(select instanceof HTMLSelectElement)) return;
     state.progressFilterMilestone = select.value;
+    renderProgress();
+  });
+
+  elements.progressFilterStartDate?.addEventListener('change', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    state.progressFilterStartDate = input.value;
+    renderProgress();
+  });
+
+  elements.progressFilterEndDate?.addEventListener('change', (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    state.progressFilterEndDate = input.value;
     renderProgress();
   });
 
@@ -3533,6 +3551,8 @@ function renderCapacity() {
       label: user.name,
       tasks: 0,
       points: 0,
+      effortBreakdown: {},
+      completedTasks: 0,
       isUser: true,
       isUnassigned: false,
       isExternal: false,
@@ -3547,6 +3567,8 @@ function renderCapacity() {
         label,
         tasks: 0,
         points: 0,
+        effortBreakdown: {},
+        completedTasks: 0,
         isUser: !!resource && knownUsers.has(resource),
         isUnassigned: !resource,
         isExternal: !!resource && !knownUsers.has(resource),
@@ -3557,9 +3579,19 @@ function renderCapacity() {
     const effortValue = effortPoints.get(task.effortLevel) || 0;
     stat.tasks += 1;
     stat.points += effortValue;
+    if (task.effortLevel) {
+      stat.effortBreakdown[task.effortLevel] = (stat.effortBreakdown[task.effortLevel] || 0) + effortValue;
+    }
+    if (task.status === 'completed') {
+      stat.completedTasks += 1;
+    }
   });
 
-  const statsArray = Array.from(statsMap.values()).sort((a, b) => {
+  const statsArray = Array.from(statsMap.values());
+  statsArray.forEach(stat => {
+    stat.completedPercent = stat.tasks ? (stat.completedTasks / stat.tasks) * 100 : 0;
+  });
+  const sortedStats = [...statsArray].sort((a, b) => {
     if (b.points !== a.points) {
       return b.points - a.points;
     }
@@ -3569,7 +3601,7 @@ function renderCapacity() {
     return a.label.localeCompare(b.label);
   });
 
-  if (statsArray.length === 0) {
+  if (sortedStats.length === 0) {
     elements.capacityList.innerHTML = `
       <div class="empty-state">
         <p>No capacity data yet</p>
@@ -3579,14 +3611,12 @@ function renderCapacity() {
     return;
   }
 
-  const maxPoints = Math.max(1, ...statsArray.map(stat => stat.points));
+  const maxPoints = Math.max(1, ...sortedStats.map(stat => stat.points));
   const filteredBanner = filteredTasks.length === 0
     ? '<p class="capacity-empty-msg">No tasks match the selected filters.</p>'
     : '';
 
-  const rows = statsArray.map(stat => {
-    const percent = (stat.points / maxPoints) * 100;
-    const fillWidth = Math.min(100, Math.max(0, Number.isFinite(percent) ? percent : 0));
+  const rows = sortedStats.map(stat => {
     const tags = [];
     if (stat.isUnassigned) {
       tags.push('Unassigned');
@@ -3594,6 +3624,11 @@ function renderCapacity() {
       tags.push('External');
     }
     const tagsHtml = tags.map(tag => `<span class="capacity-resource-tag">${tag}</span>`).join('');
+    const effortBarHtml = renderStackedEffortBar(stat, effortLevels, maxPoints);
+    const completionDisplay = stat.tasks
+      ? `${Math.round(stat.completedPercent)}%`
+      : '<span class="text-muted">—</span>';
+
     return `
       <tr>
         <td>
@@ -3604,14 +3639,12 @@ function renderCapacity() {
         </td>
         <td>${stat.tasks}</td>
         <td>
-          <div class="capacity-bar-track">
-            <div class="capacity-bar-fill" style="width:${fillWidth}%;"></div>
-          </div>
+          ${effortBarHtml}
           <div class="capacity-bar-meta">
-            <span>${formatCapacityPoints(stat.points)} pts</span>
-            <span>${Math.round(fillWidth)}%</span>
+            <span>${formatCapacityPoints(stat.points)} pts assigned</span>
           </div>
         </td>
+        <td>${completionDisplay}</td>
       </tr>
     `;
   }).join('');
@@ -3623,7 +3656,8 @@ function renderCapacity() {
         <tr>
           <th>Resource</th>
           <th>Tasks</th>
-          <th>Effort Points</th>
+          <th>Effort</th>
+          <th>% Complete</th>
         </tr>
       </thead>
       <tbody>
@@ -3648,7 +3682,9 @@ function renderProgress() {
     return true;
   });
 
-  const progressData = buildProgressData(filteredTasks);
+  const startDate = parseDateValue(state.progressFilterStartDate);
+  const endDate = parseDateValue(state.progressFilterEndDate);
+  const progressData = buildProgressData(filteredTasks, { startDate, endDate });
 
   if (elements.progressTasksChart) {
     renderLineChart(elements.progressTasksChart, progressData.weekLabels, [{
@@ -3719,10 +3755,10 @@ function updateProgressMilestoneFilterOptions() {
   restoreTaskFilterSelect(milestoneSelect, 'progressFilterMilestone');
 }
 
-function buildProgressData(tasks) {
+function buildProgressData(tasks, { startDate, endDate } = {}) {
   const effortLevels = storage.getEffortLevels();
   const effortMap = new Map(effortLevels.map(level => [level.id, Number.isFinite(Number(level.points)) ? Number(level.points) : 0]));
-  const weekDates = getProgressWeekDates(tasks);
+  const weekDates = getProgressWeekDates(tasks, startDate, endDate);
   const weekLabels = weekDates.map(formatWeekLabel);
   const weekKeys = weekDates.map(getWeekKey);
   const weekStats = new Map(weekKeys.map(key => [key, { tasks: 0, points: 0, segments: new Map() }]));
@@ -3804,28 +3840,38 @@ function buildProgressData(tasks) {
   };
 }
 
-function getProgressWeekDates(tasks) {
+function getProgressWeekDates(tasks, startOverride, endOverride) {
   const completionDates = tasks
     .map(task => parseDateValue(task.completedDate) || parseDateValue(task.updatedAt))
     .filter(Boolean)
     .map(date => getWeekStart(date));
-  const now = getWeekStart(new Date());
-  const latestFromData = completionDates.length > 0 ? completionDates.reduce((latest, date) => (date > latest ? date : latest)) : null;
-  const endWeek = latestFromData && latestFromData > now ? latestFromData : now;
-  const fallbackStart = new Date(endWeek);
+  const nowWeek = getWeekStart(new Date());
+  const earliestFromData = completionDates.length > 0
+    ? completionDates.reduce((current, date) => (date < current ? date : current))
+    : null;
+  const latestFromData = completionDates.length > 0
+    ? completionDates.reduce((current, date) => (date > current ? date : current))
+    : null;
+  const defaultEnd = endOverride ? getWeekStart(endOverride) : (latestFromData || nowWeek);
+  const fallbackStart = new Date(defaultEnd);
   fallbackStart.setDate(fallbackStart.getDate() - 7 * 4);
-  const earliest = completionDates.length > 0 ? completionDates.reduce((earliestDate, date) => (date < earliestDate ? date : earliestDate)) : fallbackStart;
-  const startWeek = earliest < fallbackStart ? earliest : fallbackStart;
+  const startWeekCandidate = startOverride ? getWeekStart(startOverride) : (earliestFromData || fallbackStart);
+  let endWeekCandidate = defaultEnd;
+  if (startWeekCandidate > endWeekCandidate) {
+    endWeekCandidate = new Date(startWeekCandidate);
+  }
 
   const weeks = [];
-  const pointer = new Date(startWeek);
-  while (pointer <= endWeek) {
+  const pointer = new Date(startWeekCandidate);
+  while (pointer <= endWeekCandidate) {
     weeks.push(new Date(pointer));
     pointer.setDate(pointer.getDate() + 7);
   }
+
   if (weeks.length === 0) {
-    weeks.push(new Date(startWeek));
+    weeks.push(new Date(startWeekCandidate));
   }
+
   return weeks;
 }
 
