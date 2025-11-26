@@ -17,6 +17,13 @@ const state = {
   taskFilterStatus: '',
   taskFilterProject: '',
   taskFilterResource: '',
+  capacityFilterProject: '',
+  capacityFilterMilestone: '',
+  capacityFilterRequirement: '',
+  capacityFilterFunctionalRequirement: '',
+  capacityFilterStatus: '',
+  progressFilterProject: '',
+  progressFilterMilestone: '',
   milestoneSearch: '',
   milestoneFilterProject: '',
   milestoneSortColumn: '',
@@ -57,6 +64,22 @@ const elements = {
   functionalRequirementsList: document.getElementById('functional-requirements-list'),
   requirementsProgressView: document.getElementById('requirements-progress-view'),
   functionalRequirementsProgressView: document.getElementById('functional-requirements-progress-view'),
+  capacityView: document.getElementById('capacity-view'),
+  capacityList: document.getElementById('capacity-list'),
+  capacityFilterStatus: document.getElementById('capacity-filter-status'),
+  capacityFilterProject: document.getElementById('capacity-filter-project'),
+  capacityFilterMilestone: document.getElementById('capacity-filter-milestone'),
+  capacityFilterRequirement: document.getElementById('capacity-filter-requirement'),
+  capacityFilterFunctionalRequirement: document.getElementById('capacity-filter-functional-requirement'),
+  progressView: document.getElementById('progress-view'),
+  progressFilterProject: document.getElementById('progress-filter-project'),
+  progressFilterMilestone: document.getElementById('progress-filter-milestone'),
+  progressTasksChart: document.getElementById('progress-tasks-chart'),
+  progressEffortChart: document.getElementById('progress-effort-chart'),
+  progressEffortLegend: document.getElementById('progress-effort-legend'),
+  progressBurndownChart: document.getElementById('progress-burndown-chart'),
+  progressTotalEffort: document.getElementById('progress-total-effort'),
+  progressEffortLeft: document.getElementById('progress-effort-left'),
   newProjectBtn: document.getElementById('new-project-btn'),
   newProjectForm: document.getElementById('new-project-form'),
   newMilestoneBtn: document.getElementById('new-milestone-btn'),
@@ -312,6 +335,8 @@ function showView(viewName) {
   if (elements.projectsView) elements.projectsView.style.display = viewName === 'projects' ? 'block' : 'none';
   if (elements.milestonesView) elements.milestonesView.style.display = viewName === 'milestones' ? 'block' : 'none';
   if (elements.tasksView) elements.tasksView.style.display = viewName === 'tasks' ? 'block' : 'none';
+  if (elements.capacityView) elements.capacityView.style.display = viewName === 'capacity' ? 'block' : 'none';
+  if (elements.progressView) elements.progressView.style.display = viewName === 'progress' ? 'block' : 'none';
   if (elements.requirementsView) elements.requirementsView.style.display = viewName === 'requirements' ? 'block' : 'none';
   if (elements.functionalRequirementsView) elements.functionalRequirementsView.style.display = viewName === 'functional-requirements' ? 'block' : 'none';
   if (elements.settingsView) elements.settingsView.style.display = viewName === 'settings' ? 'block' : 'none';
@@ -320,6 +345,11 @@ function showView(viewName) {
     renderMilestones();
   } else if (viewName === 'tasks') {
     renderTasks();
+    renderCapacity();
+  } else if (viewName === 'capacity') {
+    renderCapacity();
+  } else if (viewName === 'progress') {
+    renderProgress();
   } else if (viewName === 'requirements') {
     renderRequirements();
   } else if (viewName === 'functional-requirements') {
@@ -339,8 +369,10 @@ function setupEventListeners() {
       if (href === '#projects') showView('projects');
       if (href === '#milestones') showView('milestones');
       if (href === '#tasks') showView('tasks');
+      if (href === '#capacity') showView('capacity');
       if (href === '#requirements') showView('requirements');
       if (href === '#functional-requirements') showView('functional-requirements');
+      if (href === '#progress') showView('progress');
       if (href === '#settings') showView('settings');
     });
   });
@@ -350,6 +382,22 @@ function setupEventListeners() {
       e.preventDefault();
       showView('projects');
     });
+  });
+
+  elements.progressFilterProject?.addEventListener('change', (event) => {
+    const select = event.target;
+    if (!(select instanceof HTMLSelectElement)) return;
+    state.progressFilterProject = select.value;
+    state.progressFilterMilestone = '';
+    updateProgressMilestoneFilterOptions();
+    renderProgress();
+  });
+
+  elements.progressFilterMilestone?.addEventListener('change', (event) => {
+    const select = event.target;
+    if (!(select instanceof HTMLSelectElement)) return;
+    state.progressFilterMilestone = select.value;
+    renderProgress();
   });
 
   // Project form
@@ -3332,6 +3380,9 @@ function renderTasks() {
         <p class="empty-state-sub">${allTasks.length === 0 ? 'Create your first task to get started!' : 'Try adjusting your search or filters.'}</p>
       </div>
     `;
+    if (currentView === 'capacity') {
+      renderCapacity();
+    }
     return;
   }
   
@@ -3348,6 +3399,608 @@ function renderTasks() {
   
   // Attach sort listeners
   attachTaskSortListeners();
+  if (currentView === 'capacity') {
+    renderCapacity();
+  }
+  renderProgress();
+}
+
+function formatCapacityPoints(points) {
+  if (!Number.isFinite(points)) {
+    return '0';
+  }
+  return Number.isInteger(points) ? String(points) : points.toFixed(1);
+}
+
+function populateCapacityFilters() {
+  const projects = storage.getAllProjects().slice().sort((a, b) => {
+    return (a.title || '').localeCompare(b.title || '');
+  });
+
+  if (elements.capacityFilterProject) {
+    const options = projects.map(project => 
+      `<option value="${project.id}">${escapeHtml(project.title || 'Untitled Project')}</option>`
+    ).join('');
+    elements.capacityFilterProject.innerHTML = '<option value="">All Projects</option>' + options;
+    restoreTaskFilterSelect(elements.capacityFilterProject, 'capacityFilterProject');
+  }
+
+  if (elements.capacityFilterMilestone) {
+    const milestones = [];
+    projects.forEach(project => {
+      (project.milestones || []).forEach(milestone => {
+        milestones.push({
+          id: milestone.id,
+          label: `${project.title || 'Untitled Project'} · ${milestone.title || 'Untitled Milestone'}`,
+        });
+      });
+    });
+    const milestoneOptions = milestones.map(milestone => 
+      `<option value="${milestone.id}">${escapeHtml(milestone.label)}</option>`
+    ).join('');
+    elements.capacityFilterMilestone.innerHTML = '<option value="">All Milestones</option>' + milestoneOptions;
+    restoreTaskFilterSelect(elements.capacityFilterMilestone, 'capacityFilterMilestone');
+  }
+
+  if (elements.capacityFilterRequirement) {
+    const requirements = storage.getAllRequirements().slice().sort((a, b) => {
+      const projectA = a.project?.title || '';
+      const projectB = b.project?.title || '';
+      const titleA = a.title || '';
+      const titleB = b.title || '';
+      return projectA === projectB ? titleA.localeCompare(titleB) : projectA.localeCompare(projectB);
+    });
+    const requirementOptions = requirements.map(requirement => {
+      const projectTitle = requirement.project?.title ? `${requirement.project.title} · ` : '';
+      return `<option value="${requirement.id}">${escapeHtml(`${projectTitle}${requirement.title || 'Untitled UR'}`)}</option>`;
+    }).join('');
+    elements.capacityFilterRequirement.innerHTML = '<option value="">All URS</option>' + requirementOptions;
+    restoreTaskFilterSelect(elements.capacityFilterRequirement, 'capacityFilterRequirement');
+  }
+
+  if (elements.capacityFilterFunctionalRequirement) {
+    const functionalRequirements = storage.getAllFunctionalRequirements().slice().sort((a, b) => {
+      const projectA = a.project?.title || '';
+      const projectB = b.project?.title || '';
+      const titleA = a.title || '';
+      const titleB = b.title || '';
+      return projectA === projectB ? titleA.localeCompare(titleB) : projectA.localeCompare(projectB);
+    });
+    const functionalOptions = functionalRequirements.map(fr => {
+      const projectTitle = fr.project?.title ? `${fr.project.title} · ` : '';
+      const tracking = fr.trackingId ? `${fr.trackingId} – ` : '';
+      return `<option value="${fr.id}">${escapeHtml(`${projectTitle}${tracking}${fr.title || 'Untitled FR'}`)}</option>`;
+    }).join('');
+    elements.capacityFilterFunctionalRequirement.innerHTML = '<option value="">All FRS</option>' + functionalOptions;
+    restoreTaskFilterSelect(elements.capacityFilterFunctionalRequirement, 'capacityFilterFunctionalRequirement');
+  }
+
+  if (elements.capacityFilterStatus) {
+    const statuses = storage.getStatuses();
+    const statusOptions = statuses.map(status => 
+      `<option value="${status.id}">${escapeHtml(status.label)}</option>`
+    ).join('');
+    elements.capacityFilterStatus.innerHTML = '<option value="">All Statuses</option>' + statusOptions;
+    restoreTaskFilterSelect(elements.capacityFilterStatus, 'capacityFilterStatus');
+  }
+}
+
+function filterCapacityTasks(tasks) {
+  const functionalRequirements = storage.getAllFunctionalRequirements();
+  const frMap = new Map(functionalRequirements.map(fr => [fr.id, fr]));
+  return tasks.filter(task => {
+    if (state.capacityFilterProject && task.projectId !== state.capacityFilterProject) {
+      return false;
+    }
+    if (state.capacityFilterMilestone && task.milestoneId !== state.capacityFilterMilestone) {
+      return false;
+    }
+    if (state.capacityFilterStatus && task.status !== state.capacityFilterStatus) {
+      return false;
+    }
+    if (state.capacityFilterFunctionalRequirement && task.linkedFunctionalRequirement !== state.capacityFilterFunctionalRequirement) {
+      return false;
+    }
+    if (state.capacityFilterRequirement) {
+      const fr = frMap.get(task.linkedFunctionalRequirement);
+      const linkedRequirements = Array.isArray(fr?.linkedUserRequirements) ? fr.linkedUserRequirements : [];
+      if (!linkedRequirements.includes(state.capacityFilterRequirement)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+function renderCapacity() {
+  if (!elements.capacityList) return;
+
+  populateCapacityFilters();
+
+  const allTasks = storage.getAllTasks();
+  const filteredTasks = filterCapacityTasks(allTasks);
+  const effortLevels = storage.getEffortLevels();
+  const effortPoints = new Map(effortLevels.map(effort => {
+    const normalized = Number(effort.points);
+    return [effort.id, Number.isFinite(normalized) ? normalized : 0];
+  }));
+
+  const statsMap = new Map();
+  const users = storage.getUsers();
+  const knownUsers = new Set(users.map(user => user.name));
+  users.forEach(user => {
+    statsMap.set(user.name, {
+      label: user.name,
+      tasks: 0,
+      points: 0,
+      isUser: true,
+      isUnassigned: false,
+      isExternal: false,
+    });
+  });
+
+  filteredTasks.forEach(task => {
+    const resource = (task.assignedResource || '').trim();
+    const label = resource || 'Unassigned';
+    if (!statsMap.has(label)) {
+      statsMap.set(label, {
+        label,
+        tasks: 0,
+        points: 0,
+        isUser: !!resource && knownUsers.has(resource),
+        isUnassigned: !resource,
+        isExternal: !!resource && !knownUsers.has(resource),
+      });
+    }
+
+    const stat = statsMap.get(label);
+    const effortValue = effortPoints.get(task.effortLevel) || 0;
+    stat.tasks += 1;
+    stat.points += effortValue;
+  });
+
+  const statsArray = Array.from(statsMap.values()).sort((a, b) => {
+    if (b.points !== a.points) {
+      return b.points - a.points;
+    }
+    if (b.tasks !== a.tasks) {
+      return b.tasks - a.tasks;
+    }
+    return a.label.localeCompare(b.label);
+  });
+
+  if (statsArray.length === 0) {
+    elements.capacityList.innerHTML = `
+      <div class="empty-state">
+        <p>No capacity data yet</p>
+        <p class="empty-state-sub">Add users and assign tasks to start tracking team capacity.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const maxPoints = Math.max(1, ...statsArray.map(stat => stat.points));
+  const filteredBanner = filteredTasks.length === 0
+    ? '<p class="capacity-empty-msg">No tasks match the selected filters.</p>'
+    : '';
+
+  const rows = statsArray.map(stat => {
+    const percent = (stat.points / maxPoints) * 100;
+    const fillWidth = Math.min(100, Math.max(0, Number.isFinite(percent) ? percent : 0));
+    const tags = [];
+    if (stat.isUnassigned) {
+      tags.push('Unassigned');
+    } else if (stat.isExternal) {
+      tags.push('External');
+    }
+    const tagsHtml = tags.map(tag => `<span class="capacity-resource-tag">${tag}</span>`).join('');
+    return `
+      <tr>
+        <td>
+          <div class="capacity-resource">
+            <span>${escapeHtml(stat.label)}</span>
+            ${tagsHtml}
+          </div>
+        </td>
+        <td>${stat.tasks}</td>
+        <td>
+          <div class="capacity-bar-track">
+            <div class="capacity-bar-fill" style="width:${fillWidth}%;"></div>
+          </div>
+          <div class="capacity-bar-meta">
+            <span>${formatCapacityPoints(stat.points)} pts</span>
+            <span>${Math.round(fillWidth)}%</span>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  elements.capacityList.innerHTML = `
+    ${filteredBanner}
+    <table class="capacity-table">
+      <thead>
+        <tr>
+          <th>Resource</th>
+          <th>Tasks</th>
+          <th>Effort Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderProgress() {
+  if (!elements.progressView) return;
+  populateProgressFilters();
+
+  const allTasks = storage.getAllTasks();
+  const filteredTasks = allTasks.filter(task => {
+    if (state.progressFilterProject && task.projectId !== state.progressFilterProject) {
+      return false;
+    }
+    if (state.progressFilterMilestone && task.milestoneId !== state.progressFilterMilestone) {
+      return false;
+    }
+    return true;
+  });
+
+  const progressData = buildProgressData(filteredTasks);
+
+  if (elements.progressTasksChart) {
+    renderLineChart(elements.progressTasksChart, progressData.weekLabels, [{
+      label: 'Tasks Completed',
+      color: 'var(--primary)',
+      values: progressData.tasksCompleted,
+    }], {
+      ariaLabel: 'Tasks completed by week',
+    });
+  }
+
+  if (elements.progressEffortChart) {
+    renderStackedEffortChart(elements.progressEffortChart, progressData.weekSegments, progressData.maxStackPoints);
+  }
+
+  updateEffortLegend(progressData.legendItems);
+
+  if (elements.progressBurndownChart) {
+    renderLineChart(elements.progressBurndownChart, progressData.weekLabels, [
+      { label: 'Effort Completed', color: 'var(--success)', values: progressData.cumulativePoints },
+      { label: 'Effort Left', color: 'var(--warning)', values: progressData.leftPoints },
+    ], {
+      ariaLabel: 'Effort completed versus effort remaining',
+    });
+  }
+
+  if (elements.progressTotalEffort) {
+    elements.progressTotalEffort.textContent = `${formatPoints(progressData.totalEffort)} pts`;
+  }
+
+  if (elements.progressEffortLeft) {
+    const remaining = progressData.leftPoints[progressData.leftPoints.length - 1] ?? progressData.totalEffort;
+    elements.progressEffortLeft.textContent = `${formatPoints(remaining)} pts`;
+  }
+}
+
+function populateProgressFilters() {
+  const projectSelect = elements.progressFilterProject;
+  if (projectSelect) {
+    const projects = storage.getAllProjects().slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    const options = projects.map(project => `<option value="${project.id}">${escapeHtml(project.title || 'Untitled Project')}</option>`).join('');
+    projectSelect.innerHTML = '<option value="">All Projects</option>' + options;
+    restoreTaskFilterSelect(projectSelect, 'progressFilterProject');
+  }
+  updateProgressMilestoneFilterOptions();
+}
+
+function updateProgressMilestoneFilterOptions() {
+  const milestoneSelect = elements.progressFilterMilestone;
+  if (!milestoneSelect) return;
+  const projects = storage.getAllProjects().slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  const filteredProjectId = state.progressFilterProject;
+  const options = [];
+  projects.forEach(project => {
+    if (filteredProjectId && project.id !== filteredProjectId) {
+      return;
+    }
+    const prefix = filteredProjectId ? '' : `${project.title || 'Untitled Project'} · `;
+    (project.milestones || []).forEach(milestone => {
+      options.push({
+        id: milestone.id,
+        label: `${prefix}${milestone.title || 'Untitled Milestone'}`,
+      });
+    });
+  });
+  const html = options.map(option => `<option value="${option.id}">${escapeHtml(option.label)}</option>`).join('');
+  milestoneSelect.innerHTML = '<option value="">All Milestones</option>' + html;
+  restoreTaskFilterSelect(milestoneSelect, 'progressFilterMilestone');
+}
+
+function buildProgressData(tasks) {
+  const effortLevels = storage.getEffortLevels();
+  const effortMap = new Map(effortLevels.map(level => [level.id, Number.isFinite(Number(level.points)) ? Number(level.points) : 0]));
+  const weekDates = getProgressWeekDates(tasks);
+  const weekLabels = weekDates.map(formatWeekLabel);
+  const weekKeys = weekDates.map(getWeekKey);
+  const weekStats = new Map(weekKeys.map(key => [key, { tasks: 0, points: 0, segments: new Map() }]));
+  const milestoneLabels = buildMilestoneLabelMap();
+  let totalEffort = 0;
+
+  tasks.forEach(task => {
+    const points = effortMap.get(task.effortLevel) || 0;
+    totalEffort += points;
+    if (task.status !== 'completed') {
+      return;
+    }
+    const completedDate = parseDateValue(task.completedDate) || parseDateValue(task.updatedAt);
+    if (!completedDate) return;
+    const weekKey = getWeekKey(completedDate);
+    const stats = weekStats.get(weekKey);
+    if (!stats) return;
+    stats.tasks += 1;
+    stats.points += points;
+    const milestoneLabel = milestoneLabels.get(task.milestoneId) || 'Unassigned Milestone';
+    stats.segments.set(milestoneLabel, (stats.segments.get(milestoneLabel) || 0) + points);
+  });
+
+  const weekSegments = weekKeys.map((key, index) => {
+    const stats = weekStats.get(key) || { tasks: 0, points: 0, segments: new Map() };
+    const segments = Array.from(stats.segments.entries()).map(([label, value]) => ({
+      label,
+      value,
+      color: getColorForLabel(label),
+    })).sort((a, b) => b.value - a.value);
+    return {
+      key,
+      label: weekLabels[index],
+      tasks: stats.tasks,
+      total: stats.points,
+      segments,
+    };
+  });
+
+  const legendMap = new Map();
+  weekSegments.forEach(week => {
+    week.segments.forEach(segment => {
+      if (segment.value <= 0) return;
+      if (!legendMap.has(segment.label)) {
+        legendMap.set(segment.label, {
+          label: segment.label,
+          color: segment.color,
+          value: 0,
+        });
+      }
+      const legendEntry = legendMap.get(segment.label);
+      legendEntry.value += segment.value;
+    });
+  });
+
+  const cumulativePoints = [];
+  const leftPoints = [];
+  let runningPoints = 0;
+  weekSegments.forEach(week => {
+    runningPoints += week.total;
+    cumulativePoints.push(roundToPrecision(runningPoints, 2));
+    const remaining = Math.max(totalEffort - runningPoints, 0);
+    leftPoints.push(roundToPrecision(remaining, 2));
+  });
+
+  const legendItems = Array.from(legendMap.values()).sort((a, b) => b.value - a.value).slice(0, 5);
+  const tasksCompleted = weekSegments.map(week => week.tasks);
+  const maxStackPoints = Math.max(0, ...weekSegments.map(week => week.total));
+
+  return {
+    weekLabels,
+    weekSegments,
+    tasksCompleted,
+    cumulativePoints,
+    leftPoints,
+    totalEffort: roundToPrecision(totalEffort, 2),
+    maxStackPoints,
+    legendItems,
+  };
+}
+
+function getProgressWeekDates(tasks) {
+  const completionDates = tasks
+    .map(task => parseDateValue(task.completedDate) || parseDateValue(task.updatedAt))
+    .filter(Boolean)
+    .map(date => getWeekStart(date));
+  const now = getWeekStart(new Date());
+  const latestFromData = completionDates.length > 0 ? completionDates.reduce((latest, date) => (date > latest ? date : latest)) : null;
+  const endWeek = latestFromData && latestFromData > now ? latestFromData : now;
+  const fallbackStart = new Date(endWeek);
+  fallbackStart.setDate(fallbackStart.getDate() - 7 * 4);
+  const earliest = completionDates.length > 0 ? completionDates.reduce((earliestDate, date) => (date < earliestDate ? date : earliestDate)) : fallbackStart;
+  const startWeek = earliest < fallbackStart ? earliest : fallbackStart;
+
+  const weeks = [];
+  const pointer = new Date(startWeek);
+  while (pointer <= endWeek) {
+    weeks.push(new Date(pointer));
+    pointer.setDate(pointer.getDate() + 7);
+  }
+  if (weeks.length === 0) {
+    weeks.push(new Date(startWeek));
+  }
+  return weeks;
+}
+
+function buildMilestoneLabelMap() {
+  const map = new Map();
+  storage.getAllProjects().forEach(project => {
+    const prefix = project.title ? `${project.title} · ` : '';
+    (project.milestones || []).forEach(milestone => {
+      const label = milestone.title || 'Untitled Milestone';
+      map.set(milestone.id, `${prefix}${label}`);
+    });
+  });
+  return map;
+}
+
+function parseDateValue(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date?.getTime()) ? date : null;
+}
+
+function getWeekStart(value) {
+  const date = new Date(value);
+  const day = date.getDay();
+  const diff = (day + 6) % 7;
+  date.setDate(date.getDate() - diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function getWeekKey(date) {
+  const copy = new Date(date);
+  const year = copy.getFullYear();
+  const month = String(copy.getMonth() + 1).padStart(2, '0');
+  const day = String(copy.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatWeekLabel(date) {
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function getColorForLabel(label) {
+  const normalized = label || 'milestone';
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i += 1) {
+    hash = (hash * 31 + normalized.charCodeAt(i)) % 360;
+  }
+  const hue = (hash + normalized.length * 17) % 360;
+  return `hsl(${hue}, 72%, 60%)`;
+}
+
+function formatPoints(value) {
+  if (!Number.isFinite(value)) return '0';
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+}
+
+function roundToPrecision(value, precision = 2) {
+  if (!Number.isFinite(value)) return 0;
+  const multiplier = 10 ** precision;
+  return Math.round(value * multiplier) / multiplier;
+}
+
+function renderStackedEffortChart(container, weeks, maxStack) {
+  if (!container) return;
+  if (!weeks.length) {
+    container.innerHTML = '<p class="text-muted text-sm">No effort data yet.</p>';
+    return;
+  }
+  const maxValue = Math.max(1, maxStack);
+  const columnsHtml = weeks.map(week => {
+    const segmentsHtml = week.segments.length > 0
+      ? week.segments.map(segment => {
+        const heightPercent = (segment.value / maxValue) * 100;
+        return `<div class="progress-stacked-segment" style="height:${heightPercent}%;background:${segment.color}" title="${escapeHtml(segment.label)} – ${formatPoints(segment.value)} pts"></div>`;
+      }).join('')
+      : '<span class="progress-stacked-empty">No effort</span>';
+    const totalLabel = formatPoints(week.total);
+    return `
+      <div class="progress-stacked-column" title="${escapeHtml(week.label)}: ${totalLabel} pts completed">
+        <div class="progress-stacked-column-inner">
+          ${segmentsHtml}
+        </div>
+        <div class="progress-stacked-label">${week.label}</div>
+        <div class="progress-stacked-value">${week.total > 0 ? `${totalLabel} pts` : '0 pts'}</div>
+      </div>
+    `;
+  }).join('');
+  container.innerHTML = `<div class="progress-stacked-columns">${columnsHtml}</div>`;
+}
+
+function updateEffortLegend(legendItems) {
+  if (!elements.progressEffortLegend) return;
+  if (!legendItems.length) {
+    elements.progressEffortLegend.innerHTML = '<p class="text-muted text-sm">No effort completed yet.</p>';
+    return;
+  }
+  elements.progressEffortLegend.innerHTML = legendItems.map(item => `
+    <div class="progress-legend-item">
+      <span class="progress-legend-chip" style="background: ${item.color};"></span>
+      ${escapeHtml(item.label)}
+    </div>
+  `).join('');
+}
+
+function renderLineChart(container, labels, series, options = {}) {
+  if (!container || !labels.length || !series.length) {
+    if (container) {
+      container.innerHTML = '<p class="text-muted text-sm">No data to display.</p>';
+    }
+    return;
+  }
+  const width = Math.max(container.clientWidth, 520);
+  const height = 220;
+  const padding = { top: 24, right: 28, bottom: 40, left: 48 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const allValues = series.flatMap(serie => serie.values);
+  const maxValue = Math.max(1, ...allValues);
+  const tickCount = 4;
+  const stepCount = Math.max(labels.length - 1, 1);
+  const gridLines = [];
+  for (let i = 0; i <= tickCount; i += 1) {
+    const value = (maxValue / tickCount) * i;
+    const y = padding.top + innerHeight - (value / maxValue) * innerHeight;
+    gridLines.push({ value, y });
+  }
+  const paths = [];
+  const points = [];
+  series.forEach(serie => {
+    const pathSegments = [];
+    serie.values.forEach((value, index) => {
+      const ratio = stepCount === 0 ? 0.5 : index / stepCount;
+      const x = padding.left + innerWidth * ratio;
+      const y = padding.top + innerHeight - (value / maxValue) * innerHeight;
+      pathSegments.push(`${index === 0 ? 'M' : 'L'} ${x} ${y}`);
+      points.push(`<circle cx="${x}" cy="${y}" r="3.5" fill="${serie.color}" stroke="var(--card-bg)" stroke-width="2"></circle>`);
+    });
+    paths.push(`<path d="${pathSegments.join(' ')}" fill="none" stroke="${serie.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></path>`);
+  });
+  const gridSvg = gridLines.map(line => `<line x1="${padding.left}" x2="${width - padding.right}" y1="${line.y}" y2="${line.y}" stroke="var(--border)" stroke-width="0.75"></line>`).join('');
+  const axisLabels = gridLines.map(line => `<text x="${padding.left - 6}" y="${line.y + 4}" text-anchor="end" font-size="10" fill="var(--text-muted)">${formatAxisValue(line.value)}</text>`).join('');
+  const labelNodes = labels.map((label, index) => {
+    const ratio = stepCount === 0 ? 0.5 : index / stepCount;
+    const x = padding.left + innerWidth * ratio;
+    return `<text x="${x}" y="${height - 12}" text-anchor="middle" font-size="10" fill="var(--text-muted)">${escapeHtml(label)}</text>`;
+  }).join('');
+  const svg = `
+    <svg viewBox="0 0 ${width} ${height}">
+      <g>${gridSvg}</g>
+      <g>${paths.join('')}</g>
+      <g>${points.join('')}</g>
+      <g>${axisLabels}</g>
+      <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${width - padding.right}" y2="${padding.top + innerHeight}" stroke="var(--border)" stroke-width="1"></line>
+      <g>${labelNodes}</g>
+    </svg>
+  `;
+  const legendHtml = options.hideLegend ? '' : `<div class="progress-chart-legend">${series.map(serie => `<span class="progress-chart-legend-item"><span class="progress-chart-legend-swatch" style="background:${serie.color};"></span>${escapeHtml(serie.label)}</span>`).join('')}</div>`;
+  container.innerHTML = `<div class="progress-line-wrapper">${svg}</div>${legendHtml}`;
+  if (options.ariaLabel) {
+    container.setAttribute('aria-label', options.ariaLabel);
+  }
+  container.setAttribute('role', 'img');
+}
+
+function formatAxisValue(value) {
+  if (!Number.isFinite(value)) return '0';
+  if (Math.abs(value) >= 1000) {
+    return `${(value / 1000).toFixed(1)}k`;
+  }
+  if (Number.isInteger(value)) {
+    return `${value}`;
+  }
+  return value.toFixed(1);
 }
 
 function attachTaskSortListeners() {
@@ -4143,6 +4796,10 @@ function updateAllSelects() {
   } else if (currentView === 'tasks') {
     renderTasks();
     populateTaskFilters();
+  } else if (currentView === 'capacity') {
+    renderCapacity();
+  } else if (currentView === 'progress') {
+    renderProgress();
   } else if (currentView === 'requirements') {
     renderRequirements();
   }
@@ -5000,6 +5657,10 @@ function renderEffortLevels() {
               <input type="text" class="edit-effort-color-text color-text-input" value="${currentColor}" placeholder="#71717a" data-effort-id="${effort.id}">
             </div>
           </div>
+          <div class="form-group">
+            <label>Points</label>
+            <input type="number" min="0" step="0.5" class="edit-effort-points" data-effort-id="${effort.id}" value="${Number.isFinite(Number(effort.points)) ? effort.points : 0}">
+          </div>
           <div class="metadata-item-editing-actions">
             <button class="btn btn-primary btn-sm save-effort" data-effort-id="${effort.id}">Save</button>
             <button class="btn btn-secondary btn-sm cancel-edit-effort" data-effort-id="${effort.id}">Cancel</button>
@@ -5014,6 +5675,7 @@ function renderEffortLevels() {
         <div class="metadata-item-content">
           <span class="metadata-item-color-swatch" ${colorStyle}></span>
           <span class="metadata-item-label">${escapeHtml(effort.label)}</span>
+          <span class="metadata-item-points">${formatCapacityPoints(Number.isFinite(Number(effort.points)) ? effort.points : 0)} pts</span>
         </div>
         <div class="metadata-item-actions">
           <button class="btn btn-blue btn-xs edit-effort-item" data-effort-id="${effort.id}">Edit</button>
@@ -5305,20 +5967,25 @@ function setupSettingsEventListeners() {
     document.getElementById('effort-label').value = '';
     document.getElementById('effort-color').value = '#71717a';
     document.getElementById('effort-color-text').value = '#71717a';
+    document.getElementById('effort-points').value = '1';
   });
 
   document.getElementById('add-effort-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const label = document.getElementById('effort-label').value.trim();
     const color = document.getElementById('effort-color').value || '#71717a';
+    const pointsInput = document.getElementById('effort-points');
+    const parsedPoints = pointsInput ? Number(pointsInput.value) : 0;
+    const points = Number.isFinite(parsedPoints) ? parsedPoints : 0;
     
     if (!label) return;
     
     try {
-      storage.addEffortLevel(label, color);
+      storage.addEffortLevel(label, color, points);
       document.getElementById('effort-label').value = '';
       document.getElementById('effort-color').value = '#71717a';
       document.getElementById('effort-color-text').value = '#71717a';
+      document.getElementById('effort-points').value = '1';
       document.getElementById('add-effort-form').style.display = 'none';
       document.getElementById('add-effort-btn').style.display = 'block';
       renderSettings();
@@ -5327,6 +5994,22 @@ function setupSettingsEventListeners() {
       console.error('Failed to add effort level:', error);
       alert('Failed to add effort level');
     }
+  });
+
+  // Capacity filters
+  [
+    { id: 'capacity-filter-status', stateKey: 'capacityFilterStatus' },
+    { id: 'capacity-filter-project', stateKey: 'capacityFilterProject' },
+    { id: 'capacity-filter-milestone', stateKey: 'capacityFilterMilestone' },
+    { id: 'capacity-filter-requirement', stateKey: 'capacityFilterRequirement' },
+    { id: 'capacity-filter-functional-requirement', stateKey: 'capacityFilterFunctionalRequirement' },
+  ].forEach(({ id, stateKey }) => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    select.addEventListener('change', (event) => {
+      state[stateKey] = event.target.value;
+      renderCapacity();
+    });
   });
 }
 
@@ -5501,11 +6184,14 @@ function attachEffortListeners(effort) {
     const label = document.querySelector(`.edit-effort-label[data-effort-id="${effortId}"]`).value.trim();
     const colorInput = document.querySelector(`.edit-effort-color[data-effort-id="${effortId}"]`);
     const color = colorInput ? colorInput.value : (effort.color || '#71717a');
+    const pointsInput = document.querySelector(`.edit-effort-points[data-effort-id="${effortId}"]`);
+    const parsedPoints = pointsInput ? Number(pointsInput.value) : effort.points || 0;
+    const points = Number.isFinite(parsedPoints) ? parsedPoints : 0;
     
     if (!label) return;
     
     try {
-      storage.updateEffortLevel(effortId, { label, color });
+      storage.updateEffortLevel(effortId, { label, color, points });
       state.editingMetadata.delete(`effort-${effortId}`);
       renderSettings();
       updateAllSelects();

@@ -146,6 +146,8 @@
           <a href="#requirements" class="nav-link">URS</a>
           <a href="#functional-requirements" class="nav-link">FRS</a>
           <a href="#tasks" class="nav-link">Tasks</a>
+          <a href="#capacity" class="nav-link">Capacity</a>
+          <a href="#progress" class="nav-link">Progress</a>
           <a href="#settings" class="nav-link">Settings</a>
         </nav>
       </div>
@@ -386,6 +388,37 @@
         <div id="tasks-list" class="tasks-table-container"></div>
       </div>
 
+      <!-- Capacity View -->
+      <div id="capacity-view" class="view" style="display: none;">
+        <div class="mb-6">
+          <h2>Capacity</h2>
+          <p class="subtitle">See how tasks and effort points stack up for everyone on the team.</p>
+        </div>
+        <div class="tasks-controls mb-4">
+          <div class="tasks-search-filter">
+            <select id="capacity-filter-status" class="task-filter-select">
+              <option value="">All Statuses</option>
+            </select>
+            <select id="capacity-filter-project" class="task-filter-select">
+              <option value="">All Projects</option>
+            </select>
+            <select id="capacity-filter-milestone" class="task-filter-select">
+              <option value="">All Milestones</option>
+            </select>
+            <select id="capacity-filter-requirement" class="task-filter-select">
+              <option value="">All URS</option>
+            </select>
+            <select id="capacity-filter-functional-requirement" class="task-filter-select">
+              <option value="">All FRS</option>
+            </select>
+          </div>
+          <div class="table-actions">
+            <p class="text-muted" style="margin:0;">Effort bars scale to the busiest team member in the current filter.</p>
+          </div>
+        </div>
+        <div id="capacity-list" class="tasks-table-container"></div>
+      </div>
+
       <!-- User Requirements View -->
       <div id="requirements-view" class="view" style="display: none;">
         <div class="mb-6">
@@ -579,6 +612,64 @@
         <div id="functional-requirements-list" class="tasks-table-container"></div>
       </div>
 
+      <!-- Progress View -->
+      <div id="progress-view" class="view" style="display: none;">
+        <div class="mb-6">
+          <h2>Progress</h2>
+          <p class="subtitle">Track weekly completion and effort trends.</p>
+        </div>
+        <div class="tasks-controls progress-filters mb-4">
+          <div class="tasks-search-filter">
+            <select id="progress-filter-project" class="task-filter-select">
+              <option value="">All Projects</option>
+            </select>
+            <select id="progress-filter-milestone" class="task-filter-select">
+              <option value="">All Milestones</option>
+            </select>
+          </div>
+        </div>
+        <div class="progress-charts-grid">
+          <section class="progress-card">
+            <div class="progress-card-header">
+              <div>
+                <h3>Tasks Completed</h3>
+                <p class="text-muted text-sm">Finished tasks grouped by week</p>
+              </div>
+            </div>
+            <div id="progress-tasks-chart" class="progress-chart" role="img" aria-label="Weekly tasks completed chart"></div>
+          </section>
+          <section class="progress-card">
+            <div class="progress-card-header">
+              <div>
+                <h3>Effort Points Completed</h3>
+                <p class="text-muted text-sm">Stacked by milestone each week</p>
+              </div>
+            </div>
+            <div id="progress-effort-chart" class="progress-chart progress-stacked-chart" role="img" aria-label="Weekly stacked effort chart"></div>
+            <div id="progress-effort-legend" class="progress-legend"></div>
+          </section>
+          <section class="progress-card progress-burndown-card">
+            <div class="progress-card-header">
+              <div>
+                <h3>Burndown</h3>
+                <p class="text-muted text-sm">Completed vs remaining effort</p>
+              </div>
+            </div>
+            <div id="progress-burndown-chart" class="progress-chart" role="img" aria-label="Burndown chart"></div>
+            <div class="progress-burndown-summary">
+              <div>
+                <p class="text-sm text-muted">Total effort planned</p>
+                <p id="progress-total-effort" class="progress-metric-value">0 pts</p>
+              </div>
+              <div>
+                <p class="text-sm text-muted">Effort remaining</p>
+                <p id="progress-effort-left" class="progress-metric-value text-warning">0 pts</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
       <!-- Settings View -->
       <div id="settings-view" class="view" style="display: none;">
         <div class="mb-6">
@@ -690,6 +781,10 @@
                   <input type="text" id="effort-color-text" value="#71717a" placeholder="#71717a" class="color-text-input">
                 </div>
               </div>
+            <div class="form-group">
+              <label for="effort-points">Points *</label>
+              <input type="number" id="effort-points" required min="0" step="0.5" value="1">
+            </div>
               <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-sm">Add Effort Level</button>
                 <button type="button" id="cancel-effort-btn" class="btn btn-secondary btn-sm">Cancel</button>
