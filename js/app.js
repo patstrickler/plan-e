@@ -3754,8 +3754,37 @@ function renderCapacity() {
   `;
 }
 
+function initializeProgressDatePickers() {
+  if (typeof flatpickr !== 'function') return;
+
+  const startInput = elements.progressFilterStartDate;
+  if (startInput && !progressStartDatePicker) {
+    progressStartDatePicker = flatpickr(startInput, {
+      dateFormat: 'Y-m-d',
+      clickOpens: true,
+      allowInput: false,
+    });
+    startInput.addEventListener('focus', () => {
+      progressStartDatePicker?.open();
+    });
+  }
+
+  const endInput = elements.progressFilterEndDate;
+  if (endInput && !progressEndDatePicker) {
+    progressEndDatePicker = flatpickr(endInput, {
+      dateFormat: 'Y-m-d',
+      clickOpens: true,
+      allowInput: false,
+    });
+    endInput.addEventListener('focus', () => {
+      progressEndDatePicker?.open();
+    });
+  }
+}
+
 function renderProgress() {
   if (!elements.progressView) return;
+  initializeProgressDatePickers();
   populateProgressFilters();
 
   const allTasks = storage.getAllTasks();
@@ -3812,13 +3841,24 @@ function renderProgress() {
   }
 }
 
+function setProgressDateInputValue(input, date) {
+  if (!input) return;
+  const formattedDate = formatDateInputValue(date);
+  if (input.flatpickr) {
+    if (formattedDate) {
+      input.flatpickr.setDate(formattedDate, false);
+    } else {
+      input.flatpickr.clear(false);
+      input.value = '';
+    }
+    return;
+  }
+  input.value = formattedDate;
+}
+
 function updateProgressDateInputs(startDate, endDate) {
-  if (elements.progressFilterStartDate) {
-    elements.progressFilterStartDate.value = formatDateInputValue(startDate);
-  }
-  if (elements.progressFilterEndDate) {
-    elements.progressFilterEndDate.value = formatDateInputValue(endDate);
-  }
+  setProgressDateInputValue(elements.progressFilterStartDate, startDate);
+  setProgressDateInputValue(elements.progressFilterEndDate, endDate);
 }
 
 function getProgressDefaultRange() {
