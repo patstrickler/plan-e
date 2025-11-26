@@ -3925,14 +3925,15 @@ function renderProgress() {
   }
 }
 
-function setProgressDateInputValue(input, date) {
+function setProgressDateInputValue(input, date, pickerKey) {
   if (!input) return;
   const formattedDate = formatDateInputValue(date);
-  if (input.flatpickr) {
+  const picker = pickerKey ? progressDatePickers[pickerKey] : null;
+  if (picker) {
     if (formattedDate) {
-      input.flatpickr.setDate(formattedDate, false);
+      picker.setDate(formattedDate, false);
     } else {
-      input.flatpickr.clear(false);
+      picker.clear(false);
       input.value = '';
     }
     return;
@@ -3941,8 +3942,8 @@ function setProgressDateInputValue(input, date) {
 }
 
 function updateProgressDateInputs(startDate, endDate) {
-  setProgressDateInputValue(elements.progressFilterStartDate, startDate);
-  setProgressDateInputValue(elements.progressFilterEndDate, endDate);
+  setProgressDateInputValue(elements.progressFilterStartDate, startDate, 'start');
+  setProgressDateInputValue(elements.progressFilterEndDate, endDate, 'end');
 }
 
 function getProgressDefaultRange() {
