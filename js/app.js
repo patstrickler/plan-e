@@ -3446,7 +3446,7 @@ function renderStackedEffortBar(stat, effortLevels, maxPoints) {
   }).join('');
 
   if (!segmentsHtml || rowWidth <= 0) {
-    return '<div class="capacity-bar-track capacity-bar-stacked capacity-bar-empty"><span>No effort assigned</span></div>';
+    return '<div class="capacity-bar-track capacity-bar-stacked"></div>';
   }
 
   return `
