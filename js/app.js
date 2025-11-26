@@ -3430,6 +3430,40 @@ function formatCapacityPoints(points) {
   return Number.isInteger(points) ? String(points) : points.toFixed(1);
 }
 
+function renderStackedEffortBar(stat, effortLevels, maxPoints) {
+  if (!effortLevels.length) {
+    return '<div class="capacity-bar-track capacity-bar-stacked capacity-bar-empty"><span class="text-muted">No effort levels defined</span></div>';
+  }
+
+  const segmentsHtml = effortLevels.map(level => {
+    const levelPoints = stat.effortBreakdown[level.id] || 0;
+    if (levelPoints <= 0) return '';
+    const widthPercent = Math.min(100, Math.max(0, (levelPoints / maxPoints) * 100));
+    const color = level.color || 'var(--primary)';
+    const tooltip = `${escapeHtml(level.label)} · ${formatCapacityPoints(levelPoints)} pts`;
+    return `<span class="capacity-bar-segment" style="width:${widthPercent}%;background:${color}" title="${tooltip}"></span>`;
+  }).join('');
+
+  if (!segmentsHtml) {
+    return '<div class="capacity-bar-track capacity-bar-stacked capacity-bar-empty"><span>No effort assigned</span></div>';
+  }
+
+  return `<div class="capacity-bar-track capacity-bar-stacked">${segmentsHtml}</div>`;
+}
+
+function renderTaskCountBar(stat, maxTasks) {
+  const widthPercent = Math.min(100, Math.max(0, (stat.tasks / maxTasks) * 100));
+  return `
+    <div class="capacity-task-bar-track">
+      <span class="capacity-task-bar-fill" style="width:${widthPercent}%;"></span>
+    </div>
+    <div class="capacity-task-bar-meta">
+      <span>${stat.tasks} ${stat.tasks === 1 ? 'task' : 'tasks'}</span>
+      <span>${Math.round(widthPercent)}% busiest</span>
+    </div>
+  `;
+}
+
 function populateCapacityFilters() {
   const projects = storage.getAllProjects().slice().sort((a, b) => {
     return (a.title || '').localeCompare(b.title || '');
@@ -3612,6 +3646,7 @@ function renderCapacity() {
   }
 
   const maxPoints = Math.max(1, ...sortedStats.map(stat => stat.points));
+  const maxTasks = Math.max(1, ...sortedStats.map(stat => stat.tasks));
   const filteredBanner = filteredTasks.length === 0
     ? '<p class="capacity-empty-msg">No tasks match the selected filters.</p>'
     : '';
@@ -3629,6 +3664,7 @@ function renderCapacity() {
       ? `${Math.round(stat.completedPercent)}%`
       : '<span class="text-muted">—</span>';
 
+    const taskBarHtml = renderTaskCountBar(stat, maxTasks);
     return `
       <tr>
         <td>
@@ -3637,7 +3673,7 @@ function renderCapacity() {
             ${tagsHtml}
           </div>
         </td>
-        <td>${stat.tasks}</td>
+        <td>${taskBarHtml}</td>
         <td>
           ${effortBarHtml}
           <div class="capacity-bar-meta">
