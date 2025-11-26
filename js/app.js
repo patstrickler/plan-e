@@ -3464,6 +3464,18 @@ function renderTaskCountBar(stat, maxTasks) {
   `;
 }
 
+function renderCompletionBar(stat) {
+  const completion = Math.min(100, Math.max(0, stat.completedPercent));
+  return `
+    <div class="capacity-progress-bar-track">
+      <span class="capacity-progress-bar-fill" style="width:${completion}%;"></span>
+    </div>
+    <div class="capacity-bar-meta">
+      <span>${Math.round(completion)}% complete</span>
+    </div>
+  `;
+}
+
 function populateCapacityFilters() {
   const projects = storage.getAllProjects().slice().sort((a, b) => {
     return (a.title || '').localeCompare(b.title || '');
@@ -3665,6 +3677,7 @@ function renderCapacity() {
       : '<span class="text-muted">—</span>';
 
     const taskBarHtml = renderTaskCountBar(stat, maxTasks);
+    const completionBar = renderCompletionBar(stat);
     return `
       <tr>
         <td>
@@ -3680,7 +3693,7 @@ function renderCapacity() {
             <span>${formatCapacityPoints(stat.points)} pts assigned</span>
           </div>
         </td>
-        <td>${completionDisplay}</td>
+        <td>${completionBar}</td>
       </tr>
     `;
   }).join('');

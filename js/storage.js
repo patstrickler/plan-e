@@ -477,10 +477,10 @@ function getDefaultMetadata() {
       { id: 'completed', label: 'Completed', order: 3, color: '#10b981' },
     ],
     effortLevels: [
-      { id: 'small', label: 'Small', order: 1, color: '#10b981' },
-      { id: 'medium', label: 'Medium', order: 2, color: '#3b82f6' },
-      { id: 'large', label: 'Large', order: 3, color: '#f59e0b' },
-      { id: 'x-large', label: 'X-Large', order: 4, color: '#ef4444' },
+      { id: 'small', label: 'Small', order: 1, color: '#10b981', points: 1 },
+      { id: 'medium', label: 'Medium', order: 2, color: '#3b82f6', points: 3 },
+      { id: 'large', label: 'Large', order: 3, color: '#f59e0b', points: 5 },
+      { id: 'x-large', label: 'X-Large', order: 4, color: '#ef4444', points: 8 },
     ],
   };
 }
@@ -544,11 +544,14 @@ function migrateMetadata(metadata) {
   // Migrate effort levels
   if (migrated.effortLevels) {
     migrated.effortLevels = migrated.effortLevels.map(e => {
-      if (!e.color) {
-        const defaultEffort = defaultMetadata.effortLevels.find(de => de.id === e.id);
-        return { ...e, color: defaultEffort?.color || '#71717a' };
-      }
-      return e;
+      const defaultEffort = defaultMetadata.effortLevels.find(de => de.id === e.id);
+      const normalizedColor = e.color || defaultEffort?.color || '#71717a';
+      const normalizedPoints = typeof e.points === 'number' ? e.points : defaultEffort?.points || 0;
+      return {
+        ...e,
+        color: normalizedColor,
+        points: normalizedPoints,
+      };
     });
   }
   
@@ -791,7 +794,7 @@ export function getEffortLevels() {
   return (metadata.effortLevels || []).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-export function addEffortLevel(label, color = '#71717a') {
+export function addEffortLevel(label, color = '#71717a', points = 0) {
   const metadata = readMetadata();
   if (!metadata.effortLevels) {
     metadata.effortLevels = [];
@@ -802,6 +805,7 @@ export function addEffortLevel(label, color = '#71717a') {
     label: label.trim(),
     order: metadata.effortLevels.length + 1,
     color: color || '#71717a',
+    points: Number.isFinite(Number(points)) ? Number(points) : 0,
     createdAt: new Date().toISOString(),
   };
   metadata.effortLevels.push(newEffortLevel);

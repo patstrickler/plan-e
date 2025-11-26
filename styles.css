@@ -1326,6 +1326,16 @@ body {
   align-items: center;
 }
 
+.capacity-filter-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+}
+
+.capacity-filter-row select {
+  min-width: 120px;
+}
+
 .table-actions {
   margin-top: 0.75rem;
   display: flex;
@@ -1559,6 +1569,22 @@ body {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.capacity-progress-bar-track {
+  height: 0.75rem;
+  background: var(--gray-100);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+
+.capacity-progress-bar-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--success) 0%, var(--primary) 100%);
+  transition: width 0.3s ease;
 }
 
 .capacity-bar-track {
