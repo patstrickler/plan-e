@@ -3889,7 +3889,7 @@ function buildProgressData(tasks, { startDate, endDate } = {}) {
     }
     const completedDate = parseDateValue(task.completedDate) || parseDateValue(task.updatedAt);
     if (!completedDate) return;
-    const weekKey = getWeekKey(completedDate);
+    const weekKey = getWeekKey(getWeekStart(completedDate));
     const stats = weekStats.get(weekKey);
     if (!stats) return;
     stats.tasks += 1;
