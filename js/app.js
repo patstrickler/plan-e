@@ -3457,9 +3457,8 @@ function renderTaskCountBar(stat, maxTasks) {
     <div class="capacity-task-bar-track">
       <span class="capacity-task-bar-fill" style="width:${widthPercent}%;"></span>
     </div>
-    <div class="capacity-task-bar-meta">
-      <span>${stat.tasks} ${stat.tasks === 1 ? 'task' : 'tasks'}</span>
-      <span>${Math.round(widthPercent)}% busiest</span>
+    <div class="capacity-task-bar-label">
+      ${stat.tasks} ${stat.tasks === 1 ? 'task' : 'tasks'}
     </div>
   `;
 }
@@ -3467,11 +3466,8 @@ function renderTaskCountBar(stat, maxTasks) {
 function renderCompletionBar(stat) {
   const completion = Math.min(100, Math.max(0, stat.completedPercent));
   return `
-    <div class="capacity-progress-bar-track">
+    <div class="capacity-progress-bar-track" role="img" aria-label="${Math.round(completion)}% complete">
       <span class="capacity-progress-bar-fill" style="width:${completion}%;"></span>
-    </div>
-    <div class="capacity-bar-meta">
-      <span>${Math.round(completion)}% complete</span>
     </div>
   `;
 }
@@ -3672,10 +3668,6 @@ function renderCapacity() {
     }
     const tagsHtml = tags.map(tag => `<span class="capacity-resource-tag">${tag}</span>`).join('');
     const effortBarHtml = renderStackedEffortBar(stat, effortLevels, maxPoints);
-    const completionDisplay = stat.tasks
-      ? `${Math.round(stat.completedPercent)}%`
-      : '<span class="text-muted">—</span>';
-
     const taskBarHtml = renderTaskCountBar(stat, maxTasks);
     const completionBar = renderCompletionBar(stat);
     return `
