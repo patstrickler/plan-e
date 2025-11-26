@@ -5977,8 +5977,10 @@ function renderEffortLevels() {
       <div class="metadata-item" data-effort-id="${effort.id}">
         <div class="metadata-item-content">
           <span class="metadata-item-color-swatch" ${colorStyle}></span>
-          <span class="metadata-item-label">${escapeHtml(effort.label)}</span>
-          <span class="metadata-item-points">${formatCapacityPoints(Number.isFinite(Number(effort.points)) ? effort.points : 0)} pts</span>
+          <div class="metadata-item-details">
+            <span class="metadata-item-label">${escapeHtml(effort.label)}</span>
+            <span class="metadata-item-points">${formatCapacityPoints(Number.isFinite(Number(effort.points)) ? effort.points : 0)} pts</span>
+          </div>
         </div>
         <div class="metadata-item-actions">
           <button class="btn btn-blue btn-xs edit-effort-item" data-effort-id="${effort.id}">Edit</button>

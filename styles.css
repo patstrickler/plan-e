@@ -1206,10 +1206,16 @@ body {
 
 .metadata-item-content {
   display: grid;
-  grid-template-columns: auto auto auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
   flex: 1;
+}
+
+.metadata-item-details {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .metadata-item-label {
@@ -1220,7 +1226,7 @@ body {
 .metadata-item-points {
   font-size: 0.85rem;
   color: var(--text-secondary);
-  justify-self: start;
+  margin-left: 0;
 }
 
 .metadata-item-order {
