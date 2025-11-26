@@ -4027,25 +4027,22 @@ function renderStackedEffortChart(container, weeks, maxStack) {
     return;
   }
   const maxValue = Math.max(1, maxStack);
-  const columnsHtml = weeks.map(week => {
-    const segmentsHtml = week.segments.length > 0
-      ? week.segments.map(segment => {
-        const heightPercent = (segment.value / maxValue) * 100;
-        return `<div class="progress-stacked-segment" style="height:${heightPercent}%;background:${segment.color}" title="${escapeHtml(segment.label)} – ${formatPoints(segment.value)} pts"></div>`;
-      }).join('')
-      : '<span class="progress-stacked-empty">No effort</span>';
+  const rowsHtml = weeks.map(week => {
     const totalLabel = formatPoints(week.total);
+    const widthPercent = week.total > 0 ? Math.min(100, (week.total / maxValue) * 100) : 0;
     return `
-      <div class="progress-stacked-column" title="${escapeHtml(week.label)}: ${totalLabel} pts completed">
-        <div class="progress-stacked-column-inner">
-          ${segmentsHtml}
+      <article class="progress-point-row" title="${escapeHtml(week.label)} · ${totalLabel} pts completed">
+        <div class="progress-point-info">
+          <span class="progress-point-week">${escapeHtml(week.label)}</span>
+          <span class="progress-point-value">${week.total > 0 ? `${totalLabel} pts` : '0 pts'}</span>
         </div>
-        <div class="progress-stacked-label">${week.label}</div>
-        <div class="progress-stacked-value">${week.total > 0 ? `${totalLabel} pts` : '0 pts'}</div>
-      </div>
+        <div class="progress-point-track" aria-hidden="true">
+          <span class="progress-point-fill" style="width:${widthPercent}%;"></span>
+        </div>
+      </article>
     `;
   }).join('');
-  container.innerHTML = `<div class="progress-stacked-columns">${columnsHtml}</div>`;
+  container.innerHTML = `<div class="progress-point-bars">${rowsHtml}</div>`;
 }
 
 function updateEffortLegend(legendItems) {
