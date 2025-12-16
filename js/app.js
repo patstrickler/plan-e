@@ -2321,6 +2321,7 @@ function renderMilestonesTable(milestones) {
 
 function attachMilestoneTableListeners(milestone) {
   const milestoneId = milestone.id;
+  const projectId = milestone.projectId;
   const row = document.querySelector(`.milestone-row[data-milestone-id="${milestoneId}"]`);
   row?.addEventListener('click', (e) => {
     if (e.target.closest('.task-actions-cell') || e.target.closest('button')) {
@@ -2336,6 +2337,27 @@ function attachMilestoneTableListeners(milestone) {
       renderMilestones();
     });
   }
+
+  // Edit milestone button
+  document.querySelector(`.edit-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.openEditMilestoneModal(milestone);
+  });
+
+  // Delete milestone button
+  document.querySelector(`.delete-milestone-view[data-milestone-id="${milestoneId}"]`)?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete "${milestone.title}"?`)) return;
+    
+    try {
+      storage.deleteMilestone(projectId, milestoneId);
+      renderMilestones();
+      renderProjects(); // Also update projects view if visible
+    } catch (error) {
+      console.error('Failed to delete milestone:', error);
+      alert('Failed to delete milestone');
+    }
+  });
 }
 
 function renderMilestoneExpansionRow(milestone) {
