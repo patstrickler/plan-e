@@ -3016,6 +3016,12 @@ function renderRequirementEditRow(requirement) {
             </div>
           </div>
           <div class="form-row">
+            <div class="form-group">
+              <label for="requirement-edit-tracking-${requirement.id}">Tracking ID</label>
+              <input type="text" id="requirement-edit-tracking-${requirement.id}" class="requirement-edit-tracking" data-requirement-id="${requirement.id}" value="${escapeHtml(requirement.trackingId || '')}" placeholder="Tracking ID (optional)">
+            </div>
+          </div>
+          <div class="form-row">
             <div class="form-group requirement-edit-title-group">
               <label for="requirement-edit-title-${requirement.id}">Requirement Title *</label>
               <input type="text" id="requirement-edit-title-${requirement.id}" class="requirement-edit-title" data-requirement-id="${requirement.id}" value="${escapeHtml(requirement.title)}" placeholder="Enter requirement title">
@@ -5320,12 +5326,14 @@ function attachRequirementViewListeners(requirement) {
   document.querySelector(`.save-edit-requirement[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
     const projectSelect = document.querySelector(`.requirement-edit-project-select[data-requirement-id="${requirementId}"]`);
     const milestoneSelect = document.querySelector(`.requirement-edit-milestone-select[data-requirement-id="${requirementId}"]`);
+    const trackingIdInput = document.querySelector(`.requirement-edit-tracking[data-requirement-id="${requirementId}"]`);
     const titleInput = document.querySelector(`.requirement-edit-title[data-requirement-id="${requirementId}"]`);
     const descriptionInput = document.querySelector(`.requirement-edit-description[data-requirement-id="${requirementId}"]`);
     const prioritySelect = document.querySelector(`.requirement-edit-priority[data-requirement-id="${requirementId}"]`);
     
     const newProjectId = projectSelect ? projectSelect.value : '';
     const milestoneId = milestoneSelect ? milestoneSelect.value : '';
+    const trackingId = trackingIdInput ? trackingIdInput.value.trim() : '';
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const priority = prioritySelect ? prioritySelect.value : '';
@@ -5334,6 +5342,7 @@ function attachRequirementViewListeners(requirement) {
     
     try {
       storage.updateRequirement(newProjectId, requirementId, {
+        trackingId: trackingId || undefined,
         title,
         description: description || undefined,
         priority: priority || undefined,
