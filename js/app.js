@@ -128,12 +128,12 @@ const csvTemplates = {
     sampleRow: ['Plan-E Platform', 'Platform Launch', 'Deliver MVP functionality', '2025-12-31'],
   },
   requirements: {
-    headers: ['Project Title', 'Milestone Title', 'Requirement Title', 'Acceptance Criteria', 'Priority'],
-    sampleRow: ['Plan-E Platform', 'Platform Launch', 'Users can sign in', 'Allow secure authentication before showing dashboards', 'High'],
+    headers: ['Project Title', 'Tracking ID', 'Milestone Title', 'Requirement Title', 'Acceptance Criteria', 'Priority'],
+    sampleRow: ['Plan-E Platform', 'URS-101', 'Platform Launch', 'Users can sign in', 'Allow secure authentication before showing dashboards', 'High'],
   },
   functionalRequirements: {
-    headers: ['Project Title', 'Tracking ID', 'Functional Requirement Title', 'Description', 'Linked User Requirements (semicolon separated)'],
-    sampleRow: ['Plan-E Platform', 'FR-101', 'User authentication API', 'Implement OAuth flow for sign-in', 'Users can sign in;Users can reset password'],
+    headers: ['Project Title', 'Functional Requirement Title', 'Description', 'Linked User Requirements (semicolon separated)'],
+    sampleRow: ['Plan-E Platform', 'User authentication API', 'Implement OAuth flow for sign-in', 'Users can sign in;Users can reset password'],
   },
   tasks: {
     headers: ['Project Title', 'Functional Requirement Title', 'Milestone Title', 'Task Title', 'Description', 'Effort Level', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'],
@@ -142,8 +142,8 @@ const csvTemplates = {
 };
 
 const milestoneExportHeaders = ['Project Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)', 'Tasks Completed', 'Total Tasks', 'Progress (%)'];
-const requirementExportHeaders = ['Project Title', 'Milestone Title', 'Requirement Title', 'Acceptance Criteria', 'Priority', 'Linked Functional Requirements', 'Linked Tasks'];
-const functionalRequirementExportHeaders = ['Project Title', 'Tracking ID', 'Functional Requirement Title', 'Description', 'Linked User Requirements', 'Derived Milestone Title', 'Linked Tasks', 'Progress (%)'];
+const requirementExportHeaders = ['Project Title', 'Tracking ID', 'Milestone Title', 'Requirement Title', 'Acceptance Criteria', 'Priority', 'Linked Functional Requirements', 'Linked Tasks'];
+const functionalRequirementExportHeaders = ['Project Title', 'Functional Requirement Title', 'Description', 'Linked User Requirements', 'Derived Milestone Title', 'Linked Tasks', 'Progress (%)'];
 const taskExportHeaders = ['Project Title', 'Milestone Title', 'Functional Requirement Title', 'Task Title', 'Description', 'Effort', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'];
 
 function escapeCsvValue(value) {
@@ -687,6 +687,7 @@ function setupEventListeners() {
     e.preventDefault();
     const projectId = document.getElementById('requirement-project').value;
     const milestoneId = document.getElementById('requirement-milestone').value;
+    const trackingId = document.getElementById('requirement-tracking-id').value.trim();
     const title = document.getElementById('requirement-title').value.trim();
     const description = document.getElementById('requirement-description').value.trim();
     const priority = document.getElementById('requirement-priority').value;
@@ -695,11 +696,13 @@ function setupEventListeners() {
     
     try {
       storage.createRequirement(projectId, { 
+        trackingId: trackingId || undefined,
         title, 
         description: description || undefined,
         priority: priority || undefined,
         milestoneId: milestoneId || undefined
       });
+      document.getElementById('requirement-tracking-id').value = '';
       document.getElementById('requirement-title').value = '';
       document.getElementById('requirement-description').value = '';
       document.getElementById('requirement-priority').value = '';
@@ -722,7 +725,7 @@ function setupEventListeners() {
     populateProjectSelect('functional-requirement-project');
     elements.newFunctionalRequirementForm.style.display = 'block';
     elements.newFunctionalRequirementBtn.style.display = 'none';
-    document.getElementById('functional-requirement-tracking-id').focus();
+    document.getElementById('functional-requirement-title').focus();
   });
 
   // Handle project change to populate user requirements
@@ -733,7 +736,6 @@ function setupEventListeners() {
   document.getElementById('cancel-functional-requirement-btn')?.addEventListener('click', () => {
     elements.newFunctionalRequirementForm.style.display = 'none';
     elements.newFunctionalRequirementBtn.style.display = 'block';
-    document.getElementById('functional-requirement-tracking-id').value = '';
     document.getElementById('functional-requirement-title').value = '';
     document.getElementById('functional-requirement-description').value = '';
     document.getElementById('functional-requirement-project').value = '';
@@ -746,7 +748,6 @@ function setupEventListeners() {
   elements.newFunctionalRequirementForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const projectId = document.getElementById('functional-requirement-project').value;
-    const trackingId = document.getElementById('functional-requirement-tracking-id').value.trim();
     const title = document.getElementById('functional-requirement-title').value.trim();
     const description = document.getElementById('functional-requirement-description').value.trim();
     const linkedUserReqsSelect = document.getElementById('functional-requirement-linked-user-requirements');
@@ -756,12 +757,10 @@ function setupEventListeners() {
     
     try {
       storage.createFunctionalRequirement(projectId, { 
-        trackingId: trackingId || undefined,
         title, 
         description: description || undefined,
         linkedUserRequirements: linkedUserRequirements || []
       });
-      document.getElementById('functional-requirement-tracking-id').value = '';
       document.getElementById('functional-requirement-title').value = '';
       document.getElementById('functional-requirement-description').value = '';
       document.getElementById('functional-requirement-project').value = '';
@@ -998,6 +997,7 @@ function setupEventListeners() {
     // Populate form fields
     document.getElementById('edit-requirement-id').value = requirement.id;
     document.getElementById('edit-requirement-project-id').value = requirement.projectId;
+    document.getElementById('edit-requirement-tracking-id').value = requirement.trackingId || '';
     document.getElementById('edit-requirement-title').value = requirement.title || '';
     document.getElementById('edit-requirement-description').value = requirement.description || '';
     
@@ -1032,7 +1032,6 @@ function setupEventListeners() {
     // Populate form fields
     document.getElementById('edit-functional-requirement-id').value = functionalRequirement.id;
     document.getElementById('edit-functional-requirement-project-id').value = functionalRequirement.projectId;
-    document.getElementById('edit-functional-requirement-tracking-id').value = functionalRequirement.trackingId || '';
     document.getElementById('edit-functional-requirement-title').value = functionalRequirement.title || '';
     document.getElementById('edit-functional-requirement-description').value = functionalRequirement.description || '';
     
@@ -1202,6 +1201,7 @@ function setupEventListeners() {
     e.preventDefault();
     const requirementIdInput = document.getElementById('edit-requirement-id');
     const projectIdInput = document.getElementById('edit-requirement-project-id');
+    const trackingIdInput = document.getElementById('edit-requirement-tracking-id');
     const titleInput = document.getElementById('edit-requirement-title');
     const descriptionInput = document.getElementById('edit-requirement-description');
     const projectSelect = document.getElementById('edit-requirement-project');
@@ -1210,6 +1210,7 @@ function setupEventListeners() {
     
     const requirementId = requirementIdInput ? requirementIdInput.value : '';
     const projectId = projectIdInput ? projectIdInput.value : '';
+    const trackingId = trackingIdInput ? trackingIdInput.value.trim() : '';
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const newProjectId = projectSelect ? projectSelect.value : projectId;
@@ -1220,6 +1221,7 @@ function setupEventListeners() {
     
     try {
       storage.updateRequirement(newProjectId, requirementId, {
+        trackingId: trackingId || undefined,
         title,
         description: description || undefined,
         priority: priority || undefined,
@@ -1252,7 +1254,6 @@ function setupEventListeners() {
     e.preventDefault();
     const functionalRequirementIdInput = document.getElementById('edit-functional-requirement-id');
     const projectIdInput = document.getElementById('edit-functional-requirement-project-id');
-    const trackingIdInput = document.getElementById('edit-functional-requirement-tracking-id');
     const titleInput = document.getElementById('edit-functional-requirement-title');
     const descriptionInput = document.getElementById('edit-functional-requirement-description');
     const projectSelect = document.getElementById('edit-functional-requirement-project');
@@ -1260,7 +1261,6 @@ function setupEventListeners() {
     
     const functionalRequirementId = functionalRequirementIdInput ? functionalRequirementIdInput.value : '';
     const projectId = projectIdInput ? projectIdInput.value : '';
-    const trackingId = trackingIdInput ? trackingIdInput.value.trim() : '';
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const newProjectId = projectSelect ? projectSelect.value : projectId;
@@ -1270,7 +1270,6 @@ function setupEventListeners() {
     
     try {
       storage.updateFunctionalRequirement(newProjectId, functionalRequirementId, {
-        trackingId: trackingId || undefined,
         title,
         description: description || undefined,
         linkedUserRequirements: linkedUserRequirements || []
@@ -1650,6 +1649,7 @@ function exportRequirementsToCsv() {
     const linkedTasks = tasks.filter(task => linkedFunctionalRequirements.some(fr => fr.id === task.linkedFunctionalRequirement));
     return [
       requirement.project?.title || '',
+      requirement.trackingId || '',
       milestoneTitle,
       requirement.title || '',
       requirement.description || '',
@@ -1678,7 +1678,6 @@ function exportFunctionalRequirementsToCsv() {
     const progress = linkedTasks.length > 0 ? Math.round((completedTasks / linkedTasks.length) * 100) : 0;
     return [
       fr.project?.title || '',
-      fr.trackingId || '',
       fr.title || '',
       fr.description || '',
       linkedRequirementTitles.join('; '),
@@ -1787,8 +1786,11 @@ function importRequirementsFromCsv(rows) {
       console.warn(`Row ${rowNumber}: Priority "${priorityValue}" not recognized.`);
     }
 
+    const trackingId = getRowValue(row, ['tracking id', 'tracking identifier', 'tracking number']).trim();
+    
     try {
       storage.createRequirement(project.id, {
+        trackingId: trackingId || undefined,
         title: requirementTitle,
         description: acceptanceCriteria || undefined,
         priority: priorityId || undefined,
@@ -1809,7 +1811,6 @@ function importFunctionalRequirementsFromCsv(rows) {
   rows.forEach((row, index) => {
     const rowNumber = index + 2;
     const projectTitle = getRowValue(row, ['project title', 'project']).trim();
-    const trackingId = getRowValue(row, ['tracking id', 'tracking identifier', 'tracking number']).trim();
     const title = getRowValue(row, ['functional requirement title', 'title']).trim();
     const description = getRowValue(row, ['description', 'details']).trim();
     const linkedUserRequirementsValue = getRowValue(row, ['linked user requirements', 'linked requirements']).trim();
@@ -1840,7 +1841,6 @@ function importFunctionalRequirementsFromCsv(rows) {
 
     try {
       storage.createFunctionalRequirement(project.id, {
-        trackingId: trackingId || undefined,
         title,
         description: description || undefined,
         linkedUserRequirements: linkedRequirementIds,
@@ -2789,6 +2789,10 @@ function sortRequirements(requirements) {
     let aVal, bVal;
     
     switch (state.requirementSortColumn) {
+      case 'trackingId':
+        aVal = a.trackingId || '';
+        bVal = b.trackingId || '';
+        break;
       case 'title':
         aVal = a.title || '';
         bVal = b.title || '';
@@ -2855,6 +2859,7 @@ function filterRequirements(requirements) {
       const searchLower = state.requirementSearch.toLowerCase();
       const matchesSearch = 
         requirement.title.toLowerCase().includes(searchLower) ||
+        (requirement.trackingId && requirement.trackingId.toLowerCase().includes(searchLower)) ||
         (requirement.description && requirement.description.toLowerCase().includes(searchLower)) ||
         requirement.project.title.toLowerCase().includes(searchLower);
       if (!matchesSearch) return false;
@@ -2905,8 +2910,12 @@ function renderRequirementsTable(requirements) {
     const isExpanded = state.activeRequirementLinkId === r.id;
     const rowClass = `task-table-row requirement-row${isExpanded ? ' expanded' : ''}`;
     
+    const trackingIdDisplay = r.trackingId
+      ? `<strong>${escapeHtml(r.trackingId)}</strong>`
+      : '<span class="text-muted">—</span>';
     const rowHtml = `
       <tr class="${rowClass}" data-requirement-id="${r.id}" data-project-id="${r.projectId}">
+        <td>${trackingIdDisplay}</td>
         <td class="task-title-cell">
           <strong>${escapeHtml(r.title)}</strong>
           ${r.description ? `<div class="task-description-small">${escapeHtml(r.description)}</div>` : ''}
@@ -2944,6 +2953,7 @@ function renderRequirementsTable(requirements) {
     <table class="tasks-table">
       <thead>
         <tr>
+          <th class="${getSortClass('trackingId')}" data-sort-column="trackingId">Tracking ID${getSortIndicator('trackingId')}</th>
           <th class="${getSortClass('title')}" data-sort-column="title">Requirement${getSortIndicator('title')}</th>
           <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
           <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
@@ -3048,8 +3058,7 @@ function renderRequirementExpansionRow(requirement) {
   const project = storage.getProject(requirement.projectId);
   const functionalRequirements = project?.functionalRequirements || [];
   const existingOptions = functionalRequirements.map(fr => {
-    const trackingLabel = fr.trackingId ? `${escapeHtml(fr.trackingId)} - ` : '';
-    return `<option value="${fr.id}">${trackingLabel}${escapeHtml(fr.title)}</option>`;
+    return `<option value="${fr.id}">${escapeHtml(fr.title)}</option>`;
   }).join('');
   const hasFunctionalRequirements = functionalRequirements.length > 0;
   const acceptanceCriteriaHtml = `
@@ -3069,7 +3078,6 @@ function renderRequirementExpansionRow(requirement) {
   const linkedFunctionalRequirementsList = linkedFunctionalRequirements.length > 0
     ? `<div class="requirements-linked-frs-list">
         ${linkedFunctionalRequirements.map(fr => {
-          const trackingLabel = fr.trackingId ? `${escapeHtml(fr.trackingId)} - ` : '';
           const frLinkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === fr.id);
           const progressBarHtml = renderFunctionalRequirementProgressBar(fr, frLinkedTasks, false);
           const milestone = project?.milestones?.find(m => m.id === fr.milestoneId);
@@ -3079,7 +3087,7 @@ function renderRequirementExpansionRow(requirement) {
           return `
             <div class="linked-fr-item">
               <div class="linked-fr-info">
-                <span class="linked-fr-title">${trackingLabel}${escapeHtml(fr.title)}</span>
+                <span class="linked-fr-title">${escapeHtml(fr.title)}</span>
                 <span class="linked-fr-meta">${taskLabel}${milestoneLabel ? ' · ' : ''}${milestoneLabel}</span>
               </div>
               <div class="linked-fr-progress">
@@ -3128,10 +3136,6 @@ function renderRequirementExpansionRow(requirement) {
               </div>
               <div class="requirements-fr-link-section">
                 <p class="requirements-fr-link-label">Create a new functional requirement</p>
-                <div class="form-group">
-                  <label for="new-fr-tracking-${requirement.id}">Tracking ID (optional)</label>
-                  <input type="text" id="new-fr-tracking-${requirement.id}" placeholder="Tracking ID">
-                </div>
                 <div class="form-group">
                   <label for="new-fr-title-${requirement.id}">Title *</label>
                   <input type="text" id="new-fr-title-${requirement.id}" placeholder="Functional requirement title">
@@ -3233,10 +3237,6 @@ function sortFunctionalRequirements(functionalRequirements) {
     let aVal, bVal;
     
     switch (state.functionalRequirementSortColumn) {
-      case 'trackingId':
-        aVal = a.trackingId || '';
-        bVal = b.trackingId || '';
-        break;
       case 'title':
         aVal = a.title || '';
         bVal = b.title || '';
@@ -3282,7 +3282,6 @@ function filterFunctionalRequirements(functionalRequirements) {
       const matchesSearch = 
         functionalRequirement.title.toLowerCase().includes(searchLower) ||
         (functionalRequirement.description && functionalRequirement.description.toLowerCase().includes(searchLower)) ||
-        (functionalRequirement.trackingId && functionalRequirement.trackingId.toLowerCase().includes(searchLower)) ||
         (functionalRequirement.project && functionalRequirement.project.title.toLowerCase().includes(searchLower));
       if (!matchesSearch) return false;
     }
@@ -3348,10 +3347,6 @@ function renderFunctionalRequirementEditRow(functionalRequirement) {
                 ${projectOptions}
               </select>
             </div>
-            <div class="form-group">
-              <label for="functional-requirement-edit-tracking-${functionalRequirement.id}">Tracking ID</label>
-              <input type="text" id="functional-requirement-edit-tracking-${functionalRequirement.id}" class="functional-requirement-edit-tracking" data-functional-requirement-id="${functionalRequirement.id}" value="${escapeHtml(functionalRequirement.trackingId || '')}" placeholder="Tracking ID (optional)">
-            </div>
           </div>
           <div class="form-group">
             <label for="functional-requirement-edit-title-${functionalRequirement.id}">Title *</label>
@@ -3393,9 +3388,6 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
     }
 
     const project = state.projects.find(p => p.id === fr.projectId);
-    const trackingIdDisplay = fr.trackingId
-      ? `<strong>${escapeHtml(fr.trackingId)}</strong>`
-      : '<span class="text-muted">—</span>';
     const linkedUserReqs = (fr.linkedUserRequirements || []).map(urId => {
       const ur = project ? (project.requirements || []).find(r => r.id === urId) : null;
       return ur;
@@ -3410,7 +3402,6 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
     
     const rowHtml = `
       <tr class="${rowClass}" data-functional-requirement-id="${fr.id}" data-project-id="${fr.projectId}">
-        <td>${trackingIdDisplay}</td>
         <td class="task-title-cell">
           <strong>${escapeHtml(fr.title)}</strong>
           ${fr.description ? `<div class="task-description-small">${escapeHtml(fr.description)}</div>` : ''}
@@ -3446,7 +3437,6 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
     <table class="tasks-table">
       <thead>
         <tr>
-          <th class="${getSortClass('trackingId')}" data-sort-column="trackingId">Tracking ID${getSortIndicator('trackingId')}</th>
           <th class="${getSortClass('title')}" data-sort-column="title">Functional Requirement${getSortIndicator('title')}</th>
           <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
           <th class="${getSortClass('linkedUserReqs')}" data-sort-column="linkedUserReqs">Linked User Reqs${getSortIndicator('linkedUserReqs')}</th>
@@ -3729,8 +3719,7 @@ function populateCapacityFilters() {
     });
     const functionalOptions = functionalRequirements.map(fr => {
       const projectTitle = fr.project?.title ? `${fr.project.title} · ` : '';
-      const tracking = fr.trackingId ? `${fr.trackingId} – ` : '';
-      return `<option value="${fr.id}">${escapeHtml(`${projectTitle}${tracking}${fr.title || 'Untitled FR'}`)}</option>`;
+      return `<option value="${fr.id}">${escapeHtml(`${projectTitle}${fr.title || 'Untitled FR'}`)}</option>`;
     }).join('');
     elements.capacityFilterFunctionalRequirement.innerHTML = '<option value="">All FRS</option>' + functionalOptions;
     restoreTaskFilterSelect(elements.capacityFilterFunctionalRequirement, 'capacityFilterFunctionalRequirement');
@@ -5069,8 +5058,7 @@ function populateFunctionalRequirementSelect(selectId, projectId, selectedValue 
   }
 
   const options = functionalRequirements.map(fr => {
-    const trackingLabel = fr.trackingId ? `${escapeHtml(fr.trackingId)} - ` : '';
-    return `<option value="${fr.id}" ${selectedValue === fr.id ? 'selected' : ''}>${trackingLabel}${escapeHtml(fr.title)}</option>`;
+    return `<option value="${fr.id}" ${selectedValue === fr.id ? 'selected' : ''}>${escapeHtml(fr.title)}</option>`;
   }).join('');
   select.innerHTML = '<option value="">Select a functional requirement</option>' + options;
   if (selectedValue) {
@@ -5478,14 +5466,11 @@ function handleCreateFunctionalRequirementFromRequirement(requirement) {
     return;
   }
 
-  const trackingInput = document.getElementById(`new-fr-tracking-${requirement.id}`);
   const descriptionInput = document.getElementById(`new-fr-description-${requirement.id}`);
-  const trackingId = trackingInput ? trackingInput.value.trim() : '';
   const description = descriptionInput ? descriptionInput.value.trim() : '';
 
   try {
     storage.createFunctionalRequirement(requirement.projectId, {
-      trackingId: trackingId || undefined,
       title,
       description: description || undefined,
       linkedUserRequirements: [requirement.id],
@@ -5537,13 +5522,11 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
 
   document.querySelector(`.save-edit-functional-requirement[data-functional-requirement-id="${functionalRequirementId}"]`)?.addEventListener('click', () => {
     const projectSelect = document.querySelector(`.functional-requirement-edit-project-select[data-functional-requirement-id="${functionalRequirementId}"]`);
-    const trackingInput = document.querySelector(`.functional-requirement-edit-tracking[data-functional-requirement-id="${functionalRequirementId}"]`);
     const titleInput = document.querySelector(`.functional-requirement-edit-title[data-functional-requirement-id="${functionalRequirementId}"]`);
     const descriptionInput = document.querySelector(`.functional-requirement-edit-description[data-functional-requirement-id="${functionalRequirementId}"]`);
     const userReqSelect = document.querySelector(`.functional-requirement-edit-user-requirements[data-functional-requirement-id="${functionalRequirementId}"]`);
 
     const newProjectId = projectSelect ? projectSelect.value : '';
-    const trackingId = trackingInput ? trackingInput.value.trim() : '';
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const linkedUserRequirements = userReqSelect
@@ -5554,7 +5537,6 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
 
     try {
       storage.updateFunctionalRequirement(newProjectId, functionalRequirementId, {
-        trackingId: trackingId || undefined,
         title,
         description: description || undefined,
         linkedUserRequirements
