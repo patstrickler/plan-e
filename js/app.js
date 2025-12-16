@@ -47,6 +47,7 @@ const state = {
   requirementSearch: '',
   requirementFilterProject: '',
   requirementFilterPriority: '',
+  requirementFilterMilestone: '',
   requirementSortColumn: '',
   requirementSortDirection: 'asc',
   functionalRequirementSearch: '',
@@ -63,6 +64,7 @@ const state = {
 let isUpdatingRequirementProjectFilter = false;
 let isUpdatingFunctionalRequirementProjectFilter = false;
 let isUpdatingRequirementPriorityFilter = false;
+let isUpdatingRequirementMilestoneFilter = false;
 
 // DOM elements
 const elements = {
@@ -1446,6 +1448,7 @@ function setupMilestoneSearchAndFilterListeners() {
 function setupRequirementSearchAndFilterListeners() {
   const searchInput = document.getElementById('requirement-search');
   const projectFilter = document.getElementById('requirement-filter-project');
+  const milestoneFilter = document.getElementById('requirement-filter-milestone');
   const priorityFilter = document.getElementById('requirement-filter-priority');
   
   searchInput?.addEventListener('input', (e) => {
@@ -1456,6 +1459,21 @@ function setupRequirementSearchAndFilterListeners() {
   projectFilter?.addEventListener('change', (e) => {
     if (isUpdatingRequirementProjectFilter) return;
     state.requirementFilterProject = e.target.value;
+    // Clear milestone filter if it doesn't belong to the selected project
+    if (state.requirementFilterMilestone) {
+      const allMilestones = storage.getAllMilestones();
+      const selectedMilestone = allMilestones.find(m => m.id === state.requirementFilterMilestone);
+      if (!selectedMilestone || (e.target.value && selectedMilestone.projectId !== e.target.value)) {
+        state.requirementFilterMilestone = '';
+      }
+    }
+    populateRequirementFilters();
+    renderRequirements();
+  });
+  
+  milestoneFilter?.addEventListener('change', (e) => {
+    if (isUpdatingRequirementMilestoneFilter) return;
+    state.requirementFilterMilestone = e.target.value;
     renderRequirements();
   });
   
@@ -2571,6 +2589,36 @@ function populateRequirementFilters() {
       isUpdatingRequirementProjectFilter = false;
     }
   }
+  
+  // Populate milestone filter
+  const milestoneFilter = document.getElementById('requirement-filter-milestone');
+  if (milestoneFilter) {
+    const selectedValue = state.requirementFilterMilestone || milestoneFilter.value || '';
+    isUpdatingRequirementMilestoneFilter = true;
+    try {
+      // Clear existing options except the first one
+      while (milestoneFilter.options.length > 1) {
+        milestoneFilter.remove(1);
+      }
+      const allMilestones = storage.getAllMilestones();
+      // Filter milestones by selected project if a project is selected
+      const filteredMilestones = state.requirementFilterProject
+        ? allMilestones.filter(m => m.projectId === state.requirementFilterProject)
+        : allMilestones;
+      
+      filteredMilestones.forEach(milestone => {
+        const option = document.createElement('option');
+        option.value = milestone.id;
+        option.textContent = state.requirementFilterProject 
+          ? milestone.title 
+          : `${milestone.project.title} - ${milestone.title}`;
+        milestoneFilter.appendChild(option);
+      });
+      milestoneFilter.value = selectedValue;
+    } finally {
+      isUpdatingRequirementMilestoneFilter = false;
+    }
+  }
 }
 
 function attachFunctionalRequirementExpansionListeners(functionalRequirement) {
@@ -2819,6 +2867,11 @@ function filterRequirements(requirements) {
     
     // Priority filter
     if (state.requirementFilterPriority && requirement.priority !== state.requirementFilterPriority) {
+      return false;
+    }
+    
+    // Milestone filter
+    if (state.requirementFilterMilestone && requirement.milestoneId !== state.requirementFilterMilestone) {
       return false;
     }
     
