@@ -2183,7 +2183,7 @@ function renderInitiativeExpansionRow(project) {
     return `
       <tr class="initiative-objective-row" data-project-id="${project.id}" data-objective-id="${o.id}">
         <td>${escapeHtml(o.name || '—')}</td>
-        <td class="task-description-small-cell">${o.description ? escapeHtml(o.description) : '<span class="text-muted">—</span>'}</td>
+        <td class="initiative-objective-description-cell"><span class="objective-description-text">${o.description ? escapeHtml((o.description || '').replace(/\n/g, ' ')) : '<span class="text-muted">—</span>'}</span></td>
         <td>${escapeHtml(priorityLabel)}</td>
         <td>${requirementCount}</td>
         <td>${taskCount}</td>
@@ -2202,7 +2202,7 @@ function renderInitiativeExpansionRow(project) {
 
   return `
     <tr class="initiative-expansion-row" data-project-id="${project.id}">
-      <td colspan="7">
+      <td colspan="8">
         <div class="initiative-expansion-panel">
           <div class="initiative-expansion-body">
             ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
@@ -2256,10 +2256,6 @@ function renderInitiativeExpansionRow(project) {
               </form>
             </div>
           </div>
-          <div class="initiative-expansion-actions">
-            <button type="button" class="btn btn-blue btn-sm edit-project-view" data-project-id="${project.id}">Edit initiative</button>
-            <button type="button" class="btn btn-red btn-sm delete-project-view" data-project-id="${project.id}">Delete initiative</button>
-          </div>
         </div>
       </td>
     </tr>
@@ -2274,15 +2270,15 @@ function renderProjectsTable(projects) {
     const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
     const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
     const developmentTeamNames = (project.developmentTeam || []).map(id => users.find(u => u.id === id)?.name || id).filter(Boolean);
-    const developmentTeamDisplay = developmentTeamNames.length ? developmentTeamNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>';
-    const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
-    const objectives = project.objectives || [];
-    const objectivesDisplay = objectives.length
-      ? objectives.map(o => {
-          const priorityLabel = (o.priority && priorities.find(p => p.id === o.priority)?.label) || o.priority || '';
-          return priorityLabel ? `${escapeHtml(o.name)} (${escapeHtml(priorityLabel)})` : escapeHtml(o.name);
-        }).join(', ')
+    const developmentTeamDisplay = developmentTeamNames.length
+      ? developmentTeamNames.map(n => escapeHtml(n)).join(', ')
       : '<span class="text-muted">—</span>';
+    const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
+    const stakeholdersDisplay = stakeholderNames.length
+      ? stakeholderNames.map(n => escapeHtml(n)).join(', ')
+      : '<span class="text-muted">—</span>';
+    const objectives = project.objectives || [];
+    const objectivesDisplay = objectives.length ? String(objectives.length) : '<span class="text-muted">—</span>';
     const initiativeTasks = getInitiativeTasks(project.id);
     const initiativeProgress = buildProgressSegments(initiativeTasks);
     const progressCell = `<div class="progress-cell">${renderProgressMeter(initiativeProgress.segmentsHtml, initiativeProgress.completedPercent)}</div>`;
@@ -2298,8 +2294,8 @@ function renderProjectsTable(projects) {
         <td class="initiative-progress-cell">${progressCell}</td>
         <td>${ownerName ? escapeHtml(ownerName) : '<span class="text-muted">—</span>'}</td>
         <td>${devLeadName ? escapeHtml(devLeadName) : '<span class="text-muted">—</span>'}</td>
-        <td class="task-description-small-cell">${developmentTeamDisplay}</td>
-        <td>${stakeholderNames.length ? stakeholderNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>'}</td>
+        <td class="initiative-list-cell">${developmentTeamDisplay}</td>
+        <td class="initiative-list-cell">${stakeholdersDisplay}</td>
         <td class="task-actions-cell">
           <button type="button" class="btn btn-blue btn-xs edit-project-view" data-project-id="${project.id}">Edit</button>
           <button type="button" class="btn btn-red btn-xs delete-project-view" data-project-id="${project.id}">Delete</button>
