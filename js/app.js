@@ -2272,7 +2272,7 @@ function renderInitiativeExpansionRow(project) {
 
   return `
     <tr class="initiative-expansion-row" data-project-id="${project.id}">
-      <td colspan="8">
+      <td colspan="9">
         <div class="initiative-expansion-panel">
           <div class="initiative-expansion-body">
             ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
@@ -2354,6 +2354,9 @@ function renderProjectsTable(projects) {
           return priorityLabel ? `${escapeHtml(o.name)} (${escapeHtml(priorityLabel)})` : escapeHtml(o.name);
         }).join(', ')
       : '<span class="text-muted">—</span>';
+    const initiativeTasks = getInitiativeTasks(project.id);
+    const initiativeProgress = buildProgressSegments(initiativeTasks);
+    const progressCell = `<div class="progress-cell">${renderProgressMeter(initiativeProgress.segmentsHtml, initiativeProgress.completedPercent)}</div>`;
     const isExpanded = state.expandedProjectId === project.id;
     const rowClass = `task-table-row initiative-row${isExpanded ? ' expanded' : ''}`;
     const mainRow = `
@@ -2362,13 +2365,17 @@ function renderProjectsTable(projects) {
           <strong>${escapeHtml(project.title)}</strong>
           ${project.description ? `<div class="task-description-small">${escapeHtml(project.description)}</div>` : ''}
         </td>
-        <td class="task-description-small-cell">${project.strategy ? escapeHtml(project.strategy) : '<span class="text-muted">—</span>'}</td>
         <td class="task-description-small-cell">${objectivesDisplay}</td>
+        <td class="initiative-progress-cell">${progressCell}</td>
         <td>${ownerName ? escapeHtml(ownerName) : '<span class="text-muted">—</span>'}</td>
         <td>${devLeadName ? escapeHtml(devLeadName) : '<span class="text-muted">—</span>'}</td>
         <td>${qaLeadName ? escapeHtml(qaLeadName) : '<span class="text-muted">—</span>'}</td>
         <td class="task-description-small-cell">${developmentTeamDisplay}</td>
         <td>${stakeholderNames.length ? stakeholderNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>'}</td>
+        <td class="task-actions-cell">
+          <button type="button" class="btn btn-blue btn-xs edit-project-view" data-project-id="${project.id}">Edit</button>
+          <button type="button" class="btn btn-red btn-xs delete-project-view" data-project-id="${project.id}">Delete</button>
+        </td>
       </tr>
     `;
     const expansionRow = renderInitiativeExpansionRow(project);
@@ -2384,13 +2391,14 @@ function renderProjectsTable(projects) {
       <thead>
         <tr>
           <th class="${getSortClass('title')}" data-sort-column="title">Initiative${getSortIndicator('title')}</th>
-          <th>Strategy</th>
           <th>Objectives</th>
+          <th>Progress</th>
           <th>Product lead</th>
           <th>Technical lead</th>
           <th>QA lead</th>
           <th>Development team</th>
           <th>Stakeholders</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -5708,21 +5716,25 @@ function updateAllSelects() {
 function attachProjectListeners(project) {
   const projectId = project.id;
 
-  document.querySelector(`.edit-project-view[data-project-id="${projectId}"]`)?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openEditProjectModal(project);
+  document.querySelectorAll(`.edit-project-view[data-project-id="${projectId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditProjectModal(project);
+    });
   });
 
-  document.querySelector(`.delete-project-view[data-project-id="${projectId}"]`)?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (!confirm(`Are you sure you want to delete "${project.title}"?`)) return;
-    try {
-      storage.deleteProject(projectId);
-      loadProjects();
-    } catch (error) {
-      console.error('Failed to delete project:', error);
-      alert('Failed to delete project');
-    }
+  document.querySelectorAll(`.delete-project-view[data-project-id="${projectId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!confirm(`Are you sure you want to delete "${project.title}"?`)) return;
+      try {
+        storage.deleteProject(projectId);
+        loadProjects();
+      } catch (error) {
+        console.error('Failed to delete project:', error);
+        alert('Failed to delete project');
+      }
+    });
   });
 }
 

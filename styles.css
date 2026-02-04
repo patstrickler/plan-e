@@ -2037,6 +2037,9 @@ body {
 .initiatives-table .task-title-cell {
   min-width: 160px;
 }
+.initiatives-table .initiative-progress-cell .progress-meter {
+  min-width: 100px;
+}
 .initiatives-table .task-actions-cell {
   white-space: nowrap;
 }
