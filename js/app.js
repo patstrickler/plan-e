@@ -5150,28 +5150,15 @@ function attachTaskListenersForView(task) {
     }
   });
   
-  // Edit task
-  document.querySelector(`.edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
-    state.editingTasks.add(taskId);
-    renderTasks();
-    // Initialize date picker for task due date after rendering
-    setTimeout(() => {
-      const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
-      if (dateInput && !dateInput.flatpickr) {
-        const fp = flatpickr(dateInput, {
-          dateFormat: 'Y-m-d',
-          clickOpens: true,
-          allowInput: false,
-        });
-        // Ensure calendar opens on focus
-        dateInput.addEventListener('focus', () => {
-          fp.open();
-        });
-      }
-    }, 100);
+  // Edit task (open edit modal, same as create flow)
+  document.querySelector(`.edit-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (typeof window.openEditTaskModal === 'function') {
+      window.openEditTaskModal(task);
+    }
   });
   
-  // Save task
+  // Save task (inline edit - kept for any code paths that still use it)
   document.querySelector(`.save-task-view[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
     const titleInput = document.querySelector(`.edit-title[data-task-id="${taskId}"]`);
     if (!titleInput) {
@@ -5832,15 +5819,12 @@ function attachRequirementViewListeners(requirement) {
   const requirementId = requirement.id;
   const projectId = requirement.projectId;
   
-  // Edit requirement inline
-  document.querySelector(`.edit-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
-    if (state.editingRequirements.has(requirementId)) {
-      return;
+  // Edit requirement (open edit modal, same as create flow)
+  document.querySelector(`.edit-requirement-view[data-requirement-id="${requirementId}"]`)?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (typeof window.openEditRequirementModal === 'function') {
+      window.openEditRequirementModal(requirement);
     }
-    state.editingRequirements.clear();
-    state.editingRequirements.add(requirementId);
-    state.activeRequirementLinkId = null;
-    renderRequirements();
   });
 
   // Delete requirement
@@ -6293,28 +6277,15 @@ function attachTaskListeners(projectId, milestoneId, task) {
     }
   });
   
-  // Edit task
-  document.querySelector(`.edit-task[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
-    state.editingTasks.add(taskId);
-    renderProjects();
-    // Initialize date picker for task due date after rendering
-    setTimeout(() => {
-      const dateInput = document.querySelector(`.edit-due-date[data-task-id="${taskId}"]`);
-      if (dateInput && !dateInput.flatpickr) {
-        const fp = flatpickr(dateInput, {
-          dateFormat: 'Y-m-d',
-          clickOpens: true,
-          allowInput: false,
-        });
-        // Ensure calendar opens on focus
-        dateInput.addEventListener('focus', () => {
-          fp.open();
-        });
-      }
-    }, 100);
+  // Edit task (open edit modal, same as create flow)
+  document.querySelector(`.edit-task[data-task-id="${taskId}"]`)?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (typeof window.openEditTaskModal === 'function') {
+      window.openEditTaskModal(task);
+    }
   });
   
-  // Save task
+  // Save task (inline edit - kept for any code paths that still use it)
   document.querySelector(`.save-task[data-task-id="${taskId}"]`)?.addEventListener('click', () => {
     const title = document.querySelector(`.edit-title[data-task-id="${taskId}"]`).value.trim();
     const description = document.querySelector(`.edit-description[data-task-id="${taskId}"]`).value.trim();
