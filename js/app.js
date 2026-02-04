@@ -2143,11 +2143,7 @@ function renderInitiativeExpansionRow(project) {
   const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
   const objectives = project.objectives || [];
 
-  const initiativeTasks = getInitiativeTasks(project.id);
-  const initiativeProgress = buildProgressSegments(initiativeTasks);
-
   const objectiveRows = objectives.map(o => {
-    const priorityLabel = (o.priority && priorities.find(p => p.id === o.priority)?.label) || o.priority || '—';
     const { requirementCount, taskCount, tasks: objectiveTasks } = getObjectiveRequirementAndTaskCounts(project.id, o.id);
     const objectiveProgress = buildProgressSegments(objectiveTasks);
     const isEditing = state.editingObjectiveId === o.id;
@@ -2180,11 +2176,17 @@ function renderInitiativeExpansionRow(project) {
         </tr>
       `;
     }
+    const priorityOpts = getObjectivePriorityOptionsHtml(o.priority || '');
+    const selectedPriority = priorities.find(p => p.id === o.priority);
+    const priorityColor = selectedPriority?.color || '';
+    const priorityStyle = priorityColor ? `style="background-color: ${escapeHtml(priorityColor)}; color: #fff; border-color: ${escapeHtml(priorityColor)};"` : '';
     return `
       <tr class="initiative-objective-row" data-project-id="${project.id}" data-objective-id="${o.id}">
         <td>${escapeHtml(o.name || '—')}</td>
         <td class="initiative-objective-description-cell"><span class="objective-description-text">${o.description ? escapeHtml((o.description || '').replace(/\n/g, ' ')) : '<span class="text-muted">—</span>'}</span></td>
-        <td>${escapeHtml(priorityLabel)}</td>
+        <td class="initiative-objective-priority-cell">
+          <select class="objective-priority-select" data-project-id="${project.id}" data-objective-id="${o.id}" ${priorityStyle}>${priorityOpts}</select>
+        </td>
         <td>${requirementCount}</td>
         <td>${taskCount}</td>
         <td class="initiative-objective-progress-cell">
@@ -2202,16 +2204,12 @@ function renderInitiativeExpansionRow(project) {
 
   return `
     <tr class="initiative-expansion-row" data-project-id="${project.id}">
-      <td colspan="8">
+      <td colspan="9">
         <div class="initiative-expansion-panel">
           <div class="initiative-expansion-body">
             ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
             ${project.problemStatement ? `<p><strong>Problem</strong><br>${escapeHtml(project.problemStatement)}</p>` : ''}
             ${project.strategy ? `<p><strong>Strategy</strong><br>${escapeHtml(project.strategy)}</p>` : ''}
-            <div class="initiative-overall-progress">
-              <strong>Overall progress</strong>
-              <div class="progress-cell">${renderProgressMeter(initiativeProgress.segmentsHtml, initiativeProgress.completedPercent)}</div>
-            </div>
             <div class="initiative-expansion-people">
               <p><strong>Product lead</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Technical lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'}</p>
               ${developmentTeamNames.length ? `<p><strong>Development team</strong> ${developmentTeamNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
@@ -2290,12 +2288,12 @@ function renderProjectsTable(projects) {
           <strong>${escapeHtml(project.title)}</strong>
           ${project.description ? `<div class="task-description-small">${escapeHtml(project.description)}</div>` : ''}
         </td>
-        <td class="task-description-small-cell">${objectivesDisplay}</td>
-        <td class="initiative-progress-cell">${progressCell}</td>
+        <td>${objectivesDisplay}</td>
         <td>${ownerName ? escapeHtml(ownerName) : '<span class="text-muted">—</span>'}</td>
         <td>${devLeadName ? escapeHtml(devLeadName) : '<span class="text-muted">—</span>'}</td>
         <td class="initiative-list-cell">${developmentTeamDisplay}</td>
         <td class="initiative-list-cell">${stakeholdersDisplay}</td>
+        <td class="initiative-progress-cell">${progressCell}</td>
         <td class="task-actions-cell">
           <button type="button" class="btn btn-blue btn-xs edit-project-view" data-project-id="${project.id}">Edit</button>
           <button type="button" class="btn btn-red btn-xs delete-project-view" data-project-id="${project.id}">Delete</button>
@@ -2316,11 +2314,11 @@ function renderProjectsTable(projects) {
         <tr>
           <th class="${getSortClass('title')}" data-sort-column="title">Initiative${getSortIndicator('title')}</th>
           <th>Objectives</th>
-          <th>Progress</th>
           <th>Product lead</th>
           <th>Technical lead</th>
           <th>Development team</th>
           <th>Stakeholders</th>
+          <th>Progress</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -5690,6 +5688,26 @@ function attachProjectListeners(project) {
 
 function attachInitiativeExpansionListeners(project) {
   const projectId = project.id;
+
+  document.querySelectorAll(`.objective-priority-select[data-project-id="${projectId}"]`).forEach(select => {
+    select.addEventListener('change', (e) => {
+      e.stopPropagation();
+      const objectiveId = select.getAttribute('data-objective-id');
+      const newPriority = select.value || undefined;
+      try {
+        storage.updateObjective(projectId, objectiveId, { priority: newPriority });
+        loadProjects();
+        renderProjects();
+        if (state.expandedProjectId === projectId) {
+          const expandedProject = state.projects.find(p => p.id === projectId);
+          if (expandedProject) attachInitiativeExpansionListeners(expandedProject);
+        }
+      } catch (err) {
+        console.error('Failed to update objective priority:', err);
+        alert('Failed to update priority');
+      }
+    });
+  });
 
   document.querySelectorAll(`.edit-objective-initiative-view[data-project-id="${projectId}"]`).forEach(btn => {
     btn.addEventListener('click', (e) => {
