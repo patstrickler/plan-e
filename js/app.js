@@ -631,6 +631,7 @@ function setupEventListeners() {
     populateUserSelect('project-owner');
     populateUserSelect('project-dev-lead');
     populateUserSelect('project-qa-lead');
+    populateUserMultiSelect('project-development-team');
     populateStakeholderMultiSelect('project-stakeholders');
     openModal('new-project');
   });
@@ -670,6 +671,8 @@ function setupEventListeners() {
     const owner = document.getElementById('project-owner')?.value || undefined;
     const devLead = document.getElementById('project-dev-lead')?.value || undefined;
     const qaLead = document.getElementById('project-qa-lead')?.value || undefined;
+    const devTeamEl = document.getElementById('project-development-team');
+    const developmentTeam = devTeamEl ? Array.from(devTeamEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
     const stakeholdersEl = document.getElementById('project-stakeholders');
     const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
     if (!title) return;
@@ -682,6 +685,7 @@ function setupEventListeners() {
         owner,
         devLead,
         qaLead,
+        developmentTeam,
         stakeholders,
       });
       const container = document.getElementById('project-objectives-container');
@@ -722,6 +726,8 @@ function setupEventListeners() {
     const owner = document.getElementById('edit-project-owner')?.value || undefined;
     const devLead = document.getElementById('edit-project-dev-lead')?.value || undefined;
     const qaLead = document.getElementById('edit-project-qa-lead')?.value || undefined;
+    const devTeamEl = document.getElementById('edit-project-development-team');
+    const developmentTeam = devTeamEl ? Array.from(devTeamEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
     const stakeholdersEl = document.getElementById('edit-project-stakeholders');
     const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
     if (!title) return;
@@ -734,6 +740,7 @@ function setupEventListeners() {
         owner,
         devLead,
         qaLead,
+        developmentTeam,
         stakeholders,
       });
       const container = document.getElementById('edit-project-objectives-container');
@@ -790,6 +797,7 @@ function setupEventListeners() {
     populateUserSelect('edit-project-owner');
     populateUserSelect('edit-project-dev-lead');
     populateUserSelect('edit-project-qa-lead');
+    populateUserMultiSelect('edit-project-development-team', project.developmentTeam || []);
     populateStakeholderMultiSelect('edit-project-stakeholders');
     const objContainer = document.getElementById('edit-project-objectives-container');
     if (objContainer) {
@@ -809,10 +817,16 @@ function setupEventListeners() {
       const o = document.getElementById('edit-project-owner');
       const d = document.getElementById('edit-project-dev-lead');
       const q = document.getElementById('edit-project-qa-lead');
+      const devTeam = document.getElementById('edit-project-development-team');
       const s = document.getElementById('edit-project-stakeholders');
       if (o) o.value = project.owner || '';
       if (d) d.value = project.devLead || '';
       if (q) q.value = project.qaLead || '';
+      if (devTeam && project.developmentTeam?.length) {
+        Array.from(devTeam.options).forEach(opt => {
+          opt.selected = project.developmentTeam.includes(opt.value);
+        });
+      }
       if (s && project.stakeholders?.length) {
         Array.from(s.options).forEach(opt => {
           opt.selected = project.stakeholders.includes(opt.value);
@@ -2195,6 +2209,7 @@ function renderInitiativeExpansionRow(project) {
   const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
   const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
   const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || '') : '';
+  const developmentTeamNames = (project.developmentTeam || []).map(id => users.find(u => u.id === id)?.name || id).filter(Boolean);
   const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
   const objectives = project.objectives || [];
 
@@ -2257,7 +2272,7 @@ function renderInitiativeExpansionRow(project) {
 
   return `
     <tr class="initiative-expansion-row" data-project-id="${project.id}">
-      <td colspan="7">
+      <td colspan="8">
         <div class="initiative-expansion-panel">
           <div class="initiative-expansion-body">
             ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
@@ -2268,7 +2283,8 @@ function renderInitiativeExpansionRow(project) {
               <div class="progress-cell">${renderProgressMeter(initiativeProgress.segmentsHtml, initiativeProgress.completedPercent)}</div>
             </div>
             <div class="initiative-expansion-people">
-              <p><strong>Owner</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Dev lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'} · <strong>QA lead</strong> ${qaLeadName ? escapeHtml(qaLeadName) : '—'}</p>
+              <p><strong>Product lead</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Technical lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'} · <strong>QA lead</strong> ${qaLeadName ? escapeHtml(qaLeadName) : '—'}</p>
+              ${developmentTeamNames.length ? `<p><strong>Development team</strong> ${developmentTeamNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
               ${stakeholderNames.length ? `<p><strong>Stakeholders</strong> ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
             </div>
             <div class="initiative-expansion-objectives">
@@ -2328,6 +2344,8 @@ function renderProjectsTable(projects) {
     const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
     const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
     const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || '') : '';
+    const developmentTeamNames = (project.developmentTeam || []).map(id => users.find(u => u.id === id)?.name || id).filter(Boolean);
+    const developmentTeamDisplay = developmentTeamNames.length ? developmentTeamNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>';
     const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
     const objectives = project.objectives || [];
     const objectivesDisplay = objectives.length
@@ -2349,6 +2367,7 @@ function renderProjectsTable(projects) {
         <td>${ownerName ? escapeHtml(ownerName) : '<span class="text-muted">—</span>'}</td>
         <td>${devLeadName ? escapeHtml(devLeadName) : '<span class="text-muted">—</span>'}</td>
         <td>${qaLeadName ? escapeHtml(qaLeadName) : '<span class="text-muted">—</span>'}</td>
+        <td class="task-description-small-cell">${developmentTeamDisplay}</td>
         <td>${stakeholderNames.length ? stakeholderNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>'}</td>
       </tr>
     `;
@@ -2367,9 +2386,10 @@ function renderProjectsTable(projects) {
           <th class="${getSortClass('title')}" data-sort-column="title">Initiative${getSortIndicator('title')}</th>
           <th>Strategy</th>
           <th>Objectives</th>
-          <th>Owner</th>
-          <th>Dev lead</th>
+          <th>Product lead</th>
+          <th>Technical lead</th>
           <th>QA lead</th>
+          <th>Development team</th>
           <th>Stakeholders</th>
         </tr>
       </thead>
@@ -5514,6 +5534,14 @@ function populateStakeholderMultiSelect(selectId) {
   if (!select) return;
   const stakeholders = storage.getStakeholders();
   select.innerHTML = stakeholders.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+}
+
+function populateUserMultiSelect(selectId, selectedIds = []) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const users = storage.getUsers();
+  const selectedSet = new Set(Array.isArray(selectedIds) ? selectedIds : []);
+  select.innerHTML = users.map(u => `<option value="${u.id}" ${selectedSet.has(u.id) ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
 }
 
 function populateMilestoneSelect(selectId, projectId) {
