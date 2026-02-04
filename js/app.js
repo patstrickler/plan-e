@@ -64,6 +64,7 @@ const state = {
   activeRequirementLinkId: null,
   activeFunctionalRequirementId: null,
   activeMilestoneId: null,
+  expandedProjectId: null,
 };
 
 let isUpdatingRequirementProjectFilter = false;
@@ -2160,10 +2161,6 @@ function sortProjects(projects) {
         aVal = (a.title || '').toLowerCase();
         bVal = (b.title || '').toLowerCase();
         return state.projectSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-      case 'milestones':
-        aVal = (a.milestones || []).length;
-        bVal = (b.milestones || []).length;
-        return state.projectSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
       default:
         return 0;
     }
