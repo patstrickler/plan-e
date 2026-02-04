@@ -2171,12 +2171,20 @@ function sortProjects(projects) {
 
 function getObjectiveRequirementAndTaskCounts(projectId, objectiveId) {
   const project = storage.getProject(projectId);
-  if (!project) return { requirementCount: 0, taskCount: 0 };
+  if (!project) return { requirementCount: 0, taskCount: 0, tasks: [] };
   const requirements = (project.requirements || []).filter(r => r.objectiveId === objectiveId);
   const requirementIds = new Set(requirements.map(r => r.id));
   const allTasks = storage.getAllTasks();
-  const taskCount = allTasks.filter(t => t.projectId === projectId && t.requirementId && requirementIds.has(t.requirementId)).length;
-  return { requirementCount: requirements.length, taskCount };
+  const tasks = allTasks.filter(t => t.projectId === projectId && t.requirementId && requirementIds.has(t.requirementId));
+  return { requirementCount: requirements.length, taskCount: tasks.length, tasks };
+}
+
+function getInitiativeTasks(projectId) {
+  const project = storage.getProject(projectId);
+  if (!project) return [];
+  const requirementIds = new Set((project.requirements || []).map(r => r.id));
+  const allTasks = storage.getAllTasks();
+  return allTasks.filter(t => t.projectId === projectId && t.requirementId && requirementIds.has(t.requirementId));
 }
 
 function renderInitiativeExpansionRow(project) {
@@ -2190,15 +2198,19 @@ function renderInitiativeExpansionRow(project) {
   const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
   const objectives = project.objectives || [];
 
+  const initiativeTasks = getInitiativeTasks(project.id);
+  const initiativeProgress = buildProgressSegments(initiativeTasks);
+
   const objectiveRows = objectives.map(o => {
     const priorityLabel = (o.priority && priorities.find(p => p.id === o.priority)?.label) || o.priority || '—';
-    const { requirementCount, taskCount } = getObjectiveRequirementAndTaskCounts(project.id, o.id);
+    const { requirementCount, taskCount, tasks: objectiveTasks } = getObjectiveRequirementAndTaskCounts(project.id, o.id);
+    const objectiveProgress = buildProgressSegments(objectiveTasks);
     const isEditing = state.editingObjectiveId === o.id;
     if (isEditing) {
       const priorityOpts = getObjectivePriorityOptionsHtml(o.priority || '');
       return `
         <tr class="initiative-objective-row initiative-objective-edit-row" data-project-id="${project.id}" data-objective-id="${o.id}">
-          <td colspan="6">
+          <td colspan="7">
             <div class="initiative-objective-edit-form">
               <div class="form-row">
                 <div class="form-group" style="flex: 1;">
@@ -2230,6 +2242,9 @@ function renderInitiativeExpansionRow(project) {
         <td>${escapeHtml(priorityLabel)}</td>
         <td>${requirementCount}</td>
         <td>${taskCount}</td>
+        <td class="initiative-objective-progress-cell">
+          <div class="progress-cell">${renderProgressMeter(objectiveProgress.segmentsHtml, objectiveProgress.completedPercent)}</div>
+        </td>
         <td class="task-actions-cell">
           <button type="button" class="btn btn-blue btn-xs edit-objective-initiative-view" data-project-id="${project.id}" data-objective-id="${o.id}">Edit</button>
           <button type="button" class="btn btn-red btn-xs delete-objective-initiative-view" data-project-id="${project.id}" data-objective-id="${o.id}">Delete</button>
@@ -2242,12 +2257,16 @@ function renderInitiativeExpansionRow(project) {
 
   return `
     <tr class="initiative-expansion-row" data-project-id="${project.id}">
-      <td colspan="8">
+      <td colspan="7">
         <div class="initiative-expansion-panel">
           <div class="initiative-expansion-body">
             ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
             ${project.problemStatement ? `<p><strong>Problem</strong><br>${escapeHtml(project.problemStatement)}</p>` : ''}
             ${project.strategy ? `<p><strong>Strategy</strong><br>${escapeHtml(project.strategy)}</p>` : ''}
+            <div class="initiative-overall-progress">
+              <strong>Overall progress</strong>
+              <div class="progress-cell">${renderProgressMeter(initiativeProgress.segmentsHtml, initiativeProgress.completedPercent)}</div>
+            </div>
             <div class="initiative-expansion-people">
               <p><strong>Owner</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Dev lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'} · <strong>QA lead</strong> ${qaLeadName ? escapeHtml(qaLeadName) : '—'}</p>
               ${stakeholderNames.length ? `<p><strong>Stakeholders</strong> ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
@@ -2262,6 +2281,7 @@ function renderInitiativeExpansionRow(project) {
                     <th>Priority</th>
                     <th>Requirements</th>
                     <th>Tasks</th>
+                    <th>Progress</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -2271,10 +2291,21 @@ function renderInitiativeExpansionRow(project) {
               </table>
               <form class="initiative-add-objective-form" data-project-id="${project.id}">
                 <div class="form-row initiative-add-objective-row">
-                  <input type="text" class="initiative-add-objective-name" placeholder="Objective name" required>
-                  <input type="text" class="initiative-add-objective-description" placeholder="Description (optional)">
-                  <select class="initiative-add-objective-priority">${addObjectivePriorityOpts}</select>
-                  <button type="submit" class="btn btn-primary btn-sm">Add objective</button>
+                  <div class="form-group" style="flex: 1; min-width: 0;">
+                    <label for="initiative-add-objective-name-${project.id}">Name</label>
+                    <input type="text" id="initiative-add-objective-name-${project.id}" class="initiative-add-objective-name" placeholder="Objective name" required>
+                  </div>
+                  <div class="form-group" style="flex: 1; min-width: 0;">
+                    <label for="initiative-add-objective-desc-${project.id}">Description</label>
+                    <input type="text" id="initiative-add-objective-desc-${project.id}" class="initiative-add-objective-description" placeholder="Optional">
+                  </div>
+                  <div class="form-group" style="min-width: 120px;">
+                    <label for="initiative-add-objective-priority-${project.id}">Priority</label>
+                    <select id="initiative-add-objective-priority-${project.id}" class="initiative-add-objective-priority">${addObjectivePriorityOpts}</select>
+                  </div>
+                  <div class="form-group" style="align-self: flex-end;">
+                    <button type="submit" class="btn btn-primary btn-sm">Add objective</button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -2313,7 +2344,6 @@ function renderProjectsTable(projects) {
           <strong>${escapeHtml(project.title)}</strong>
           ${project.description ? `<div class="task-description-small">${escapeHtml(project.description)}</div>` : ''}
         </td>
-        <td class="task-description-small-cell">${project.problemStatement ? escapeHtml(project.problemStatement) : '<span class="text-muted">—</span>'}</td>
         <td class="task-description-small-cell">${project.strategy ? escapeHtml(project.strategy) : '<span class="text-muted">—</span>'}</td>
         <td class="task-description-small-cell">${objectivesDisplay}</td>
         <td>${ownerName ? escapeHtml(ownerName) : '<span class="text-muted">—</span>'}</td>
@@ -2335,7 +2365,6 @@ function renderProjectsTable(projects) {
       <thead>
         <tr>
           <th class="${getSortClass('title')}" data-sort-column="title">Initiative${getSortIndicator('title')}</th>
-          <th>Problem</th>
           <th>Strategy</th>
           <th>Objectives</th>
           <th>Owner</th>
