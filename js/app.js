@@ -5229,7 +5229,7 @@ function getUserOptionsHtml(selectedValue = '') {
   return '<option value="">None</option>' + options;
 }
 
-function populateUserSelect(select, selectedValue = '') {
+function populateUserSelectElement(select, selectedValue = '') {
   select.innerHTML = getUserOptionsHtml(selectedValue);
 }
 
@@ -5265,7 +5265,7 @@ function updateAllSelects() {
   const taskResourceSelect = document.getElementById('task-resource');
   
   if (taskEffortSelect) populateEffortSelect(taskEffortSelect);
-  if (taskResourceSelect) populateUserSelect(taskResourceSelect);
+  if (taskResourceSelect) populateUserSelectElement(taskResourceSelect);
   
   // Update requirement form risk selects
   populateRiskSelect('requirement-risk');
