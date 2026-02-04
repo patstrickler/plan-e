@@ -138,13 +138,11 @@
       <div class="header-content">
         <div>
           <h1 id="workspace-title">Plan-E</h1>
-          <p class="subtitle">Organize your projects, milestones, and tasks</p>
+          <p class="subtitle">Organize your initiatives, milestones, and tasks</p>
         </div>
         <nav class="nav-links">
-          <a href="#projects" class="nav-link">Projects</a>
-          <a href="#milestones" class="nav-link">Milestones</a>
-          <a href="#requirements" class="nav-link">URS</a>
-          <a href="#functional-requirements" class="nav-link">FRS</a>
+          <a href="#initiatives" class="nav-link">Initiatives</a>
+          <a href="#requirements" class="nav-link">Requirements</a>
           <a href="#tasks" class="nav-link">Tasks</a>
           <div class="nav-dropdown" data-dropdown>
             <button
@@ -169,23 +167,58 @@
     <main id="app">
       <div class="loading" id="loading">Loading...</div>
       
-      <!-- Projects View -->
+      <!-- Initiatives View (projects-view kept for DOM id compatibility) -->
       <div id="projects-view" class="view">
         <div class="mb-6">
-          <button id="new-project-btn" class="btn btn-primary">+ New Project</button>
+          <button id="new-project-btn" class="btn btn-primary">+ New Initiative</button>
           
           <form id="new-project-form" class="form-card" style="display: none;">
-            <h2>Create New Project</h2>
+            <h2>Create New Initiative</h2>
             <div class="form-group">
-              <label for="project-title">Project Title *</label>
-              <input type="text" id="project-title" required placeholder="Enter project title">
+              <label for="project-title">Initiative Title *</label>
+              <input type="text" id="project-title" required placeholder="Enter initiative title">
             </div>
             <div class="form-group">
               <label for="project-description">Description (optional)</label>
-              <textarea id="project-description" rows="3" placeholder="Enter project description"></textarea>
+              <textarea id="project-description" rows="3" placeholder="Enter description"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="project-problem">Problem statement (optional)</label>
+              <textarea id="project-problem" rows="2" placeholder="Overall problem or market need"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="project-strategy">Strategy (optional)</label>
+              <textarea id="project-strategy" rows="2" placeholder="Strategy / net-benefit"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="project-owner">Owner</label>
+                <select id="project-owner">
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="project-dev-lead">Dev lead</label>
+                <select id="project-dev-lead">
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="project-qa-lead">QA lead</label>
+                <select id="project-qa-lead">
+                  <option value="">None</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="project-stakeholders">Stakeholders</label>
+              <select id="project-stakeholders" multiple style="min-height: 80px;">
+                <option value="">None</option>
+              </select>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define stakeholders in Settings. Hold Ctrl/Cmd to select multiple.</small>
             </div>
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Create Project</button>
+              <button type="submit" class="btn btn-primary">Create Initiative</button>
               <button type="button" id="cancel-project-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
@@ -203,7 +236,7 @@
           <form id="new-milestone-form" class="form-card" style="display: none;">
             <h2>Create New Milestone</h2>
             <div class="form-group">
-              <label for="milestone-project">Project *</label>
+              <label for="milestone-project">Initiative *</label>
               <select id="milestone-project" required></select>
             </div>
             <div class="form-group">
@@ -230,7 +263,7 @@
             <input type="hidden" id="edit-milestone-id">
             <input type="hidden" id="edit-milestone-project-id">
             <div class="form-group">
-              <label for="edit-milestone-project">Project *</label>
+              <label for="edit-milestone-project">Initiative *</label>
               <select id="edit-milestone-project" required></select>
             </div>
             <div class="form-group">
@@ -257,7 +290,7 @@
           <div class="tasks-search-filter">
             <input type="text" id="milestone-search" class="task-search-input" placeholder="Search milestones...">
             <select id="milestone-filter-project" class="task-filter-select">
-              <option value="">All Projects</option>
+              <option value="">All Initiatives</option>
             </select>
           </div>
           <div class="table-actions">
@@ -280,15 +313,20 @@
           <form id="new-task-form" class="form-card" style="display: none;">
             <h2>Create New Task</h2>
             <div class="form-group">
-              <label for="task-project">Project *</label>
+              <label for="task-project">Initiative *</label>
               <select id="task-project" required></select>
             </div>
             <div class="form-group">
-              <label for="task-functional-requirement">Linked Functional Requirement (optional)</label>
-              <select id="task-functional-requirement">
-                <option value="">Select a project first</option>
+              <label for="task-milestone">Milestone *</label>
+              <select id="task-milestone" required>
+                <option value="">Select an initiative first</option>
               </select>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Choosing one will keep this task synced to that milestone when available.</small>
+            </div>
+            <div class="form-group">
+              <label for="task-requirement">Requirement (optional)</label>
+              <select id="task-requirement">
+                <option value="">Select an initiative first</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="task-title">Task Title *</label>
@@ -329,15 +367,20 @@
             <input type="hidden" id="edit-task-project-id">
             <input type="hidden" id="edit-task-milestone-id">
             <div class="form-group">
-              <label for="edit-task-project">Project *</label>
+              <label for="edit-task-project">Initiative *</label>
               <select id="edit-task-project" required></select>
             </div>
             <div class="form-group">
-              <label for="edit-task-functional-requirement">Linked Functional Requirement (optional)</label>
-              <select id="edit-task-functional-requirement">
-                <option value="">Select a project first</option>
+              <label for="edit-task-milestone">Milestone *</label>
+              <select id="edit-task-milestone" required>
+                <option value="">Select an initiative first</option>
               </select>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Selecting a functional requirement determines which milestone the task belongs to.</small>
+            </div>
+            <div class="form-group">
+              <label for="edit-task-requirement">Requirement (optional)</label>
+              <select id="edit-task-requirement">
+                <option value="">Select an initiative first</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="edit-task-title">Task Title *</label>
@@ -384,7 +427,7 @@
               <option value="">All Statuses</option>
             </select>
             <select id="task-filter-project" class="task-filter-select">
-              <option value="">All Projects</option>
+              <option value="">All Initiatives</option>
             </select>
             <select id="task-filter-resource" class="task-filter-select">
               <option value="">All Resources</option>
@@ -413,15 +456,15 @@
               <option value="">All Statuses</option>
             </select>
             <select id="capacity-filter-project" class="task-filter-select">
-              <option value="">All Projects</option>
+              <option value="">All Initiatives</option>
             </select>
             <select id="capacity-filter-milestone" class="task-filter-select">
               <option value="">All Milestones</option>
             </select>
             <select id="capacity-filter-requirement" class="task-filter-select">
-              <option value="">All URS</option>
+              <option value="">All Requirements</option>
             </select>
-            <select id="capacity-filter-functional-requirement" class="task-filter-select">
+            <select id="capacity-filter-functional-requirement" class="task-filter-select" style="display: none;">
               <option value="">All FRS</option>
             </select>
           </div>
@@ -432,22 +475,30 @@
         <div id="capacity-list" class="tasks-table-container"></div>
       </div>
 
-      <!-- User Requirements View -->
+      <!-- Requirements View (unified: user, system, admin) -->
       <div id="requirements-view" class="view" style="display: none;">
         <div class="mb-6">
-          <h2>All User Requirements</h2>
-          <button id="new-requirement-btn" class="btn btn-primary">+ New User Requirement</button>
+          <h2>All Requirements</h2>
+          <button id="new-requirement-btn" class="btn btn-primary">+ New Requirement</button>
           
           <form id="new-requirement-form" class="form-card" style="display: none;">
-            <h2>Create New User Requirement</h2>
+            <h2>Create New Requirement</h2>
             <div class="form-group">
-              <label for="requirement-project">Project *</label>
+              <label for="requirement-project">Initiative *</label>
               <select id="requirement-project" required></select>
             </div>
             <div class="form-group">
-              <label for="requirement-milestone">Milestone (optional)</label>
-              <select id="requirement-milestone">
+              <label for="requirement-objective">Objective (optional)</label>
+              <select id="requirement-objective">
                 <option value="">None</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="requirement-type">Type</label>
+              <select id="requirement-type">
+                <option value="user">User</option>
+                <option value="system">System</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
             <div class="form-group">
@@ -459,36 +510,109 @@
               <input type="text" id="requirement-title" required placeholder="Enter requirement title">
             </div>
             <div class="form-group">
-              <label for="requirement-description">Acceptance Criteria (optional)</label>
-              <textarea id="requirement-description" rows="4" placeholder="Enter acceptance criteria"></textarea>
+              <label for="requirement-description">Description / Acceptance Criteria (optional)</label>
+              <textarea id="requirement-description" rows="4" placeholder="Enter description or acceptance criteria"></textarea>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="requirement-priority">Priority</label>
-                <select id="requirement-priority">
-                  <option value="">None</option>
-                </select>
+            <div class="form-group">
+              <label for="requirement-risk">Risk</label>
+              <select id="requirement-risk">
+                <option value="">None</option>
+              </select>
+            </div>
+            <div class="form-group risk-assessment-section">
+              <h3 class="risk-assessment-heading">Risk assessment (T0085)</h3>
+              <p class="text-muted text-sm">Optional. Set all six to compute Risk Value (Rv).</p>
+              <div class="form-row risk-assessment-row">
+                <div class="form-group">
+                  <label for="requirement-data-integrity-risk">Data integrity (1–3)</label>
+                  <select id="requirement-data-integrity-risk" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="requirement-security-risk">Security (1–3)</label>
+                  <select id="requirement-security-risk" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="requirement-regression-need">Regression need (0–3)</label>
+                  <select id="requirement-regression-need" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="requirement-frequency-of-use">Frequency of use (0–3)</label>
+                  <select id="requirement-frequency-of-use" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="requirement-detectability">Detectability (1–3)</label>
+                  <select id="requirement-detectability" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="requirement-remediation">Remediation (1–4)</label>
+                  <select id="requirement-remediation" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group risk-value-display-wrapper">
+                <label>Risk value</label>
+                <p id="requirement-risk-value-display" class="risk-value-display text-muted">—</p>
               </div>
             </div>
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Create User Requirement</button>
+              <button type="submit" class="btn btn-primary">Create Requirement</button>
               <button type="button" id="cancel-requirement-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
 
-          <!-- Edit User Requirement Form -->
+          <!-- Edit Requirement Form -->
           <form id="edit-requirement-form" class="form-card" style="display: none;">
-            <h2>Edit User Requirement</h2>
+            <h2>Edit Requirement</h2>
             <input type="hidden" id="edit-requirement-id">
             <input type="hidden" id="edit-requirement-project-id">
             <div class="form-group">
-              <label for="edit-requirement-project">Project *</label>
+              <label for="edit-requirement-project">Initiative *</label>
               <select id="edit-requirement-project" required></select>
             </div>
             <div class="form-group">
-              <label for="edit-requirement-milestone">Milestone (optional)</label>
-              <select id="edit-requirement-milestone">
+              <label for="edit-requirement-objective">Objective (optional)</label>
+              <select id="edit-requirement-objective">
                 <option value="">None</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="edit-requirement-type">Type</label>
+              <select id="edit-requirement-type">
+                <option value="user">User</option>
+                <option value="system">System</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
             <div class="form-group">
@@ -500,19 +624,84 @@
               <input type="text" id="edit-requirement-title" required placeholder="Enter requirement title">
             </div>
             <div class="form-group">
-              <label for="edit-requirement-description">Acceptance Criteria (optional)</label>
-              <textarea id="edit-requirement-description" rows="4" placeholder="Enter acceptance criteria"></textarea>
+              <label for="edit-requirement-description">Description / Acceptance Criteria (optional)</label>
+              <textarea id="edit-requirement-description" rows="4" placeholder="Enter description or acceptance criteria"></textarea>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="edit-requirement-priority">Priority</label>
-                <select id="edit-requirement-priority">
-                  <option value="">None</option>
-                </select>
+            <div class="form-group">
+              <label for="edit-requirement-risk">Risk</label>
+              <select id="edit-requirement-risk">
+                <option value="">None</option>
+              </select>
+            </div>
+            <div class="form-group risk-assessment-section">
+              <h3 class="risk-assessment-heading">Risk assessment (T0085)</h3>
+              <p class="text-muted text-sm">Optional. Set all six to compute Risk Value (Rv).</p>
+              <div class="form-row risk-assessment-row">
+                <div class="form-group">
+                  <label for="edit-requirement-data-integrity-risk">Data integrity (1–3)</label>
+                  <select id="edit-requirement-data-integrity-risk" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="edit-requirement-security-risk">Security (1–3)</label>
+                  <select id="edit-requirement-security-risk" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="edit-requirement-regression-need">Regression need (0–3)</label>
+                  <select id="edit-requirement-regression-need" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="edit-requirement-frequency-of-use">Frequency of use (0–3)</label>
+                  <select id="edit-requirement-frequency-of-use" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="0">0</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="edit-requirement-detectability">Detectability (1–3)</label>
+                  <select id="edit-requirement-detectability" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="edit-requirement-remediation">Remediation (1–4)</label>
+                  <select id="edit-requirement-remediation" class="risk-factor-select">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group risk-value-display-wrapper">
+                <label>Risk value</label>
+                <p id="edit-requirement-risk-value-display" class="risk-value-display text-muted">—</p>
               </div>
             </div>
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Save User Requirement</button>
+              <button type="submit" class="btn btn-primary">Save Requirement</button>
               <button type="button" id="cancel-edit-requirement-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
@@ -523,14 +712,20 @@
         <!-- Search and Filter Controls -->
         <div class="tasks-controls mb-4">
           <div class="tasks-search-filter">
-            <input type="text" id="requirement-search" class="task-search-input" placeholder="Search user requirements...">
+            <input type="text" id="requirement-search" class="task-search-input" placeholder="Search requirements...">
             <select id="requirement-filter-project" class="task-filter-select">
-              <option value="">All Projects</option>
+              <option value="">All Initiatives</option>
             </select>
-            <select id="requirement-filter-milestone" class="task-filter-select">
+            <select id="requirement-filter-type" class="task-filter-select">
+              <option value="">All Types</option>
+              <option value="user">User</option>
+              <option value="system">System</option>
+              <option value="admin">Admin</option>
+            </select>
+            <select id="requirement-filter-milestone" class="task-filter-select" style="display: none;">
               <option value="">All Milestones</option>
             </select>
-            <select id="requirement-filter-priority" class="task-filter-select">
+            <select id="requirement-filter-priority" class="task-filter-select" style="display: none;">
               <option value="">All Priorities</option>
             </select>
           </div>
@@ -614,7 +809,7 @@
           <div class="tasks-search-filter">
             <input type="text" id="functional-requirement-search" class="task-search-input" placeholder="Search functional requirements...">
             <select id="functional-requirement-filter-project" class="task-filter-select">
-              <option value="">All Projects</option>
+              <option value="">All Initiatives</option>
             </select>
           </div>
           <div class="table-actions">
@@ -637,7 +832,7 @@
         <div class="tasks-controls progress-filters mb-4">
           <div class="tasks-search-filter progress-filter-row">
             <select id="progress-filter-project" class="task-filter-select">
-              <option value="">All Projects</option>
+              <option value="">All Initiatives</option>
             </select>
             <select id="progress-filter-milestone" class="task-filter-select">
               <option value="">All Milestones</option>
@@ -747,6 +942,25 @@
               </div>
             </form>
             <div id="users-list" class="metadata-list"></div>
+          </div>
+
+          <!-- Stakeholders Section -->
+          <div class="settings-section">
+            <div class="settings-section-header">
+              <h3>Stakeholders</h3>
+              <button class="btn btn-primary btn-sm" id="add-stakeholder-btn">+ Add Stakeholder</button>
+            </div>
+            <form id="add-stakeholder-form" class="form-card" style="display: none;">
+              <div class="form-group">
+                <label for="stakeholder-name">Stakeholder Name *</label>
+                <input type="text" id="stakeholder-name" required placeholder="Enter stakeholder name">
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Add Stakeholder</button>
+                <button type="button" id="cancel-stakeholder-btn" class="btn btn-secondary btn-sm">Cancel</button>
+              </div>
+            </form>
+            <div id="stakeholders-list" class="metadata-list"></div>
           </div>
 
           <!-- Priorities Section -->

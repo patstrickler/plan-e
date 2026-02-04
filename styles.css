@@ -2351,3 +2351,66 @@ body {
     max-width: 120px;
   }
 }
+
+/* Risk assessment (T0085) */
+.risk-assessment-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.risk-assessment-heading {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+.risk-assessment-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+}
+.risk-assessment-row .form-group {
+  min-width: 0;
+}
+.risk-value-display-wrapper {
+  margin-top: 0.5rem;
+}
+.risk-value-display {
+  font-weight: 600;
+  margin: 0;
+}
+.risk-assessment-inline-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  align-self: center;
+  margin-right: 0.5rem;
+}
+.risk-factor-inline {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.risk-factor-inline label {
+  font-size: 0.7rem;
+  display: block;
+  margin-bottom: 0.15rem;
+}
+.risk-factor-inline select {
+  min-width: 2.5rem;
+  padding: 0.2rem 0.35rem;
+}
+.risk-value-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0;
+}
+.risk-value-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.requirement-edit-risk-value-inline {
+  font-weight: 600;
+  margin: 0;
+}
+.requirement-risk-value-cell {
+  white-space: nowrap;
+}

@@ -1,14 +1,32 @@
 const STORAGE_KEY = 'plan-e-data';
 const METADATA_KEY = 'plan-e-metadata';
 
-// Migrate old task format to new format
-function migrateTask(task, projectId) {
-  // If task already has new format, return as is
-  if (task.status && task.projectId) {
-    return task;
+/**
+ * Compute Risk Value (Rv) from T0085-style risk assessment factors.
+ * Rv = (Data Integrity Risk)² × Security Risk × Regression Need × Frequency of Use × Detectability × Remediation
+ * Returns { riskValue, riskClassification } when all six factors are set; otherwise { riskValue: undefined }.
+ * Classification is omitted in v1 (no thresholds defined).
+ */
+export function computeRiskValue(riskAssessment) {
+  if (!riskAssessment || typeof riskAssessment !== 'object') {
+    return { riskValue: undefined };
   }
-  
-  // Migrate from old format
+  const di = riskAssessment.dataIntegrityRisk;
+  const sec = riskAssessment.securityRisk;
+  const reg = riskAssessment.regressionNeed;
+  const freq = riskAssessment.frequencyOfUse;
+  const det = riskAssessment.detectability;
+  const rem = riskAssessment.remediation;
+  const hasAll =
+    typeof di === 'number' && typeof sec === 'number' && typeof reg === 'number' &&
+    typeof freq === 'number' && typeof det === 'number' && typeof rem === 'number';
+  if (!hasAll) return { riskValue: undefined };
+  const rv = Math.round((di * di) * sec * reg * freq * det * rem);
+  return { riskValue: rv };
+}
+
+// Migrate old task format to new format
+function migrateTask(task, projectId, requirementIdsInProject) {
   const migrated = {
     ...task,
     projectId: task.projectId || projectId,
@@ -17,48 +35,126 @@ function migrateTask(task, projectId) {
     assignedResource: task.assignedResource || undefined,
     startDate: task.startDate || undefined,
     completedDate: task.completedDate || (task.completed ? task.updatedAt : undefined),
+    requirementId: task.requirementId ?? undefined,
   };
-  
-  // Remove old completed field if it exists
+  if (task.linkedFunctionalRequirement && requirementIdsInProject && requirementIdsInProject.has(task.linkedFunctionalRequirement)) {
+    migrated.requirementId = task.linkedFunctionalRequirement;
+  }
   delete migrated.completed;
-  
+  delete migrated.linkedFunctionalRequirement;
   return migrated;
+}
+
+function ensureBacklogMilestone(project) {
+  if (!project.milestones || project.milestones.length === 0) {
+    const backlog = {
+      id: `milestone-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      projectId: project.id,
+      title: 'Backlog',
+      description: undefined,
+      targetDate: undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tasks: [],
+    };
+    project.milestones = [backlog];
+  }
+  return project;
+}
+
+function migrateObjectives(project) {
+  if (!project.objectives) {
+    project.objectives = [];
+    return project;
+  }
+  if (Array.isArray(project.objectives) && project.objectives.length > 0) {
+    const first = project.objectives[0];
+    if (typeof first === 'string') {
+      project.objectives = project.objectives.map((text, i) => ({
+        id: `objective-${project.id}-${i}-${Date.now()}`,
+        name: text,
+        description: '',
+        priority: '',
+      }));
+    }
+  }
+  return project;
+}
+
+function mergeRequirementsAndFunctional(project) {
+  const uat = (project.requirements || []).map(r => ({
+    ...r,
+    projectId: project.id,
+    type: 'user',
+    objectiveId: undefined,
+    risk: r.risk ?? undefined,
+    trackingId: r.trackingId ?? undefined,
+    riskAssessment: r.riskAssessment ?? undefined,
+    riskValue: r.riskValue ?? undefined,
+  }));
+  const frs = (project.functionalRequirements || []).map(fr => ({
+    id: fr.id,
+    projectId: project.id,
+    title: fr.title,
+    description: fr.description,
+    type: 'system',
+    objectiveId: undefined,
+    risk: fr.risk ?? undefined,
+    trackingId: undefined,
+    riskAssessment: fr.riskAssessment ?? undefined,
+    riskValue: fr.riskValue ?? undefined,
+    createdAt: fr.createdAt,
+    updatedAt: fr.updatedAt,
+  }));
+  return [...uat, ...frs];
 }
 
 function migrateData(data) {
   if (!data || !data.projects) {
     return { projects: [] };
   }
-  
+
   const migrated = {
-    projects: data.projects.map((project) => ({
-      ...project,
-      milestones: project.milestones?.map((milestone) => ({
+    projects: data.projects.map((project) => {
+      let p = {
+        ...project,
+        problemStatement: project.problemStatement ?? '',
+        strategy: project.strategy ?? '',
+        objectives: project.objectives ?? [],
+        owner: project.owner ?? undefined,
+        devLead: project.devLead ?? undefined,
+        qaLead: project.qaLead ?? undefined,
+        stakeholders: Array.isArray(project.stakeholders) ? project.stakeholders : [],
+        milestones: project.milestones || [],
+        requirements: project.requirements ?? [],
+        functionalRequirements: project.functionalRequirements ?? [],
+      };
+      p = migrateObjectives(p);
+      p = ensureBacklogMilestone(p);
+      if (p.functionalRequirements && p.functionalRequirements.length > 0) {
+        p.requirements = mergeRequirementsAndFunctional(p);
+        delete p.functionalRequirements;
+      } else if (Array.isArray(p.requirements) && p.requirements.length > 0) {
+        p.requirements = (p.requirements || []).map(r => ({
+          ...r,
+          projectId: p.id,
+          type: r.type ?? 'user',
+          objectiveId: r.objectiveId ?? undefined,
+          risk: r.risk ?? undefined,
+          riskAssessment: r.riskAssessment ?? undefined,
+          riskValue: r.riskValue ?? undefined,
+        }));
+      }
+      const reqIds = new Set((p.requirements || []).map(r => r.id));
+      p.milestones = (p.milestones || []).map((milestone) => ({
         ...milestone,
-        tasks: milestone.tasks?.map((task) => migrateTask(task, project.id)) || [],
-      })) || [],
-      requirements: project.requirements || [],
-      functionalRequirements: project.functionalRequirements || [],
-    })),
+        tasks: (milestone.tasks || []).map((task) => migrateTask(task, p.id, reqIds)),
+      }));
+      return p;
+    }),
   };
-  
+
   return migrated;
-}
-
-function deriveMilestoneIdForFunctionalRequirement(project, linkedUserRequirements = []) {
-  if (!project || !project.requirements) {
-    return undefined;
-  }
-
-  const requirementIds = Array.isArray(linkedUserRequirements) ? linkedUserRequirements : [];
-  for (const reqId of requirementIds) {
-    const requirement = project.requirements.find(r => r.id === reqId);
-    if (requirement && requirement.milestoneId) {
-      return requirement.milestoneId;
-    }
-  }
-
-  return undefined;
 }
 
 function readData() {
@@ -113,11 +209,18 @@ export function createProject(project) {
     id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    problemStatement: project.problemStatement ?? '',
+    strategy: project.strategy ?? '',
+    objectives: project.objectives ?? [],
+    owner: project.owner ?? undefined,
+    devLead: project.devLead ?? undefined,
+    qaLead: project.qaLead ?? undefined,
+    stakeholders: Array.isArray(project.stakeholders) ? project.stakeholders : [],
     milestones: [],
     requirements: [],
-    functionalRequirements: [],
   };
   data.projects.push(newProject);
+  ensureBacklogMilestone(newProject);
   writeData(data);
   return newProject;
 }
@@ -142,6 +245,51 @@ export function deleteProject(id) {
   data.projects = data.projects.filter(p => p.id !== id);
   writeData(data);
   return data.projects.length < initialLength;
+}
+
+export function createObjective(projectId, objective) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project) throw new Error('Project not found');
+  if (!project.objectives) project.objectives = [];
+  const newObjective = {
+    id: `objective-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: objective.name ?? '',
+    description: objective.description ?? '',
+    priority: objective.priority ?? '',
+    ...objective,
+  };
+  project.objectives.push(newObjective);
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return newObjective;
+}
+
+export function updateObjective(projectId, objectiveId, updates) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project || !project.objectives) return null;
+  const idx = project.objectives.findIndex(o => o.id === objectiveId);
+  if (idx === -1) return null;
+  project.objectives[idx] = {
+    ...project.objectives[idx],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return project.objectives[idx];
+}
+
+export function deleteObjective(projectId, objectiveId) {
+  const data = readData();
+  const project = data.projects.find(p => p.id === projectId);
+  if (!project || !project.objectives) return false;
+  const initialLength = project.objectives.length;
+  project.objectives = project.objectives.filter(o => o.id !== objectiveId);
+  project.updatedAt = new Date().toISOString();
+  writeData(data);
+  return project.objectives.length < initialLength;
 }
 
 export function createMilestone(projectId, milestone) {
@@ -208,10 +356,11 @@ export function createTask(projectId, milestoneId, task) {
     milestoneId,
     projectId,
     status: 'not-started',
-    linkedFunctionalRequirement: task.linkedFunctionalRequirement || undefined,
+    requirementId: task.requirementId ?? undefined,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+  delete newTask.linkedFunctionalRequirement;
   
   milestone.tasks.push(newTask);
   milestone.updatedAt = new Date().toISOString();
@@ -331,14 +480,24 @@ export function createRequirement(projectId, requirement) {
     project.requirements = [];
   }
   
+  const riskAssessment = requirement.riskAssessment ?? undefined;
+  const { riskValue } = computeRiskValue(riskAssessment);
   const newRequirement = {
     ...requirement,
     id: `requirement-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     projectId,
+    type: requirement.type ?? 'user',
+    objectiveId: requirement.objectiveId ?? undefined,
+    risk: requirement.risk ?? undefined,
+    trackingId: requirement.trackingId ?? undefined,
+    riskAssessment,
+    riskValue: riskValue ?? requirement.riskValue ?? undefined,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  
+  delete newRequirement.milestoneId;
+  delete newRequirement.linkedUserRequirements;
+
   project.requirements.push(newRequirement);
   project.updatedAt = new Date().toISOString();
   writeData(data);
@@ -353,11 +512,20 @@ export function updateRequirement(projectId, requirementId, updates) {
   const requirementIndex = project.requirements.findIndex(r => r.id === requirementId);
   if (requirementIndex === -1) return null;
   
-  project.requirements[requirementIndex] = {
-    ...project.requirements[requirementIndex],
+  const current = project.requirements[requirementIndex];
+  const riskAssessment = updates.riskAssessment !== undefined ? updates.riskAssessment : current.riskAssessment;
+  const { riskValue } = computeRiskValue(riskAssessment);
+  const merged = {
+    ...current,
     ...updates,
     updatedAt: new Date().toISOString(),
   };
+  if (riskAssessment !== undefined) {
+    merged.riskAssessment = riskAssessment;
+    merged.riskValue = riskValue ?? undefined;
+  }
+  
+  project.requirements[requirementIndex] = merged;
   project.updatedAt = new Date().toISOString();
   writeData(data);
   return project.requirements[requirementIndex];
@@ -375,86 +543,9 @@ export function deleteRequirement(projectId, requirementId) {
   return project.requirements.length < initialLength;
 }
 
-// Functional Requirements
+/** @deprecated Use getAllRequirements() - unified model. Returns same list for compatibility. */
 export function getAllFunctionalRequirements() {
-  const data = readData();
-  const functionalRequirements = [];
-  
-  data.projects.forEach(project => {
-    (project.functionalRequirements || []).forEach(functionalRequirement => {
-      functionalRequirements.push({ ...functionalRequirement, project });
-    });
-  });
-  
-  return functionalRequirements;
-}
-
-export function createFunctionalRequirement(projectId, functionalRequirement) {
-  const data = readData();
-  const project = data.projects.find(p => p.id === projectId);
-  if (!project) throw new Error('Project not found');
-  
-  if (!project.functionalRequirements) {
-    project.functionalRequirements = [];
-  }
-  
-  const linkedUserRequirements = Array.isArray(functionalRequirement.linkedUserRequirements)
-    ? functionalRequirement.linkedUserRequirements
-    : [];
-  const milestoneId = deriveMilestoneIdForFunctionalRequirement(project, linkedUserRequirements);
-
-  const newFunctionalRequirement = {
-    ...functionalRequirement,
-    id: `functional-requirement-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    projectId,
-    linkedUserRequirements,
-    milestoneId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  
-  project.functionalRequirements.push(newFunctionalRequirement);
-  project.updatedAt = new Date().toISOString();
-  writeData(data);
-  return newFunctionalRequirement;
-}
-
-export function updateFunctionalRequirement(projectId, functionalRequirementId, updates) {
-  const data = readData();
-  const project = data.projects.find(p => p.id === projectId);
-  if (!project || !project.functionalRequirements) return null;
-  
-  const functionalRequirementIndex = project.functionalRequirements.findIndex(fr => fr.id === functionalRequirementId);
-  if (functionalRequirementIndex === -1) return null;
-  
-  const existingFunctionalRequirement = project.functionalRequirements[functionalRequirementIndex];
-  const mergedLinkedUserRequirements = Array.isArray(updates.linkedUserRequirements)
-    ? updates.linkedUserRequirements
-    : existingFunctionalRequirement.linkedUserRequirements || [];
-  const milestoneId = deriveMilestoneIdForFunctionalRequirement(project, mergedLinkedUserRequirements);
-
-  project.functionalRequirements[functionalRequirementIndex] = {
-    ...existingFunctionalRequirement,
-    ...updates,
-    linkedUserRequirements: mergedLinkedUserRequirements,
-    milestoneId,
-    updatedAt: new Date().toISOString(),
-  };
-  project.updatedAt = new Date().toISOString();
-  writeData(data);
-  return project.functionalRequirements[functionalRequirementIndex];
-}
-
-export function deleteFunctionalRequirement(projectId, functionalRequirementId) {
-  const data = readData();
-  const project = data.projects.find(p => p.id === projectId);
-  if (!project || !project.functionalRequirements) return false;
-  
-  const initialLength = project.functionalRequirements.length;
-  project.functionalRequirements = project.functionalRequirements.filter(fr => fr.id !== functionalRequirementId);
-  project.updatedAt = new Date().toISOString();
-  writeData(data);
-  return project.functionalRequirements.length < initialLength;
+  return getAllRequirements();
 }
 
 // ============================================
@@ -465,6 +556,12 @@ function getDefaultMetadata() {
   return {
     workspaceName: 'Plan-E',
     users: [],
+    stakeholders: [],
+    riskLevels: [
+      { id: 'low', label: 'Low', order: 1, color: '#10b981' },
+      { id: 'medium', label: 'Medium', order: 2, color: '#eab308' },
+      { id: 'high', label: 'High', order: 3, color: '#ef4444' },
+    ],
     priorities: [
       { id: 'low', label: 'Low', order: 1, color: '#10b981' },
       { id: 'medium', label: 'Medium', order: 2, color: '#eab308' },
@@ -554,7 +651,19 @@ function migrateMetadata(metadata) {
       };
     });
   }
-  
+
+  if (!migrated.stakeholders) {
+    migrated.stakeholders = [];
+  }
+  if (!migrated.riskLevels || migrated.riskLevels.length === 0) {
+    migrated.riskLevels = defaultMetadata.riskLevels;
+  } else {
+    migrated.riskLevels = migrated.riskLevels.map(r => {
+      const d = defaultMetadata.riskLevels.find(dr => dr.id === r.id);
+      return { ...r, color: r.color || d?.color || '#71717a' };
+    });
+  }
+
   return migrated;
 }
 
@@ -636,6 +745,56 @@ export function deleteUser(userId) {
   metadata.users = metadata.users.filter(u => u.id !== userId);
   writeMetadata(metadata);
   return metadata.users.length < initialLength;
+}
+
+// Stakeholders
+export function getStakeholders() {
+  const metadata = readMetadata();
+  return metadata.stakeholders || [];
+}
+
+export function addStakeholder(name) {
+  const metadata = readMetadata();
+  if (!metadata.stakeholders) {
+    metadata.stakeholders = [];
+  }
+  const newStakeholder = {
+    id: `stakeholder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: (typeof name === 'string' ? name : '').trim(),
+    createdAt: new Date().toISOString(),
+  };
+  metadata.stakeholders.push(newStakeholder);
+  writeMetadata(metadata);
+  return newStakeholder;
+}
+
+export function updateStakeholder(stakeholderId, updates) {
+  const metadata = readMetadata();
+  if (!metadata.stakeholders) return null;
+  const idx = metadata.stakeholders.findIndex(s => s.id === stakeholderId);
+  if (idx === -1) return null;
+  metadata.stakeholders[idx] = {
+    ...metadata.stakeholders[idx],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+  writeMetadata(metadata);
+  return metadata.stakeholders[idx];
+}
+
+export function deleteStakeholder(stakeholderId) {
+  const metadata = readMetadata();
+  if (!metadata.stakeholders) return false;
+  const initialLength = metadata.stakeholders.length;
+  metadata.stakeholders = metadata.stakeholders.filter(s => s.id !== stakeholderId);
+  writeMetadata(metadata);
+  return metadata.stakeholders.length < initialLength;
+}
+
+// Risk levels (for requirements)
+export function getRiskLevels() {
+  const metadata = readMetadata();
+  return (metadata.riskLevels || []).sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 // Priorities

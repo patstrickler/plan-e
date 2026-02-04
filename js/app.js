@@ -4,18 +4,19 @@ import * as storage from './storage.js';
 let currentView = 'projects';
 const DEFAULT_VIEW = 'projects';
 const VIEW_HASH_MAP = {
-  projects: '#projects',
-  milestones: '#milestones',
+  projects: '#initiatives',
   tasks: '#tasks',
   capacity: '#capacity',
   progress: '#progress',
   requirements: '#requirements',
-  'functional-requirements': '#functional-requirements',
   settings: '#settings',
 };
 const HASH_VIEW_MAP = Object.fromEntries(
   Object.entries(VIEW_HASH_MAP).map(([view, hash]) => [hash.toLowerCase(), view])
 );
+// Redirect legacy hashes to initiatives
+HASH_VIEW_MAP['#projects'] = 'projects';
+HASH_VIEW_MAP['#milestones'] = 'projects';
 const state = {
   projects: [],
   expandedProjects: new Set(),
@@ -46,6 +47,7 @@ const state = {
   milestoneSortDirection: 'asc',
   requirementSearch: '',
   requirementFilterProject: '',
+  requirementFilterType: '',
   requirementFilterPriority: '',
   requirementFilterMilestone: '',
   requirementSortColumn: '',
@@ -112,6 +114,7 @@ const elements = {
   newFunctionalRequirementForm: document.getElementById('new-functional-requirement-form'),
   // Settings elements
   usersList: document.getElementById('users-list'),
+  stakeholdersList: document.getElementById('stakeholders-list'),
   prioritiesList: document.getElementById('priorities-list'),
   statusesList: document.getElementById('statuses-list'),
   effortLevelsList: document.getElementById('effort-levels-list'),
@@ -124,27 +127,27 @@ const progressDatePickers = { start: null, end: null };
 
 const csvTemplates = {
   milestones: {
-    headers: ['Project Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)'],
+    headers: ['Initiative Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)'],
     sampleRow: ['Plan-E Platform', 'Platform Launch', 'Deliver MVP functionality', '2025-12-31'],
   },
   requirements: {
-    headers: ['Project Title', 'Tracking ID', 'Milestone Title', 'Requirement Title', 'Acceptance Criteria', 'Priority'],
-    sampleRow: ['Plan-E Platform', 'URS-101', 'Platform Launch', 'Users can sign in', 'Allow secure authentication before showing dashboards', 'High'],
+    headers: ['Initiative Title', 'Tracking ID', 'Objective Name', 'Type', 'Requirement Title', 'Acceptance Criteria', 'Risk'],
+    sampleRow: ['Plan-E Platform', 'REQ-101', 'Improve security', 'user', 'Users can sign in', 'Allow secure authentication before showing dashboards', 'high'],
   },
   functionalRequirements: {
-    headers: ['Project Title', 'Functional Requirement Title', 'Description', 'Linked User Requirements (semicolon separated)'],
-    sampleRow: ['Plan-E Platform', 'User authentication API', 'Implement OAuth flow for sign-in', 'Users can sign in;Users can reset password'],
+    headers: ['Initiative Title', 'Requirement Title', 'Description', 'Type'],
+    sampleRow: ['Plan-E Platform', 'User authentication API', 'Implement OAuth flow for sign-in', 'system'],
   },
   tasks: {
-    headers: ['Project Title', 'Functional Requirement Title', 'Milestone Title', 'Task Title', 'Description', 'Effort Level', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'],
-    sampleRow: ['Plan-E Platform', 'User authentication API', 'Platform Launch', 'Create sign-in endpoint', 'Build endpoint to validate credentials', 'Medium', 'Jane Doe', '2025-12-15', 'In Progress'],
+    headers: ['Initiative Title', 'Milestone Title', 'Requirement Title', 'Task Title', 'Description', 'Effort Level', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'],
+    sampleRow: ['Plan-E Platform', 'Platform Launch', 'User authentication API', 'Create sign-in endpoint', 'Build endpoint to validate credentials', 'Medium', 'Jane Doe', '2025-12-15', 'In Progress'],
   },
 };
 
-const milestoneExportHeaders = ['Project Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)', 'Tasks Completed', 'Total Tasks', 'Progress (%)'];
-const requirementExportHeaders = ['Project Title', 'Tracking ID', 'Milestone Title', 'Requirement Title', 'Acceptance Criteria', 'Priority', 'Linked Functional Requirements', 'Linked Tasks'];
-const functionalRequirementExportHeaders = ['Project Title', 'Functional Requirement Title', 'Description', 'Linked User Requirements', 'Derived Milestone Title', 'Linked Tasks', 'Progress (%)'];
-const taskExportHeaders = ['Project Title', 'Milestone Title', 'Functional Requirement Title', 'Task Title', 'Description', 'Effort', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'];
+const milestoneExportHeaders = ['Initiative Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)', 'Tasks Completed', 'Total Tasks', 'Progress (%)'];
+const requirementExportHeaders = ['Initiative Title', 'Tracking ID', 'Objective', 'Type', 'Requirement Title', 'Acceptance Criteria', 'Risk', 'Linked Tasks', 'Effort (pts)'];
+const functionalRequirementExportHeaders = ['Initiative Title', 'Requirement Title', 'Description', 'Type', 'Linked Tasks', 'Progress (%)'];
+const taskExportHeaders = ['Initiative Title', 'Milestone Title', 'Requirement Title', 'Task Title', 'Description', 'Effort', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'];
 
 function escapeCsvValue(value) {
   const stringValue = value === undefined || value === null ? '' : String(value);
@@ -419,16 +422,16 @@ function initializeViewFromHash() {
 function showView(viewName) {
   currentView = viewName;
   if (elements.projectsView) elements.projectsView.style.display = viewName === 'projects' ? 'block' : 'none';
-  if (elements.milestonesView) elements.milestonesView.style.display = viewName === 'milestones' ? 'block' : 'none';
+  if (elements.milestonesView) elements.milestonesView.style.display = 'none';
   if (elements.tasksView) elements.tasksView.style.display = viewName === 'tasks' ? 'block' : 'none';
   if (elements.capacityView) elements.capacityView.style.display = viewName === 'capacity' ? 'block' : 'none';
   if (elements.progressView) elements.progressView.style.display = viewName === 'progress' ? 'block' : 'none';
   if (elements.requirementsView) elements.requirementsView.style.display = viewName === 'requirements' ? 'block' : 'none';
-  if (elements.functionalRequirementsView) elements.functionalRequirementsView.style.display = viewName === 'functional-requirements' ? 'block' : 'none';
+  if (elements.functionalRequirementsView) elements.functionalRequirementsView.style.display = 'none';
   if (elements.settingsView) elements.settingsView.style.display = viewName === 'settings' ? 'block' : 'none';
   
-  if (viewName === 'milestones') {
-    renderMilestones();
+  if (viewName === 'projects') {
+    renderProjects();
   } else if (viewName === 'tasks') {
     renderTasks();
     renderCapacity();
@@ -438,8 +441,6 @@ function showView(viewName) {
     renderProgress();
   } else if (viewName === 'requirements') {
     renderRequirements();
-  } else if (viewName === 'functional-requirements') {
-    renderFunctionalRequirements();
   } else if (viewName === 'settings') {
     renderSettings();
   }
@@ -537,8 +538,12 @@ function setupEventListeners() {
     renderProgress();
   });
 
-  // Project form
+  // Initiative (project) form
   elements.newProjectBtn?.addEventListener('click', () => {
+    populateUserSelect('project-owner');
+    populateUserSelect('project-dev-lead');
+    populateUserSelect('project-qa-lead');
+    populateStakeholderMultiSelect('project-stakeholders');
     elements.newProjectForm.style.display = 'block';
     elements.newProjectBtn.style.display = 'none';
     document.getElementById('project-title').focus();
@@ -549,25 +554,45 @@ function setupEventListeners() {
     elements.newProjectBtn.style.display = 'block';
     document.getElementById('project-title').value = '';
     document.getElementById('project-description').value = '';
+    const problemEl = document.getElementById('project-problem');
+    const strategyEl = document.getElementById('project-strategy');
+    if (problemEl) problemEl.value = '';
+    if (strategyEl) strategyEl.value = '';
   });
 
   elements.newProjectForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const title = document.getElementById('project-title').value.trim();
     const description = document.getElementById('project-description').value.trim();
-    
+    const problemStatement = document.getElementById('project-problem')?.value?.trim() || '';
+    const strategy = document.getElementById('project-strategy')?.value?.trim() || '';
+    const owner = document.getElementById('project-owner')?.value || undefined;
+    const devLead = document.getElementById('project-dev-lead')?.value || undefined;
+    const qaLead = document.getElementById('project-qa-lead')?.value || undefined;
+    const stakeholdersEl = document.getElementById('project-stakeholders');
+    const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
     if (!title) return;
-    
     try {
-      storage.createProject({ title, description: description || undefined });
+      storage.createProject({
+        title,
+        description: description || undefined,
+        problemStatement,
+        strategy,
+        owner,
+        devLead,
+        qaLead,
+        stakeholders,
+      });
       document.getElementById('project-title').value = '';
       document.getElementById('project-description').value = '';
+      if (document.getElementById('project-problem')) document.getElementById('project-problem').value = '';
+      if (document.getElementById('project-strategy')) document.getElementById('project-strategy').value = '';
       elements.newProjectForm.style.display = 'none';
       elements.newProjectBtn.style.display = 'block';
       loadProjects();
     } catch (error) {
-      console.error('Failed to create project:', error);
-      alert('Failed to create project');
+      console.error('Failed to create initiative:', error);
+      alert('Failed to create initiative');
     }
   });
 
@@ -659,38 +684,45 @@ function setupEventListeners() {
   // Requirement form
   elements.newRequirementBtn?.addEventListener('click', () => {
     populateProjectSelect('requirement-project');
-    updateAllSelects(); // Populate priority selects
+    updateAllSelects(); // Populate risk and other selects
+    populateRiskSelect('requirement-risk');
+    clearRiskAssessmentForm('requirement-');
     elements.newRequirementForm.style.display = 'block';
     elements.newRequirementBtn.style.display = 'none';
     document.getElementById('requirement-title').focus();
   });
 
-  // Handle project change to populate milestones
+  // Handle project change to populate objectives
   document.getElementById('requirement-project')?.addEventListener('change', (e) => {
-    populateMilestoneSelect('requirement-milestone', e.target.value);
+    populateObjectiveSelect('requirement-objective', e.target.value);
   });
 
   document.getElementById('cancel-requirement-btn')?.addEventListener('click', () => {
     elements.newRequirementForm.style.display = 'none';
     elements.newRequirementBtn.style.display = 'block';
+    document.getElementById('requirement-tracking-id').value = '';
     document.getElementById('requirement-title').value = '';
     document.getElementById('requirement-description').value = '';
-    document.getElementById('requirement-priority').value = '';
-    document.getElementById('requirement-milestone').value = '';
-    const milestoneSelect = document.getElementById('requirement-milestone');
-    if (milestoneSelect) {
-      milestoneSelect.innerHTML = '<option value="">None</option>';
-    }
+    document.getElementById('requirement-type').value = 'user';
+    document.getElementById('requirement-risk').value = '';
+    clearRiskAssessmentForm('requirement-');
+    const objectiveSelect = document.getElementById('requirement-objective');
+    if (objectiveSelect) objectiveSelect.innerHTML = '<option value="">None</option>';
+  });
+  elements.newRequirementForm?.addEventListener('change', (e) => {
+    if (e.target.classList.contains('risk-factor-select')) updateRiskValueDisplay('requirement-');
   });
 
   elements.newRequirementForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const projectId = document.getElementById('requirement-project').value;
-    const milestoneId = document.getElementById('requirement-milestone').value;
+    const objectiveId = document.getElementById('requirement-objective').value || undefined;
+    const type = document.getElementById('requirement-type').value || 'user';
+    const risk = document.getElementById('requirement-risk').value || undefined;
     const trackingId = document.getElementById('requirement-tracking-id').value.trim();
     const title = document.getElementById('requirement-title').value.trim();
     const description = document.getElementById('requirement-description').value.trim();
-    const priority = document.getElementById('requirement-priority').value;
+    const riskAssessment = getRiskAssessmentFromFormIds('requirement-');
     
     if (!title || !projectId) return;
     
@@ -699,18 +731,20 @@ function setupEventListeners() {
         trackingId: trackingId || undefined,
         title, 
         description: description || undefined,
-        priority: priority || undefined,
-        milestoneId: milestoneId || undefined
+        objectiveId,
+        type,
+        risk,
+        riskAssessment: riskAssessment || undefined
       });
       document.getElementById('requirement-tracking-id').value = '';
       document.getElementById('requirement-title').value = '';
       document.getElementById('requirement-description').value = '';
-      document.getElementById('requirement-priority').value = '';
-      document.getElementById('requirement-milestone').value = '';
-      const milestoneSelect = document.getElementById('requirement-milestone');
-      if (milestoneSelect) {
-        milestoneSelect.innerHTML = '<option value="">None</option>';
-      }
+      document.getElementById('requirement-objective').value = '';
+      document.getElementById('requirement-type').value = 'user';
+      document.getElementById('requirement-risk').value = '';
+      const objectiveSelect = document.getElementById('requirement-objective');
+      if (objectiveSelect) objectiveSelect.innerHTML = '<option value="">None</option>';
+      clearRiskAssessmentForm('requirement-');
       elements.newRequirementForm.style.display = 'none';
       elements.newRequirementBtn.style.display = 'block';
       renderRequirements();
@@ -756,10 +790,10 @@ function setupEventListeners() {
     if (!title || !projectId) return;
     
     try {
-      storage.createFunctionalRequirement(projectId, { 
-        title, 
+      storage.createRequirement(projectId, {
+        title,
         description: description || undefined,
-        linkedUserRequirements: linkedUserRequirements || []
+        type: 'system'
       });
       document.getElementById('functional-requirement-title').value = '';
       document.getElementById('functional-requirement-description').value = '';
@@ -773,8 +807,8 @@ function setupEventListeners() {
       renderFunctionalRequirements();
       renderRequirements();
     } catch (error) {
-      console.error('Failed to create functional requirement:', error);
-      alert('Failed to create functional requirement');
+      console.error('Failed to create requirement:', error);
+      alert('Failed to create requirement');
     }
   });
 
@@ -786,7 +820,7 @@ function setupEventListeners() {
       populateProjectSelect('task-project');
       updateAllSelects(); // Populate effort and resource selects
       // Clear and reset functional requirement select
-      const functionalReqSelect = document.getElementById('task-functional-requirement');
+      const functionalReqSelect = document.getElementById('task-requirement');
       if (functionalReqSelect) {
         functionalReqSelect.innerHTML = '<option value="">Select a project first</option>';
         functionalReqSelect.value = '';
@@ -824,7 +858,9 @@ function setupEventListeners() {
   }
 
   document.getElementById('task-project')?.addEventListener('change', (e) => {
-    populateFunctionalRequirementSelect('task-functional-requirement', e.target.value);
+    const projectId = e.target.value;
+    populateMilestoneSelect('task-milestone', projectId);
+    populateRequirementSelect('task-requirement', projectId);
   });
 
   const cancelTaskBtn = document.getElementById('cancel-task-btn');
@@ -845,11 +881,10 @@ function setupEventListeners() {
       if (projectSelect) {
         projectSelect.value = '';
       }
-      const functionalReqSelect = document.getElementById('task-functional-requirement');
-      if (functionalReqSelect) {
-        functionalReqSelect.innerHTML = '<option value="">Select a project first</option>';
-        functionalReqSelect.value = '';
-      }
+      const reqSelect = document.getElementById('task-requirement');
+      if (reqSelect) { reqSelect.innerHTML = '<option value="">Select an initiative first</option>'; reqSelect.value = ''; }
+      const milestoneSelect = document.getElementById('task-milestone');
+      if (milestoneSelect) { milestoneSelect.innerHTML = '<option value="">Select an initiative first</option>'; milestoneSelect.value = ''; }
       // Reset other selects
       const effortSelect = document.getElementById('task-effort');
       if (effortSelect) effortSelect.value = '';
@@ -889,7 +924,10 @@ function setupEventListeners() {
     // Populate selects
     populateProjectSelect('edit-task-project');
     document.getElementById('edit-task-project').value = task.projectId;
-    populateFunctionalRequirementSelect('edit-task-functional-requirement', task.projectId, task.linkedFunctionalRequirement || '');
+    populateMilestoneSelect('edit-task-milestone', task.projectId);
+    const editMilestoneSelect = document.getElementById('edit-task-milestone');
+    if (editMilestoneSelect) editMilestoneSelect.value = task.milestoneId || '';
+    populateRequirementSelect('edit-task-requirement', task.projectId, task.requirementId || '');
     
     updateAllSelects(); // Populate effort and resource selects
     setTimeout(() => {
@@ -1000,25 +1038,17 @@ function setupEventListeners() {
     document.getElementById('edit-requirement-tracking-id').value = requirement.trackingId || '';
     document.getElementById('edit-requirement-title').value = requirement.title || '';
     document.getElementById('edit-requirement-description').value = requirement.description || '';
+    document.getElementById('edit-requirement-type').value = requirement.type || 'user';
     
     // Populate project select
     populateProjectSelect('edit-requirement-project');
     document.getElementById('edit-requirement-project').value = requirement.projectId;
     
-    // Populate milestone select
-    populateMilestoneSelect('edit-requirement-milestone', requirement.projectId);
-    setTimeout(() => {
-      if (requirement.milestoneId) {
-        document.getElementById('edit-requirement-milestone').value = requirement.milestoneId;
-      }
-    }, 100);
-    
-    // Populate priority select
-    updateAllSelects();
-    setTimeout(() => {
-      const prioritySelect = document.getElementById('edit-requirement-priority');
-      if (prioritySelect) prioritySelect.value = requirement.priority || '';
-    }, 150);
+    // Populate objective and risk
+    populateObjectiveSelect('edit-requirement-objective', requirement.projectId, requirement.objectiveId);
+    populateRiskSelect('edit-requirement-risk');
+    const editRiskSelect = document.getElementById('edit-requirement-risk');
+    if (editRiskSelect && requirement.risk) editRiskSelect.value = requirement.risk;
     
     // Show form
     editRequirementForm.style.display = 'block';
@@ -1072,17 +1102,17 @@ function setupEventListeners() {
     const effortSelect = document.getElementById('edit-task-effort');
     const resourceSelect = document.getElementById('edit-task-resource');
     const editDueDateInput = document.getElementById('edit-task-due-date');
-    const functionalReqSelect = document.getElementById('edit-task-functional-requirement');
-    
+    const milestoneSelect = document.getElementById('edit-task-milestone');
+    const requirementSelect = document.getElementById('edit-task-requirement');
     const taskId = taskIdInput ? taskIdInput.value : '';
     const projectId = projectIdInput ? projectIdInput.value : '';
-    const originalMilestoneId = milestoneIdInput ? milestoneIdInput.value : '';
+    const milestoneId = milestoneSelect ? milestoneSelect.value : (milestoneIdInput ? milestoneIdInput.value : '');
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const status = statusSelect ? statusSelect.value : '';
     const effort = effortSelect ? effortSelect.value : '';
     const resource = resourceSelect ? resourceSelect.value : '';
-    const linkedFunctionalRequirement = functionalReqSelect ? functionalReqSelect.value : '';
+    const requirementId = requirementSelect ? requirementSelect.value : '';
     let dueDate = '';
     if (editDueDateInput) {
       if (editDueDateInput.flatpickr && editDueDateInput.flatpickr.input) {
@@ -1091,17 +1121,7 @@ function setupEventListeners() {
         dueDate = editDueDateInput.value || '';
       }
     }
-    
-    let milestoneId = '';
-    if (linkedFunctionalRequirement) {
-      milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, linkedFunctionalRequirement);
-    }
-    if (!milestoneId) {
-      milestoneId = originalMilestoneId;
-    }
-    
     if (!title || !projectId || !milestoneId) return;
-    
     try {
       storage.updateTask(projectId, milestoneId, taskId, {
         title,
@@ -1110,12 +1130,12 @@ function setupEventListeners() {
         effortLevel: effort || undefined,
         assignedResource: resource || undefined,
         dueDate: dueDate || undefined,
-        linkedFunctionalRequirement: linkedFunctionalRequirement || undefined,
+        requirementId: requirementId || undefined,
       });
       editTaskForm.style.display = 'none';
       renderTasks();
-      renderFunctionalRequirements();
       renderRequirements();
+      if (currentView === 'projects') renderProjects();
     } catch (error) {
       console.error('Failed to update task:', error);
       alert('Failed to update task');
@@ -1124,7 +1144,8 @@ function setupEventListeners() {
 
   document.getElementById('edit-task-project')?.addEventListener('change', (e) => {
     if (e && e.target && e.target.value !== undefined) {
-      populateFunctionalRequirementSelect('edit-task-functional-requirement', e.target.value);
+      populateMilestoneSelect('edit-task-milestone', e.target.value);
+    populateRequirementSelect('edit-task-requirement', e.target.value);
     }
   });
 
@@ -1205,8 +1226,9 @@ function setupEventListeners() {
     const titleInput = document.getElementById('edit-requirement-title');
     const descriptionInput = document.getElementById('edit-requirement-description');
     const projectSelect = document.getElementById('edit-requirement-project');
-    const milestoneSelect = document.getElementById('edit-requirement-milestone');
-    const prioritySelect = document.getElementById('edit-requirement-priority');
+    const objectiveSelect = document.getElementById('edit-requirement-objective');
+    const typeSelect = document.getElementById('edit-requirement-type');
+    const riskSelect = document.getElementById('edit-requirement-risk');
     
     const requirementId = requirementIdInput ? requirementIdInput.value : '';
     const projectId = projectIdInput ? projectIdInput.value : '';
@@ -1214,19 +1236,25 @@ function setupEventListeners() {
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const newProjectId = projectSelect ? projectSelect.value : projectId;
-    const milestoneId = milestoneSelect ? milestoneSelect.value : '';
-    const priority = prioritySelect ? prioritySelect.value : '';
+    const objectiveId = objectiveSelect ? objectiveSelect.value || undefined : undefined;
+    const type = typeSelect ? typeSelect.value || 'user' : 'user';
+    const risk = riskSelect ? riskSelect.value || undefined : undefined;
     
     if (!title || !newProjectId || !requirementId) return;
     
+    const riskAssessment = getRiskAssessmentFromFormIds('edit-requirement-');
+    const updates = {
+      trackingId: trackingId || undefined,
+      title,
+      description: description || undefined,
+      objectiveId,
+      type,
+      risk,
+      riskAssessment: riskAssessment ?? null
+    };
+    
     try {
-      storage.updateRequirement(newProjectId, requirementId, {
-        trackingId: trackingId || undefined,
-        title,
-        description: description || undefined,
-        priority: priority || undefined,
-        milestoneId: milestoneId || undefined
-      });
+      storage.updateRequirement(newProjectId, requirementId, updates);
       if (editRequirementForm) editRequirementForm.style.display = 'none';
       renderRequirements();
       renderProjects();
@@ -1235,10 +1263,13 @@ function setupEventListeners() {
       alert('Failed to update requirement');
     }
   });
+  editRequirementForm?.addEventListener('change', (e) => {
+    if (e.target.classList.contains('risk-factor-select')) updateRiskValueDisplay('edit-requirement-');
+  });
 
   document.getElementById('edit-requirement-project')?.addEventListener('change', (e) => {
     if (e && e.target && e.target.value !== undefined) {
-      populateMilestoneSelect('edit-requirement-milestone', e.target.value);
+      populateObjectiveSelect('edit-requirement-objective', e.target.value);
     }
   });
 
@@ -1269,18 +1300,17 @@ function setupEventListeners() {
     if (!title || !newProjectId || !functionalRequirementId) return;
     
     try {
-      storage.updateFunctionalRequirement(newProjectId, functionalRequirementId, {
+      storage.updateRequirement(newProjectId, functionalRequirementId, {
         title,
-        description: description || undefined,
-        linkedUserRequirements: linkedUserRequirements || []
+        description: description || undefined
       });
       if (editFunctionalRequirementForm) editFunctionalRequirementForm.style.display = 'none';
       renderFunctionalRequirements();
       renderRequirements();
       renderProjects();
     } catch (error) {
-      console.error('Failed to update functional requirement:', error);
-      alert('Failed to update functional requirement');
+      console.error('Failed to update requirement:', error);
+      alert('Failed to update requirement');
     }
   });
 
@@ -1300,14 +1330,15 @@ function setupEventListeners() {
       const effortSelect = document.getElementById('task-effort');
       const resourceSelect = document.getElementById('task-resource');
       const dueDateInput = document.getElementById('task-due-date');
-      const functionalReqSelect = document.getElementById('task-functional-requirement');
-      
+      const milestoneSelect = document.getElementById('task-milestone');
+      const requirementSelect = document.getElementById('task-requirement');
       const projectId = projectSelect ? projectSelect.value : '';
+      const milestoneId = milestoneSelect ? milestoneSelect.value : getDefaultMilestoneIdForProject(projectId);
       const title = titleInput ? titleInput.value.trim() : '';
       const description = descriptionInput ? descriptionInput.value.trim() : '';
       const effort = effortSelect ? effortSelect.value : '';
       const resource = resourceSelect ? resourceSelect.value : '';
-      const linkedFunctionalRequirement = functionalReqSelect ? functionalReqSelect.value : '';
+      const requirementId = requirementSelect ? requirementSelect.value : '';
       let dueDate = '';
       if (dueDateInput) {
         if (dueDateInput.flatpickr && dueDateInput.flatpickr.input) {
@@ -1316,32 +1347,20 @@ function setupEventListeners() {
           dueDate = dueDateInput.value || '';
         }
       }
-      
-      // Validate required fields and show user feedback
       if (!title) {
         alert('Please enter a task title');
         if (titleInput) titleInput.focus();
         return;
       }
       if (!projectId) {
-        alert('Please select a project');
+        alert('Please select an initiative');
         if (projectSelect) projectSelect.focus();
         return;
       }
-
-      let milestoneId = '';
-      if (linkedFunctionalRequirement) {
-        milestoneId = getMilestoneIdFromFunctionalRequirement(projectId, linkedFunctionalRequirement);
-      }
       if (!milestoneId) {
-        milestoneId = getDefaultMilestoneIdForProject(projectId);
-      }
-
-      if (!milestoneId) {
-        alert('Please create a milestone for this project before adding a task.');
+        alert('Please select a milestone (or add one to the initiative first).');
         return;
       }
-      
       try {
         storage.createTask(projectId, milestoneId, {
           title,
@@ -1349,7 +1368,7 @@ function setupEventListeners() {
           effortLevel: effort || undefined,
           assignedResource: resource || undefined,
           dueDate: dueDate || undefined,
-          linkedFunctionalRequirement: linkedFunctionalRequirement || undefined,
+          requirementId: requirementId || undefined,
         });
         // Reset form fields using cached references
         if (titleInput) titleInput.value = '';
@@ -1360,10 +1379,8 @@ function setupEventListeners() {
         if (projectSelect) {
           projectSelect.value = '';
         }
-        if (functionalReqSelect) {
-          functionalReqSelect.innerHTML = '<option value="">Select a project first</option>';
-          functionalReqSelect.value = '';
-        }
+        if (requirementSelect) { requirementSelect.innerHTML = '<option value="">Select an initiative first</option>'; requirementSelect.value = ''; }
+        if (milestoneSelect) { milestoneSelect.innerHTML = '<option value="">Select an initiative first</option>'; milestoneSelect.value = ''; }
         // Clear due date
         if (window.taskDueDatePicker) {
           window.taskDueDatePicker.clear();
@@ -1372,8 +1389,8 @@ function setupEventListeners() {
         const taskBtn = document.getElementById('new-task-btn');
         if (taskBtn) taskBtn.style.display = 'block';
         renderTasks();
-        renderFunctionalRequirements();
         renderRequirements();
+        if (currentView === 'projects') renderProjects();
       } catch (error) {
         console.error('Failed to create task:', error);
         alert('Failed to create task: ' + (error.message || 'Unknown error'));
@@ -1447,8 +1464,7 @@ function setupMilestoneSearchAndFilterListeners() {
 function setupRequirementSearchAndFilterListeners() {
   const searchInput = document.getElementById('requirement-search');
   const projectFilter = document.getElementById('requirement-filter-project');
-  const milestoneFilter = document.getElementById('requirement-filter-milestone');
-  const priorityFilter = document.getElementById('requirement-filter-priority');
+  const typeFilter = document.getElementById('requirement-filter-type');
   
   searchInput?.addEventListener('input', (e) => {
     state.requirementSearch = e.target.value;
@@ -1458,27 +1474,12 @@ function setupRequirementSearchAndFilterListeners() {
   projectFilter?.addEventListener('change', (e) => {
     if (isUpdatingRequirementProjectFilter) return;
     state.requirementFilterProject = e.target.value;
-    // Clear milestone filter if it doesn't belong to the selected project
-    if (state.requirementFilterMilestone) {
-      const allMilestones = storage.getAllMilestones();
-      const selectedMilestone = allMilestones.find(m => m.id === state.requirementFilterMilestone);
-      if (!selectedMilestone || (e.target.value && selectedMilestone.projectId !== e.target.value)) {
-        state.requirementFilterMilestone = '';
-      }
-    }
     populateRequirementFilters();
     renderRequirements();
   });
   
-  milestoneFilter?.addEventListener('change', (e) => {
-    if (isUpdatingRequirementMilestoneFilter) return;
-    state.requirementFilterMilestone = e.target.value;
-    renderRequirements();
-  });
-  
-  priorityFilter?.addEventListener('change', (e) => {
-    if (isUpdatingRequirementPriorityFilter) return;
-    state.requirementFilterPriority = e.target.value;
+  typeFilter?.addEventListener('change', (e) => {
+    state.requirementFilterType = e.target.value;
     renderRequirements();
   });
 }
@@ -1637,25 +1638,28 @@ function exportMilestonesToCsv() {
 
 function exportRequirementsToCsv() {
   const requirements = sortRequirements(filterRequirements(storage.getAllRequirements()));
-  const priorities = storage.getPriorities();
-  const functionalRequirements = storage.getAllFunctionalRequirements();
+  const riskLevels = storage.getRiskLevels();
+  const effortLevels = storage.getEffortLevels();
+  const pointsMap = new Map(effortLevels.map(e => [e.id, Number(e.points) || 0]));
   const tasks = storage.getAllTasks();
   const rows = requirements.map(requirement => {
-    const milestoneTitle = requirement.milestoneId
-      ? (requirement.project?.milestones || []).find(milestone => milestone.id === requirement.milestoneId)?.title || ''
-      : '';
-    const priorityLabel = priorities.find(priority => priority.id === requirement.priority)?.label || '';
-    const linkedFunctionalRequirements = functionalRequirements.filter(fr => Array.isArray(fr.linkedUserRequirements) && fr.linkedUserRequirements.includes(requirement.id));
-    const linkedTasks = tasks.filter(task => linkedFunctionalRequirements.some(fr => fr.id === task.linkedFunctionalRequirement));
+    const project = requirement.project;
+    const objective = project?.objectives?.find(o => o.id === requirement.objectiveId);
+    const objectiveName = objective?.name || '';
+    const type = requirement.type || 'user';
+    const riskLabel = riskLevels.find(r => r.id === requirement.risk)?.label || '';
+    const linkedTasks = tasks.filter(t => t.requirementId === requirement.id);
+    const effortSum = linkedTasks.reduce((s, t) => s + (pointsMap.get(t.effortLevel) || 0), 0);
     return [
       requirement.project?.title || '',
       requirement.trackingId || '',
-      milestoneTitle,
+      objectiveName,
+      type,
       requirement.title || '',
       requirement.description || '',
-      priorityLabel,
-      linkedFunctionalRequirements.length,
+      riskLabel,
       linkedTasks.length,
+      effortSum || '',
     ];
   });
   downloadCsv('plan-e-requirements.csv', requirementExportHeaders, rows);
@@ -1663,25 +1667,16 @@ function exportRequirementsToCsv() {
 
 function exportFunctionalRequirementsToCsv() {
   const functionalRequirements = sortFunctionalRequirements(filterFunctionalRequirements(storage.getAllFunctionalRequirements()));
-  const allRequirements = storage.getAllRequirements();
   const tasks = storage.getAllTasks();
   const rows = functionalRequirements.map(fr => {
-    const linkedRequirementTitles = (fr.linkedUserRequirements || []).map(reqId => {
-      const requirement = allRequirements.find(req => req.projectId === fr.projectId && req.id === reqId);
-      return requirement?.title || '';
-    }).filter(Boolean);
-    const milestoneTitle = fr.milestoneId
-      ? (fr.project?.milestones || []).find(milestone => milestone.id === fr.milestoneId)?.title || ''
-      : '';
-    const linkedTasks = tasks.filter(task => task.linkedFunctionalRequirement === fr.id);
+    const linkedTasks = tasks.filter(task => task.requirementId === fr.id);
     const completedTasks = linkedTasks.filter(task => task.status === 'completed').length;
     const progress = linkedTasks.length > 0 ? Math.round((completedTasks / linkedTasks.length) * 100) : 0;
     return [
       fr.project?.title || '',
       fr.title || '',
       fr.description || '',
-      linkedRequirementTitles.join('; '),
-      milestoneTitle,
+      fr.type || 'system',
       linkedTasks.length,
       progress,
     ];
@@ -1695,13 +1690,13 @@ function exportTasksToCsv() {
   const functionalRequirements = storage.getAllFunctionalRequirements();
   const rows = sortTasks(filterTasks(storage.getAllTasks())).map(task => {
     const milestoneTitle = task.milestone?.title || '';
-    const functionalRequirement = functionalRequirements.find(fr => fr.id === task.linkedFunctionalRequirement);
+    const requirement = functionalRequirements.find(fr => fr.id === task.requirementId);
     const statusLabel = statuses.find(status => status.id === task.status)?.label || '';
     const effortLabel = effortLevels.find(e => e.id === task.effortLevel)?.label || '';
     return [
       task.project?.title || '',
       milestoneTitle,
-      functionalRequirement?.title || '',
+      requirement?.title || '',
       task.title || '',
       task.description || '',
       effortLabel,
@@ -1754,47 +1749,49 @@ function importRequirementsFromCsv(rows) {
   let imported = 0;
   rows.forEach((row, index) => {
     const rowNumber = index + 2;
-    const projectTitle = getRowValue(row, ['project title', 'project']).trim();
-    const milestoneTitle = getRowValue(row, ['milestone title', 'milestone']).trim();
+    const projectTitle = getRowValue(row, ['initiative title', 'project title', 'project']).trim();
+    const objectiveName = getRowValue(row, ['objective name', 'objective']).trim();
+    const typeValue = getRowValue(row, ['type']).trim().toLowerCase() || 'user';
     const requirementTitle = getRowValue(row, ['requirement title', 'title', 'requirement']).trim();
     const acceptanceCriteria = getRowValue(row, ['acceptance criteria', 'criteria', 'description']).trim();
-    const priorityValue = getRowValue(row, ['priority']).trim();
+    const riskValue = getRowValue(row, ['risk']).trim();
 
     if (!projectTitle || !requirementTitle) {
-      errors.push(`Row ${rowNumber}: Project and requirement title are required.`);
+      errors.push(`Row ${rowNumber}: Initiative and requirement title are required.`);
       return;
     }
 
     const project = findProjectByTitle(projectTitle);
     if (!project) {
-      errors.push(`Row ${rowNumber}: Project "${projectTitle}" not found.`);
+      errors.push(`Row ${rowNumber}: Initiative "${projectTitle}" not found.`);
       return;
     }
 
-    let milestoneId;
-    if (milestoneTitle) {
-      const milestone = findMilestoneByTitle(project.id, milestoneTitle);
-      if (milestone) {
-        milestoneId = milestone.id;
-      } else {
-        console.warn(`Row ${rowNumber}: Milestone "${milestoneTitle}" not found for project "${projectTitle}".`);
-      }
+    let objectiveId;
+    if (objectiveName && project.objectives) {
+      const objective = project.objectives.find(o => (o.name || '').toLowerCase() === objectiveName.toLowerCase());
+      if (objective) objectiveId = objective.id;
     }
 
-    const priorityId = resolvePriorityId(priorityValue);
-    if (priorityValue && !priorityId) {
-      console.warn(`Row ${rowNumber}: Priority "${priorityValue}" not recognized.`);
+    const type = ['user', 'system', 'admin'].includes(typeValue) ? typeValue : 'user';
+
+    let risk;
+    if (riskValue) {
+      const riskLevels = storage.getRiskLevels();
+      const riskLevel = riskLevels.find(r => r.label.toLowerCase() === riskValue.toLowerCase() || r.id === riskValue.toLowerCase());
+      if (riskLevel) risk = riskLevel.id;
     }
 
     const trackingId = getRowValue(row, ['tracking id', 'tracking identifier', 'tracking number']).trim();
-    
+
     try {
       storage.createRequirement(project.id, {
         trackingId: trackingId || undefined,
         title: requirementTitle,
         description: acceptanceCriteria || undefined,
-        priority: priorityId || undefined,
-        milestoneId: milestoneId || undefined,
+        objectiveId: objectiveId || undefined,
+        type,
+        risk: risk || undefined,
       });
       imported += 1;
     } catch (error) {
@@ -1810,45 +1807,34 @@ function importFunctionalRequirementsFromCsv(rows) {
   let imported = 0;
   rows.forEach((row, index) => {
     const rowNumber = index + 2;
-    const projectTitle = getRowValue(row, ['project title', 'project']).trim();
-    const title = getRowValue(row, ['functional requirement title', 'title']).trim();
+    const projectTitle = getRowValue(row, ['initiative title', 'project title', 'project']).trim();
+    const title = getRowValue(row, ['requirement title', 'functional requirement title', 'title']).trim();
     const description = getRowValue(row, ['description', 'details']).trim();
-    const linkedUserRequirementsValue = getRowValue(row, ['linked user requirements', 'linked requirements']).trim();
+    const typeValue = getRowValue(row, ['type']).trim().toLowerCase() || 'system';
 
     if (!projectTitle || !title) {
-      errors.push(`Row ${rowNumber}: Project and functional requirement title are required.`);
+      errors.push(`Row ${rowNumber}: Initiative and requirement title are required.`);
       return;
     }
 
     const project = findProjectByTitle(projectTitle);
     if (!project) {
-      errors.push(`Row ${rowNumber}: Project "${projectTitle}" not found.`);
+      errors.push(`Row ${rowNumber}: Initiative "${projectTitle}" not found.`);
       return;
     }
 
-    const linkedRequirementTitles = linkedUserRequirementsValue
-      ? linkedUserRequirementsValue.split(/[,;]+/).map(value => value.trim()).filter(Boolean)
-      : [];
-
-    const linkedRequirementIds = linkedRequirementTitles.map(reqTitle => {
-      const requirement = findRequirementByTitle(project.id, reqTitle);
-      if (!requirement) {
-        console.warn(`Row ${rowNumber}: User requirement "${reqTitle}" not found.`);
-        return null;
-      }
-      return requirement.id;
-    }).filter(Boolean);
+    const type = ['user', 'system', 'admin'].includes(typeValue) ? typeValue : 'system';
 
     try {
-      storage.createFunctionalRequirement(project.id, {
+      storage.createRequirement(project.id, {
         title,
         description: description || undefined,
-        linkedUserRequirements: linkedRequirementIds,
+        type
       });
       imported += 1;
     } catch (error) {
-      console.error('Functional requirement CSV import error', error);
-      errors.push(`Row ${rowNumber}: ${error.message || 'Unable to create functional requirement.'}`);
+      console.error('Requirement CSV import error', error);
+      errors.push(`Row ${rowNumber}: ${error.message || 'Unable to create requirement.'}`);
     }
   });
   return { imported, errors };
@@ -1927,7 +1913,7 @@ function importTasksFromCsv(rows) {
         effortLevel: effortId || undefined,
         assignedResource: assignedResource || undefined,
         dueDate: dueDate || undefined,
-        linkedFunctionalRequirement: linkedFunctionalRequirementId || undefined,
+        requirementId: linkedFunctionalRequirementId || undefined,
       });
 
       if (newTask && statusId && statusId !== 'not-started') {
@@ -1969,12 +1955,24 @@ function renderProjectCard(project) {
   const isEditing = state.editingProjects.has(project.id);
   
   if (isEditing) {
+    const users = storage.getUsers();
+    const stakeholders = storage.getStakeholders();
+    const userOpts = (id) => users.map(u => `<option value="${u.id}" ${project[id] === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
+    const stakeholderOpts = stakeholders.map(s => `<option value="${s.id}" ${(project.stakeholders || []).includes(s.id) ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
     return `
       <div class="project-card" data-project-id="${project.id}">
         <div class="project-card-header">
           <div class="project-card-content">
-            <input type="text" class="edit-title" value="${escapeHtml(project.title)}" data-project-id="${project.id}">
-            <textarea class="edit-description" data-project-id="${project.id}">${escapeHtml(project.description || '')}</textarea>
+            <input type="text" class="edit-title" value="${escapeHtml(project.title)}" data-project-id="${project.id}" placeholder="Initiative title">
+            <textarea class="edit-description" data-project-id="${project.id}" rows="2" placeholder="Description">${escapeHtml(project.description || '')}</textarea>
+            <textarea class="edit-problem" data-project-id="${project.id}" rows="2" placeholder="Problem statement">${escapeHtml(project.problemStatement || '')}</textarea>
+            <textarea class="edit-strategy" data-project-id="${project.id}" rows="2" placeholder="Strategy">${escapeHtml(project.strategy || '')}</textarea>
+            <div class="form-row">
+              <label class="text-sm">Owner</label><select class="edit-owner" data-project-id="${project.id}"><option value="">None</option>${userOpts('owner')}</select>
+              <label class="text-sm">Dev lead</label><select class="edit-dev-lead" data-project-id="${project.id}"><option value="">None</option>${userOpts('devLead')}</select>
+              <label class="text-sm">QA lead</label><select class="edit-qa-lead" data-project-id="${project.id}"><option value="">None</option>${userOpts('qaLead')}</select>
+            </div>
+            <label class="text-sm">Stakeholders</label><select class="edit-stakeholders" data-project-id="${project.id}" multiple style="min-height: 60px;">${stakeholderOpts}</select>
             <div class="form-actions">
               <button class="btn btn-primary btn-sm save-project" data-project-id="${project.id}">Save</button>
               <button class="btn btn-secondary btn-sm cancel-edit-project" data-project-id="${project.id}">Cancel</button>
@@ -1985,13 +1983,41 @@ function renderProjectCard(project) {
     `;
   }
   
-  // Calculate progress for each milestone
-  const milestoneProgressHtml = project.milestones.length > 0 ? `
-    <div class="project-milestones-progress">
-      <h3 class="text-sm" style="margin-bottom: 0.75rem; font-weight: 600;">Milestone Progress</h3>
+  const users = storage.getUsers();
+  const stakeholders = storage.getStakeholders();
+  const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || project.owner) : '';
+  const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || project.devLead) : '';
+  const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || project.qaLead) : '';
+  const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
+  const rolesHtml = (ownerName || devLeadName || qaLeadName || stakeholderNames.length) ? `
+    <div class="text-xs text-muted" style="margin-top: 0.5rem;">
+      ${ownerName ? `<span>Owner: ${escapeHtml(ownerName)}</span>` : ''}
+      ${devLeadName ? ` <span>Dev lead: ${escapeHtml(devLeadName)}</span>` : ''}
+      ${qaLeadName ? ` <span>QA lead: ${escapeHtml(qaLeadName)}</span>` : ''}
+      ${stakeholderNames.length ? ` <span>Stakeholders: ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</span>` : ''}
+    </div>
+  ` : '';
+  const objectives = project.objectives || [];
+  const objectivesHtml = objectives.length ? `
+    <div class="objectives-list" style="margin-top: 0.5rem;">
+      <strong class="text-sm">Objectives</strong>
+      <ul class="text-sm text-muted" style="margin: 0.25rem 0 0 1rem; padding: 0;">
+        ${objectives.map(o => `<li>${escapeHtml(o.name)}${o.priority ? ` (${escapeHtml(o.priority)})` : ''}</li>`).join('')}
+      </ul>
+    </div>
+  ` : '';
+  const sortedMilestones = [...(project.milestones || [])].sort((a, b) => {
+    if ((a.title || '').toLowerCase() === 'backlog') return -1;
+    if ((b.title || '').toLowerCase() === 'backlog') return 1;
+    return 0;
+  });
+  const milestoneProgressHtml = sortedMilestones.length > 0 ? `
+    <div class="project-milestones-progress" style="margin-top: 0.75rem;">
+      <h3 class="text-sm" style="margin-bottom: 0.5rem; font-weight: 600;">Milestones</h3>
       <div class="milestones-progress-list">
-        ${project.milestones.map(m => renderMilestoneProgressBar(m)).join('')}
+        ${sortedMilestones.map(m => renderMilestoneProgressBar(m)).join('')}
       </div>
+      ${state.showAddMilestone.get(project.id) ? renderAddMilestoneForm(project.id) : `<button type="button" class="btn btn-secondary btn-xs add-milestone-btn" data-project-id="${project.id}">+ Add milestone</button>`}
     </div>
   ` : '';
   
@@ -2001,7 +2027,10 @@ function renderProjectCard(project) {
         <div class="project-card-content">
           <h2>${escapeHtml(project.title)}</h2>
           ${project.description ? `<p>${escapeHtml(project.description)}</p>` : ''}
-          <p class="text-xs text-muted">${project.milestones.length} milestone${project.milestones.length !== 1 ? 's' : ''}</p>
+          ${project.problemStatement ? `<p class="text-sm"><strong>Problem:</strong> ${escapeHtml(project.problemStatement)}</p>` : ''}
+          ${project.strategy ? `<p class="text-sm"><strong>Strategy:</strong> ${escapeHtml(project.strategy)}</p>` : ''}
+          ${rolesHtml}
+          ${objectivesHtml}
         </div>
         <div class="project-card-actions">
           <button class="btn btn-blue btn-sm edit-project" data-project-id="${project.id}">Edit</button>
@@ -2390,7 +2419,7 @@ function renderMilestoneExpansionRow(milestone) {
     const allFunctionalRequirements = storage.getAllFunctionalRequirements();
     const linkedFunctionalReqs = allFunctionalRequirements.filter(fr => (fr.linkedUserRequirements || []).includes(req.id));
     const allTasks = storage.getAllTasks();
-    const linkedTasks = allTasks.filter(task => linkedFunctionalReqs.some(fr => fr.id === task.linkedFunctionalRequirement));
+    const linkedTasks = allTasks.filter(task => linkedFunctionalReqs.some(fr => fr.id === task.requirementId));
     const progressBarHtml = renderUserRequirementProgressBar(req, linkedTasks, false);
     return `
       <div class="milestone-urs-item">
@@ -2475,17 +2504,11 @@ function renderRequirementsProgressSummary(requirements) {
   const container = elements.requirementsProgressView;
   if (!container) return;
   const requirementIds = requirements.map(req => req.id);
-  const allFunctionalRequirements = storage.getAllFunctionalRequirements();
-  const linkedFRs = allFunctionalRequirements.filter(fr =>
-    (fr.linkedUserRequirements || []).some(reqId => requirementIds.includes(reqId))
-  );
   const allTasks = storage.getAllTasks();
-  const relevantTasks = allTasks.filter(task =>
-    linkedFRs.some(fr => fr.id === task.linkedFunctionalRequirement)
-  );
+  const relevantTasks = allTasks.filter(task => requirementIds.includes(task.requirementId));
   const uniqueTasks = getUniqueTasks(relevantTasks);
   const completed = uniqueTasks.filter(task => task.status === 'completed').length;
-  container.innerHTML = renderProgressSummaryCard(completed, uniqueTasks.length, 'URS Progress');
+  container.innerHTML = renderProgressSummaryCard(completed, uniqueTasks.length, 'Requirements progress');
 }
 
 function renderFunctionalRequirementsProgressSummary(functionalRequirements) {
@@ -2493,7 +2516,7 @@ function renderFunctionalRequirementsProgressSummary(functionalRequirements) {
   if (!container) return;
   const allTasks = storage.getAllTasks();
   const relevantTasks = allTasks.filter(task =>
-    functionalRequirements.some(fr => fr.id === task.linkedFunctionalRequirement)
+    functionalRequirements.some(fr => fr.id === task.requirementId)
   );
   const uniqueTasks = getUniqueTasks(relevantTasks);
   const completed = uniqueTasks.filter(task => task.status === 'completed').length;
@@ -2543,38 +2566,29 @@ function renderRequirements() {
 }
 
 function populateRequirementFilters() {
-  const priorities = storage.getPriorities();
   const projects = storage.getAllProjects();
-  
-  // Populate priority filter
-  const priorityFilter = document.getElementById('requirement-filter-priority');
-  if (priorityFilter) {
-    const selectedValue = state.requirementFilterPriority || priorityFilter.value || '';
-    isUpdatingRequirementPriorityFilter = true;
-    try {
-      // Clear existing options except the first one
-      while (priorityFilter.options.length > 1) {
-        priorityFilter.remove(1);
-      }
-      priorities.forEach(priority => {
-        const option = document.createElement('option');
-        option.value = priority.id;
-        option.textContent = priority.label;
-        priorityFilter.appendChild(option);
-      });
-      priorityFilter.value = selectedValue;
-    } finally {
-      isUpdatingRequirementPriorityFilter = false;
-    }
+
+  // Populate type filter
+  const typeFilter = document.getElementById('requirement-filter-type');
+  if (typeFilter) {
+    const selectedValue = state.requirementFilterType || typeFilter.value || '';
+    const typeOptions = [
+      { value: '', label: 'All types' },
+      { value: 'user', label: 'User' },
+      { value: 'system', label: 'System' },
+      { value: 'admin', label: 'Admin' }
+    ];
+    typeFilter.innerHTML = typeOptions.map(o =>
+      `<option value="${o.value}" ${selectedValue === o.value ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
+    ).join('');
   }
-  
+
   // Populate project filter
   const projectFilter = document.getElementById('requirement-filter-project');
   if (projectFilter) {
     const selectedValue = state.requirementFilterProject || projectFilter.value || '';
     isUpdatingRequirementProjectFilter = true;
     try {
-      // Clear existing options except the first one
       while (projectFilter.options.length > 1) {
         projectFilter.remove(1);
       }
@@ -2587,36 +2601,6 @@ function populateRequirementFilters() {
       projectFilter.value = selectedValue;
     } finally {
       isUpdatingRequirementProjectFilter = false;
-    }
-  }
-  
-  // Populate milestone filter
-  const milestoneFilter = document.getElementById('requirement-filter-milestone');
-  if (milestoneFilter) {
-    const selectedValue = state.requirementFilterMilestone || milestoneFilter.value || '';
-    isUpdatingRequirementMilestoneFilter = true;
-    try {
-      // Clear existing options except the first one
-      while (milestoneFilter.options.length > 1) {
-        milestoneFilter.remove(1);
-      }
-      const allMilestones = storage.getAllMilestones();
-      // Filter milestones by selected project if a project is selected
-      const filteredMilestones = state.requirementFilterProject
-        ? allMilestones.filter(m => m.projectId === state.requirementFilterProject)
-        : allMilestones;
-      
-      filteredMilestones.forEach(milestone => {
-        const option = document.createElement('option');
-        option.value = milestone.id;
-        option.textContent = state.requirementFilterProject 
-          ? milestone.title 
-          : `${milestone.project.title} - ${milestone.title}`;
-        milestoneFilter.appendChild(option);
-      });
-      milestoneFilter.value = selectedValue;
-    } finally {
-      isUpdatingRequirementMilestoneFilter = false;
     }
   }
 }
@@ -2674,7 +2658,7 @@ function handleCreateTaskFromFunctionalRequirement(functionalRequirement) {
     storage.createTask(functionalRequirement.projectId, milestoneId, {
       title,
       description: description || undefined,
-      linkedFunctionalRequirement: frId,
+      requirementId: frId,
       effortLevel: effort || undefined,
       assignedResource: resource || undefined,
     });
@@ -2706,7 +2690,7 @@ function handleLinkTaskToFunctionalRequirement(functionalRequirement) {
 
   try {
     storage.updateTask(task.projectId, task.milestoneId, taskId, {
-      linkedFunctionalRequirement: functionalRequirement.id,
+      requirementId: functionalRequirement.id,
     });
     state.activeFunctionalRequirementId = functionalRequirement.id;
     renderFunctionalRequirements();
@@ -2725,7 +2709,7 @@ function handleUnlinkTaskFromFunctionalRequirement(functionalRequirement, taskId
 
   try {
     storage.updateTask(task.projectId, task.milestoneId, taskId, {
-      linkedFunctionalRequirement: undefined,
+      requirementId: undefined,
     });
     state.activeFunctionalRequirementId = functionalRequirement.id;
     renderFunctionalRequirements();
@@ -2801,39 +2785,49 @@ function sortRequirements(requirements) {
         aVal = a.project?.title || '';
         bVal = b.project?.title || '';
         break;
-      case 'milestone':
-        const aProject = state.projects.find(p => p.id === a.projectId);
-        const bProject = state.projects.find(p => p.id === b.projectId);
-        const aMilestone = aProject && a.milestoneId ? aProject.milestones.find(m => m.id === a.milestoneId) : null;
-        const bMilestone = bProject && b.milestoneId ? bProject.milestones.find(m => m.id === b.milestoneId) : null;
-        aVal = aMilestone?.title || '';
-        bVal = bMilestone?.title || '';
-        break;
-      case 'priority': {
-        const priorities = storage.getPriorities();
-        const aPriorityLabel = priorities.find(p => p.id === a.priority)?.label || '';
-        const bPriorityLabel = priorities.find(p => p.id === b.priority)?.label || '';
-        aVal = aPriorityLabel;
-        bVal = bPriorityLabel;
+      case 'objective': {
+        const aProj = state.projects.find(p => p.id === a.projectId);
+        const bProj = state.projects.find(p => p.id === b.projectId);
+        const aObj = aProj?.objectives?.find(o => o.id === a.objectiveId);
+        const bObj = bProj?.objectives?.find(o => o.id === b.objectiveId);
+        aVal = aObj?.name || '';
+        bVal = bObj?.name || '';
         break;
       }
-      case 'linkedFRs':
-        const allFRs = storage.getAllFunctionalRequirements();
-        const aLinkedFRs = allFRs.filter(fr => (fr.linkedUserRequirements || []).includes(a.id));
-        const bLinkedFRs = allFRs.filter(fr => (fr.linkedUserRequirements || []).includes(b.id));
-        aVal = aLinkedFRs.length;
-        bVal = bLinkedFRs.length;
+      case 'type':
+        aVal = a.type || 'user';
+        bVal = b.type || 'user';
         break;
-      case 'linkedTasks':
-        const allFRs2 = storage.getAllFunctionalRequirements();
-        const allTasks = storage.getAllTasks();
-        const aLinkedFRs2 = allFRs2.filter(fr => (fr.linkedUserRequirements || []).includes(a.id));
-        const bLinkedFRs2 = allFRs2.filter(fr => (fr.linkedUserRequirements || []).includes(b.id));
-        const aLinkedTasks = allTasks.filter(t => aLinkedFRs2.some(fr => fr.id === t.linkedFunctionalRequirement));
-        const bLinkedTasks = allTasks.filter(t => bLinkedFRs2.some(fr => fr.id === t.linkedFunctionalRequirement));
+      case 'risk': {
+        const riskLevels = storage.getRiskLevels();
+        const aRiskLabel = riskLevels.find(r => r.id === a.risk)?.label || '';
+        const bRiskLabel = riskLevels.find(r => r.id === b.risk)?.label || '';
+        aVal = aRiskLabel;
+        bVal = bRiskLabel;
+        break;
+      }
+      case 'riskValue':
+        aVal = a.riskValue !== undefined && a.riskValue !== null ? a.riskValue : -1;
+        bVal = b.riskValue !== undefined && b.riskValue !== null ? b.riskValue : -1;
+        break;
+      case 'linkedTasks': {
+        const allTasksForSort = storage.getAllTasks();
+        const aLinkedTasks = allTasksForSort.filter(t => t.requirementId === a.id);
+        const bLinkedTasks = allTasksForSort.filter(t => t.requirementId === b.id);
         aVal = aLinkedTasks.length;
         bVal = bLinkedTasks.length;
         break;
+      }
+      case 'effort': {
+        const effortLevelsForSort = storage.getEffortLevels();
+        const pointsMap = new Map(effortLevelsForSort.map(e => [e.id, Number(e.points) || 0]));
+        const allTasksForEffort = storage.getAllTasks();
+        const aTasks = allTasksForEffort.filter(t => t.requirementId === a.id);
+        const bTasks = allTasksForEffort.filter(t => t.requirementId === b.id);
+        aVal = aTasks.reduce((s, t) => s + (pointsMap.get(t.effortLevel) || 0), 0);
+        bVal = bTasks.reduce((s, t) => s + (pointsMap.get(t.effortLevel) || 0), 0);
+        break;
+      }
       default:
         return 0;
     }
@@ -2870,13 +2864,8 @@ function filterRequirements(requirements) {
       return false;
     }
     
-    // Priority filter
-    if (state.requirementFilterPriority && requirement.priority !== state.requirementFilterPriority) {
-      return false;
-    }
-    
-    // Milestone filter
-    if (state.requirementFilterMilestone && requirement.milestoneId !== state.requirementFilterMilestone) {
+    // Type filter
+    if (state.requirementFilterType && requirement.type !== state.requirementFilterType) {
       return false;
     }
     
@@ -2885,31 +2874,28 @@ function filterRequirements(requirements) {
 }
 
 function renderRequirementsTable(requirements) {
+  const allTasks = storage.getAllTasks();
+  const effortLevels = storage.getEffortLevels();
+  const pointsMap = new Map(effortLevels.map(e => [e.id, Number(e.points) || 0]));
+  const riskLevels = storage.getRiskLevels();
+
   const rows = requirements.map(r => {
     if (state.editingRequirements.has(r.id)) {
       return renderRequirementEditRow(r);
     }
 
-    const priorities = storage.getPriorities();
-    const priority = priorities.find(p => p.id === r.priority);
-    const priorityBadgeStyle = priority?.color ? getBadgeStyle(priority.color) : '';
     const project = state.projects.find(p => p.id === r.projectId);
-    const milestone = project && r.milestoneId ? project.milestones.find(m => m.id === r.milestoneId) : null;
-    
-    const allFunctionalRequirements = storage.getAllFunctionalRequirements();
-    const linkedFunctionalReqs = allFunctionalRequirements.filter(fr => 
-      (fr.linkedUserRequirements || []).includes(r.id)
-    );
-    
-    const allTasks = storage.getAllTasks();
-    const linkedTasks = allTasks.filter(t => 
-      linkedFunctionalReqs.some(fr => fr.id === t.linkedFunctionalRequirement)
-    );
-    
+    const objective = project?.objectives?.find(o => o.id === r.objectiveId);
+    const typeLabel = (r.type || 'user').charAt(0).toUpperCase() + (r.type || 'user').slice(1);
+    const risk = riskLevels.find(l => l.id === r.risk);
+    const riskBadgeStyle = risk?.color ? getBadgeStyle(risk.color) : '';
+    const linkedTasks = allTasks.filter(t => t.requirementId === r.id);
+    const effortSum = linkedTasks.reduce((s, t) => s + (pointsMap.get(t.effortLevel) || 0), 0);
+
     const progressBarHtml = renderUserRequirementProgressBar(r, linkedTasks, false);
     const isExpanded = state.activeRequirementLinkId === r.id;
     const rowClass = `task-table-row requirement-row${isExpanded ? ' expanded' : ''}`;
-    
+
     const trackingIdDisplay = r.trackingId
       ? `<strong>${escapeHtml(r.trackingId)}</strong>`
       : '<span class="text-muted">—</span>';
@@ -2921,10 +2907,12 @@ function renderRequirementsTable(requirements) {
           ${r.description ? `<div class="task-description-small">${escapeHtml(r.description)}</div>` : ''}
         </td>
         <td class="task-project-cell">${escapeHtml(r.project.title)}</td>
-        <td class="task-milestone-cell">${milestone ? escapeHtml(milestone.title) : '<span class="text-muted">—</span>'}</td>
-        <td>${priority ? `<span class="badge" style="${priorityBadgeStyle}">${escapeHtml(priority.label)}</span>` : '<span class="text-muted">—</span>'}</td>
-        <td>${linkedFunctionalReqs.length}</td>
+        <td class="task-objective-cell">${objective ? escapeHtml(objective.name) : '<span class="text-muted">—</span>'}</td>
+        <td>${typeLabel}</td>
+        <td>${risk ? `<span class="badge" style="${riskBadgeStyle}">${escapeHtml(risk.label)}</span>` : '<span class="text-muted">—</span>'}</td>
+        <td class="requirement-risk-value-cell">${r.riskValue !== undefined && r.riskValue !== null ? escapeHtml(String(r.riskValue)) : '<span class="text-muted">—</span>'}</td>
         <td>${linkedTasks.length}</td>
+        <td>${effortSum > 0 ? `${effortSum} pts` : '<span class="text-muted">—</span>'}</td>
         <td>
           <div class="progress-cell">
             ${progressBarHtml}
@@ -2939,27 +2927,29 @@ function renderRequirementsTable(requirements) {
 
     return rowHtml + renderRequirementExpansionRow(r);
   }).join('');
-  
+
   const getSortIndicator = (column) => {
     if (state.requirementSortColumn !== column) return '';
     return state.requirementSortDirection === 'asc' ? ' ↑' : ' ↓';
   };
-  
+
   const getSortClass = (column) => {
     return state.requirementSortColumn === column ? 'sortable-header sorted' : 'sortable-header';
   };
-  
+
   return `
     <table class="tasks-table">
       <thead>
         <tr>
           <th class="${getSortClass('trackingId')}" data-sort-column="trackingId">Tracking ID${getSortIndicator('trackingId')}</th>
           <th class="${getSortClass('title')}" data-sort-column="title">Requirement${getSortIndicator('title')}</th>
-          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
-          <th class="${getSortClass('milestone')}" data-sort-column="milestone">Milestone${getSortIndicator('milestone')}</th>
-          <th class="${getSortClass('priority')}" data-sort-column="priority">Priority${getSortIndicator('priority')}</th>
-          <th class="${getSortClass('linkedFRs')}" data-sort-column="linkedFRs">Linked FRs${getSortIndicator('linkedFRs')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Initiative${getSortIndicator('project')}</th>
+          <th class="${getSortClass('objective')}" data-sort-column="objective">Objective${getSortIndicator('objective')}</th>
+          <th class="${getSortClass('type')}" data-sort-column="type">Type${getSortIndicator('type')}</th>
+          <th class="${getSortClass('risk')}" data-sort-column="risk">Risk${getSortIndicator('risk')}</th>
+          <th class="${getSortClass('riskValue')}" data-sort-column="riskValue">Risk value${getSortIndicator('riskValue')}</th>
           <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
+          <th class="${getSortClass('effort')}" data-sort-column="effort">Effort${getSortIndicator('effort')}</th>
           <th>Progress</th>
           <th>Actions</th>
         </tr>
@@ -2989,29 +2979,64 @@ function getRequirementMilestoneOptions(projectId, selectedMilestoneId = '') {
   return '<option value="">None</option>' + milestoneOptions;
 }
 
+function getRequirementObjectiveOptions(projectId, selectedObjectiveId = '') {
+  const project = state.projects.find(p => p.id === projectId);
+  if (!project) {
+    return '<option value="">Select initiative first</option>';
+  }
+  const objectives = project.objectives || [];
+  const options = objectives.map(o =>
+    `<option value="${o.id}" ${o.id === selectedObjectiveId ? 'selected' : ''}>${escapeHtml(o.name || o.id)}</option>`
+  ).join('');
+  return '<option value="">None</option>' + options;
+}
+
+function refreshRequirementObjectiveOptions(requirementId, projectId, selectedObjectiveId = '') {
+  const objectiveSelect = document.querySelector(`.requirement-edit-objective-select[data-requirement-id="${requirementId}"]`);
+  if (!objectiveSelect) return;
+  objectiveSelect.innerHTML = projectId
+    ? getRequirementObjectiveOptions(projectId, selectedObjectiveId)
+    : '<option value="">Select initiative first</option>';
+}
+
 function renderRequirementEditRow(requirement) {
   const projectOptions = getRequirementProjectOptions(requirement.projectId);
-  const milestoneOptions = getRequirementMilestoneOptions(requirement.projectId, requirement.milestoneId);
-  const priorities = storage.getPriorities();
-  const priorityOptions = priorities.map(priority =>
-    `<option value="${priority.id}" ${priority.id === requirement.priority ? 'selected' : ''}>${escapeHtml(priority.label)}</option>`
+  const objectiveOptions = getRequirementObjectiveOptions(requirement.projectId, requirement.objectiveId);
+  const riskLevels = storage.getRiskLevels();
+  const riskOptions = riskLevels.map(r =>
+    `<option value="${r.id}" ${r.id === requirement.risk ? 'selected' : ''}>${escapeHtml(r.label)}</option>`
   ).join('');
 
   return `
     <tr class="task-table-row requirement-edit-row" data-requirement-id="${requirement.id}">
-      <td colspan="8">
+      <td colspan="11">
         <div class="requirement-edit-form">
           <div class="form-row">
             <div class="form-group">
-              <label for="requirement-edit-project-${requirement.id}">Project *</label>
+              <label for="requirement-edit-project-${requirement.id}">Initiative *</label>
               <select id="requirement-edit-project-${requirement.id}" class="requirement-edit-project-select" data-requirement-id="${requirement.id}">
                 ${projectOptions}
               </select>
             </div>
             <div class="form-group">
-              <label for="requirement-edit-milestone-${requirement.id}">Milestone</label>
-              <select id="requirement-edit-milestone-${requirement.id}" class="requirement-edit-milestone-select" data-requirement-id="${requirement.id}">
-                ${milestoneOptions}
+              <label for="requirement-edit-objective-${requirement.id}">Objective</label>
+              <select id="requirement-edit-objective-${requirement.id}" class="requirement-edit-objective-select" data-requirement-id="${requirement.id}">
+                ${objectiveOptions}
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="requirement-edit-type-${requirement.id}">Type</label>
+              <select id="requirement-edit-type-${requirement.id}" class="requirement-edit-type" data-requirement-id="${requirement.id}">
+                <option value="user" ${(requirement.type || 'user') === 'user' ? 'selected' : ''}>User</option>
+                <option value="system" ${requirement.type === 'system' ? 'selected' : ''}>System</option>
+                <option value="admin" ${requirement.type === 'admin' ? 'selected' : ''}>Admin</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="requirement-edit-risk-${requirement.id}">Risk</label>
+              <select id="requirement-edit-risk-${requirement.id}" class="requirement-edit-risk" data-requirement-id="${requirement.id}">
+                <option value="">None</option>
+                ${riskOptions}
               </select>
             </div>
           </div>
@@ -3026,17 +3051,74 @@ function renderRequirementEditRow(requirement) {
               <label for="requirement-edit-title-${requirement.id}">Requirement Title *</label>
               <input type="text" id="requirement-edit-title-${requirement.id}" class="requirement-edit-title" data-requirement-id="${requirement.id}" value="${escapeHtml(requirement.title)}" placeholder="Enter requirement title">
             </div>
-            <div class="form-group requirement-edit-priority-group">
-              <label for="requirement-edit-priority-${requirement.id}">Priority</label>
-              <select id="requirement-edit-priority-${requirement.id}" class="requirement-edit-priority" data-requirement-id="${requirement.id}">
-                <option value="">None</option>
-                ${priorityOptions}
-              </select>
-            </div>
           </div>
           <div class="form-group">
             <label for="requirement-edit-description-${requirement.id}">Acceptance Criteria (optional)</label>
             <textarea id="requirement-edit-description-${requirement.id}" class="requirement-edit-description" data-requirement-id="${requirement.id}" rows="3" placeholder="Enter acceptance criteria">${escapeHtml(requirement.description || '')}</textarea>
+          </div>
+          <div class="form-row risk-assessment-row">
+            <span class="risk-assessment-inline-label">Risk (T0085):</span>
+            <div class="form-group risk-factor-inline">
+              <label for="requirement-edit-di-${requirement.id}">DI</label>
+              <select id="requirement-edit-di-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="dataIntegrityRisk">
+                <option value="">—</option>
+                <option value="1" ${(requirement.riskAssessment?.dataIntegrityRisk) === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${(requirement.riskAssessment?.dataIntegrityRisk) === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${(requirement.riskAssessment?.dataIntegrityRisk) === 3 ? 'selected' : ''}>3</option>
+              </select>
+            </div>
+            <div class="form-group risk-factor-inline">
+              <label for="requirement-edit-sec-${requirement.id}">Sec</label>
+              <select id="requirement-edit-sec-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="securityRisk">
+                <option value="">—</option>
+                <option value="1" ${(requirement.riskAssessment?.securityRisk) === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${(requirement.riskAssessment?.securityRisk) === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${(requirement.riskAssessment?.securityRisk) === 3 ? 'selected' : ''}>3</option>
+              </select>
+            </div>
+            <div class="form-group risk-factor-inline">
+              <label for="requirement-edit-reg-${requirement.id}">Reg</label>
+              <select id="requirement-edit-reg-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="regressionNeed">
+                <option value="">—</option>
+                <option value="0" ${(requirement.riskAssessment?.regressionNeed) === 0 ? 'selected' : ''}>0</option>
+                <option value="1" ${(requirement.riskAssessment?.regressionNeed) === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${(requirement.riskAssessment?.regressionNeed) === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${(requirement.riskAssessment?.regressionNeed) === 3 ? 'selected' : ''}>3</option>
+              </select>
+            </div>
+            <div class="form-group risk-factor-inline">
+              <label for="requirement-edit-freq-${requirement.id}">Freq</label>
+              <select id="requirement-edit-freq-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="frequencyOfUse">
+                <option value="">—</option>
+                <option value="0" ${(requirement.riskAssessment?.frequencyOfUse) === 0 ? 'selected' : ''}>0</option>
+                <option value="1" ${(requirement.riskAssessment?.frequencyOfUse) === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${(requirement.riskAssessment?.frequencyOfUse) === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${(requirement.riskAssessment?.frequencyOfUse) === 3 ? 'selected' : ''}>3</option>
+              </select>
+            </div>
+            <div class="form-group risk-factor-inline">
+              <label for="requirement-edit-det-${requirement.id}">Det</label>
+              <select id="requirement-edit-det-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="detectability">
+                <option value="">—</option>
+                <option value="1" ${(requirement.riskAssessment?.detectability) === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${(requirement.riskAssessment?.detectability) === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${(requirement.riskAssessment?.detectability) === 3 ? 'selected' : ''}>3</option>
+              </select>
+            </div>
+            <div class="form-group risk-factor-inline">
+              <label for="requirement-edit-rem-${requirement.id}">Rem</label>
+              <select id="requirement-edit-rem-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="remediation">
+                <option value="">—</option>
+                <option value="1" ${(requirement.riskAssessment?.remediation) === 1 ? 'selected' : ''}>1</option>
+                <option value="2" ${(requirement.riskAssessment?.remediation) === 2 ? 'selected' : ''}>2</option>
+                <option value="3" ${(requirement.riskAssessment?.remediation) === 3 ? 'selected' : ''}>3</option>
+                <option value="4" ${(requirement.riskAssessment?.remediation) === 4 ? 'selected' : ''}>4</option>
+              </select>
+            </div>
+            <div class="form-group risk-value-inline">
+              <span class="risk-value-label">Rv:</span>
+              <span class="requirement-edit-risk-value-inline" data-requirement-id="${requirement.id}">${requirement.riskValue !== undefined && requirement.riskValue !== null ? escapeHtml(String(requirement.riskValue)) : '—'}</span>
+            </div>
           </div>
           <div class="form-actions requirement-edit-actions">
             <button type="button" class="btn btn-primary btn-sm save-edit-requirement" data-requirement-id="${requirement.id}">Save</button>
@@ -3048,25 +3130,11 @@ function renderRequirementEditRow(requirement) {
   `;
 }
 
-function refreshRequirementMilestoneOptions(requirementId, projectId, selectedMilestoneId = '') {
-  const milestoneSelect = document.querySelector(`.requirement-edit-milestone-select[data-requirement-id="${requirementId}"]`);
-  if (!milestoneSelect) return;
-  milestoneSelect.innerHTML = projectId
-    ? getRequirementMilestoneOptions(projectId, selectedMilestoneId)
-    : '<option value="">Select a project first</option>';
-}
-
 function renderRequirementExpansionRow(requirement) {
   if (state.activeRequirementLinkId !== requirement.id) {
     return '';
   }
 
-  const project = storage.getProject(requirement.projectId);
-  const functionalRequirements = project?.functionalRequirements || [];
-  const existingOptions = functionalRequirements.map(fr => {
-    return `<option value="${fr.id}">${escapeHtml(fr.title)}</option>`;
-  }).join('');
-  const hasFunctionalRequirements = functionalRequirements.length > 0;
   const acceptanceCriteriaHtml = `
     <div class="requirements-fr-link-criteria requirement-expansion-criteria">
       <span class="requirements-fr-link-criteria-label">Acceptance Criteria</span>
@@ -3076,41 +3144,28 @@ function renderRequirementExpansionRow(requirement) {
     </div>
   `;
 
-  const allFunctionalRequirements = storage.getAllFunctionalRequirements();
-  const linkedFunctionalRequirements = allFunctionalRequirements.filter(fr => 
-    (fr.linkedUserRequirements || []).includes(requirement.id)
-  );
   const allTasks = storage.getAllTasks();
-  const linkedFunctionalRequirementsList = linkedFunctionalRequirements.length > 0
-    ? `<div class="requirements-linked-frs-list">
-        ${linkedFunctionalRequirements.map(fr => {
-          const frLinkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === fr.id);
-          const progressBarHtml = renderFunctionalRequirementProgressBar(fr, frLinkedTasks, false);
-          const milestone = project?.milestones?.find(m => m.id === fr.milestoneId);
-          const milestoneLabel = milestone ? `<span class="linked-fr-milestone">${escapeHtml(milestone.title)}</span>` : '';
-          const taskCount = frLinkedTasks.length;
-          const taskLabel = `${taskCount} ${taskCount === 1 ? 'task' : 'tasks'}`;
+  const linkedTasks = allTasks.filter(t => t.requirementId === requirement.id);
+  const progressBarHtml = renderUserRequirementProgressBar(requirement, linkedTasks, false);
+  const linkedTasksList = linkedTasks.length > 0
+    ? `<div class="requirements-linked-tasks-list">
+        ${linkedTasks.map(task => {
+          const statuses = storage.getStatuses();
+          const status = statuses.find(s => s.id === task.status);
+          const statusLabel = status?.label || task.status || '—';
           return `
-            <div class="linked-fr-item">
-              <div class="linked-fr-info">
-                <span class="linked-fr-title">${escapeHtml(fr.title)}</span>
-                <span class="linked-fr-meta">${taskLabel}${milestoneLabel ? ' · ' : ''}${milestoneLabel}</span>
-              </div>
-              <div class="linked-fr-progress">
-                ${progressBarHtml}
-                <button type="button" class="btn btn-gray btn-xs unlink-functional-requirement" data-requirement-id="${requirement.id}" data-functional-requirement-id="${fr.id}" title="Remove linked FRS">
-                  Remove
-                </button>
-              </div>
+            <div class="linked-task-item">
+              <span class="linked-task-title">${escapeHtml(task.title)}</span>
+              <span class="linked-task-status">${escapeHtml(statusLabel)}</span>
             </div>
           `;
         }).join('')}
       </div>`
-    : '<p class="requirements-fr-link-hint requirements-linked-frs-empty">No linked FRSs yet.</p>';
+    : '<p class="requirements-fr-link-hint requirements-linked-frs-empty">No linked tasks yet. Add tasks from the Tasks view and link them to this requirement.</p>';
 
   return `
     <tr class="requirement-expansion-row" data-requirement-id="${requirement.id}">
-      <td colspan="8">
+      <td colspan="11">
         <div class="requirement-expansion-panel">
           <div class="requirement-expansion-header">
             <div class="requirement-expansion-criteria-container">
@@ -3121,39 +3176,10 @@ function renderRequirementExpansionRow(requirement) {
             </button>
           </div>
           <div class="requirement-expansion-grid">
-            <div class="requirement-expansion-section requirement-linked-frs">
-              <p class="requirements-fr-link-label">Linked FRS</p>
-              ${linkedFunctionalRequirementsList}
-            </div>
-            <div class="requirement-expansion-section requirement-link-forms">
-              <div class="requirements-fr-link-section">
-                <p class="requirements-fr-link-label">Link existing FRS</p>
-                <div class="form-group">
-                  <label for="existing-fr-select-${requirement.id}">FRS</label>
-                  <select id="existing-fr-select-${requirement.id}">
-                    <option value="">Select a functional requirement</option>
-                    ${existingOptions}
-                  </select>
-                </div>
-                <button type="button" class="btn btn-primary btn-xs link-existing-fr" data-requirement-id="${requirement.id}" ${hasFunctionalRequirements ? '' : 'disabled'}>
-                  Link existing FRS
-                </button>
-                ${!hasFunctionalRequirements ? '<p class="requirements-fr-link-hint">Create a functional requirement below to get started.</p>' : ''}
-              </div>
-              <div class="requirements-fr-link-section">
-                <p class="requirements-fr-link-label">Create a new functional requirement</p>
-                <div class="form-group">
-                  <label for="new-fr-title-${requirement.id}">Title *</label>
-                  <input type="text" id="new-fr-title-${requirement.id}" placeholder="Functional requirement title">
-                </div>
-                <div class="form-group">
-                  <label for="new-fr-description-${requirement.id}">Description (optional)</label>
-                  <textarea id="new-fr-description-${requirement.id}" rows="2" placeholder="Describe how this functional requirement fulfills the user requirement"></textarea>
-                </div>
-                <button type="button" class="btn btn-green btn-xs create-fr-and-link" data-requirement-id="${requirement.id}">
-                  Create & link new FR
-                </button>
-              </div>
+            <div class="requirement-expansion-section requirement-linked-tasks">
+              <p class="requirements-fr-link-label">Linked tasks</p>
+              <div class="progress-cell">${progressBarHtml}</div>
+              ${linkedTasksList}
             </div>
           </div>
         </div>
@@ -3257,8 +3283,8 @@ function sortFunctionalRequirements(functionalRequirements) {
         break;
       case 'linkedTasks':
         const allTasks = storage.getAllTasks();
-        const aLinkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === a.id);
-        const bLinkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === b.id);
+        const aLinkedTasks = allTasks.filter(t => t.requirementId === a.id);
+        const bLinkedTasks = allTasks.filter(t => t.requirementId === b.id);
         aVal = aLinkedTasks.length;
         bVal = bLinkedTasks.length;
         break;
@@ -3400,7 +3426,7 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
     }).filter(Boolean);
     
     const allTasks = storage.getAllTasks();
-    const linkedTasks = allTasks.filter(t => t.linkedFunctionalRequirement === fr.id);
+    const linkedTasks = allTasks.filter(t => t.requirementId === fr.id);
     
     const progressBarHtml = renderFunctionalRequirementProgressBar(fr, linkedTasks, false);
     const isExpanded = state.activeFunctionalRequirementId === fr.id;
@@ -3465,7 +3491,7 @@ function renderFunctionalRequirementDetailsRowImpl(functionalRequirement) {
 
   const project = storage.getProject(functionalRequirement.projectId);
   const allTasks = storage.getAllTasks();
-  const linkedTasks = allTasks.filter(task => task.linkedFunctionalRequirement === functionalRequirement.id);
+  const linkedTasks = allTasks.filter(task => task.requirementId === functionalRequirement.id);
   const statuses = storage.getStatuses();
   const taskItemsHtml = linkedTasks.length > 0
     ? `<div class="functional-requirement-task-list">
@@ -3490,7 +3516,7 @@ function renderFunctionalRequirementDetailsRowImpl(functionalRequirement) {
     : '<p class="requirements-fr-link-hint">No tasks linked yet.</p>';
 
   const availableTasks = allTasks.filter(task =>
-    task.projectId === functionalRequirement.projectId && !task.linkedFunctionalRequirement
+    task.projectId === functionalRequirement.projectId && !task.requirementId
   );
   const existingTaskOptions = availableTasks.map(task => `<option value="${task.id}">${escapeHtml(task.title)}</option>`).join('');
   const milestoneOptions = (project?.milestones || []).map(milestone => `<option value="${milestone.id}" ${functionalRequirement.milestoneId === milestone.id ? 'selected' : ''}>${escapeHtml(milestone.title)}</option>`).join('');
@@ -3678,7 +3704,7 @@ function populateCapacityFilters() {
     const options = projects.map(project => 
       `<option value="${project.id}">${escapeHtml(project.title || 'Untitled Project')}</option>`
     ).join('');
-    elements.capacityFilterProject.innerHTML = '<option value="">All Projects</option>' + options;
+    elements.capacityFilterProject.innerHTML = '<option value="">All Initiatives</option>' + options;
     restoreTaskFilterSelect(elements.capacityFilterProject, 'capacityFilterProject');
   }
 
@@ -3754,11 +3780,11 @@ function filterCapacityTasks(tasks) {
     if (state.capacityFilterStatus && task.status !== state.capacityFilterStatus) {
       return false;
     }
-    if (state.capacityFilterFunctionalRequirement && task.linkedFunctionalRequirement !== state.capacityFilterFunctionalRequirement) {
+    if (state.capacityFilterFunctionalRequirement && task.requirementId !== state.capacityFilterFunctionalRequirement) {
       return false;
     }
     if (state.capacityFilterRequirement) {
-      const fr = frMap.get(task.linkedFunctionalRequirement);
+      const fr = frMap.get(task.requirementId);
       const linkedRequirements = Array.isArray(fr?.linkedUserRequirements) ? fr.linkedUserRequirements : [];
       if (!linkedRequirements.includes(state.capacityFilterRequirement)) {
         return false;
@@ -4037,7 +4063,7 @@ function populateProgressFilters() {
   if (projectSelect) {
     const projects = storage.getAllProjects().slice().sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     const options = projects.map(project => `<option value="${project.id}">${escapeHtml(project.title || 'Untitled Project')}</option>`).join('');
-    projectSelect.innerHTML = '<option value="">All Projects</option>' + options;
+    projectSelect.innerHTML = '<option value="">All Initiatives</option>' + options;
     restoreTaskFilterSelect(projectSelect, 'progressFilterProject');
   }
   updateProgressMilestoneFilterOptions();
@@ -4984,6 +5010,76 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function getRiskAssessmentFromFormIds(prefix) {
+  const get = (suffix) => {
+    const el = document.getElementById(prefix + suffix);
+    if (!el || el.value === '') return undefined;
+    const n = parseInt(el.value, 10);
+    return Number.isNaN(n) ? undefined : n;
+  };
+  const dataIntegrityRisk = get('data-integrity-risk');
+  const securityRisk = get('security-risk');
+  const regressionNeed = get('regression-need');
+  const frequencyOfUse = get('frequency-of-use');
+  const detectability = get('detectability');
+  const remediation = get('remediation');
+  if (dataIntegrityRisk === undefined && securityRisk === undefined && regressionNeed === undefined &&
+      frequencyOfUse === undefined && detectability === undefined && remediation === undefined) {
+    return undefined;
+  }
+  return {
+    dataIntegrityRisk: dataIntegrityRisk ?? undefined,
+    securityRisk: securityRisk ?? undefined,
+    regressionNeed: regressionNeed ?? undefined,
+    frequencyOfUse: frequencyOfUse ?? undefined,
+    detectability: detectability ?? undefined,
+    remediation: remediation ?? undefined,
+  };
+}
+
+function updateRiskValueDisplay(prefix) {
+  const displayId = prefix + 'risk-value-display';
+  const el = document.getElementById(displayId);
+  if (!el) return;
+  const assessment = getRiskAssessmentFromFormIds(prefix);
+  const { riskValue } = storage.computeRiskValue(assessment);
+  el.textContent = riskValue !== undefined ? String(riskValue) : '—';
+  el.classList.toggle('text-muted', riskValue === undefined);
+}
+
+function clearRiskAssessmentForm(prefix) {
+  const ids = [
+    prefix + 'data-integrity-risk',
+    prefix + 'security-risk',
+    prefix + 'regression-need',
+    prefix + 'frequency-of-use',
+    prefix + 'detectability',
+    prefix + 'remediation',
+  ];
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  updateRiskValueDisplay(prefix);
+}
+
+function getRiskAssessmentFromInlineEdit(requirementId) {
+  const factors = ['dataIntegrityRisk', 'securityRisk', 'regressionNeed', 'frequencyOfUse', 'detectability', 'remediation'];
+  const assessment = {};
+  let hasAny = false;
+  factors.forEach((key) => {
+    const el = document.querySelector(`.requirement-edit-risk-factor[data-requirement-id="${requirementId}"][data-risk-factor="${key}"]`);
+    if (el && el.value !== '') {
+      const n = parseInt(el.value, 10);
+      if (!Number.isNaN(n)) {
+        assessment[key] = n;
+        hasAny = true;
+      }
+    }
+  });
+  return hasAny ? assessment : null;
+}
+
 function getStatusSelectStyle(color) {
   if (!color) return '';
   // Convert hex to rgba with transparency
@@ -5007,9 +5103,23 @@ function getBadgeStyle(color) {
 function populateProjectSelect(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
-  
-  select.innerHTML = '<option value="">Select a project</option>' +
+  select.innerHTML = '<option value="">Select an initiative</option>' +
     state.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('');
+}
+
+function populateUserSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const users = storage.getUsers();
+  select.innerHTML = '<option value="">None</option>' +
+    users.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
+}
+
+function populateStakeholderMultiSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const stakeholders = storage.getStakeholders();
+  select.innerHTML = stakeholders.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
 }
 
 function populateMilestoneSelect(selectId, projectId) {
@@ -5042,34 +5152,24 @@ function populateUserRequirementsSelect(selectId, projectId) {
   ).join('');
 }
 
-function populateFunctionalRequirementSelect(selectId, projectId, selectedValue = '') {
+function populateRequirementSelect(selectId, projectId, selectedValue = '') {
   const select = document.getElementById(selectId);
   if (!select) return;
-
   if (!projectId) {
-    select.innerHTML = '<option value="">Select a project first</option>';
+    select.innerHTML = '<option value="">Select an initiative first</option>';
     return;
   }
-
   const project = storage.getProject(projectId);
   if (!project) {
-    select.innerHTML = '<option value="">Select a project first</option>';
+    select.innerHTML = '<option value="">Select an initiative first</option>';
     return;
   }
-
-  const functionalRequirements = project.functionalRequirements || [];
-  if (functionalRequirements.length === 0) {
-    select.innerHTML = '<option value="">No functional requirements available</option>';
-    return;
-  }
-
-  const options = functionalRequirements.map(fr => {
-    return `<option value="${fr.id}" ${selectedValue === fr.id ? 'selected' : ''}>${escapeHtml(fr.title)}</option>`;
-  }).join('');
-  select.innerHTML = '<option value="">Select a functional requirement</option>' + options;
-  if (selectedValue) {
-    select.value = selectedValue;
-  }
+  const requirements = project.requirements || [];
+  const options = requirements.map(r =>
+    `<option value="${r.id}" ${selectedValue === r.id ? 'selected' : ''}>${escapeHtml(r.title)}</option>`
+  ).join('');
+  select.innerHTML = '<option value="">None</option>' + options;
+  if (selectedValue) select.value = selectedValue;
 }
 
 function getMilestoneIdFromFunctionalRequirement(projectId, functionalRequirementId) {
@@ -5147,6 +5247,32 @@ function populateUserSelect(select, selectedValue = '') {
   select.innerHTML = getUserOptionsHtml(selectedValue);
 }
 
+function populateObjectiveSelect(selectId, projectId, selectedValue = '') {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const project = state.projects.find(p => p.id === projectId);
+  if (!projectId || !project) {
+    select.innerHTML = '<option value="">None</option>';
+    return;
+  }
+  const objectives = project.objectives || [];
+  const options = objectives.map(o =>
+    `<option value="${o.id}" ${selectedValue === o.id ? 'selected' : ''}>${escapeHtml(o.name || o.id)}</option>`
+  ).join('');
+  select.innerHTML = '<option value="">None</option>' + options;
+}
+
+function populateRiskSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const selected = select.value || '';
+  const riskLevels = storage.getRiskLevels();
+  const options = riskLevels.map(r =>
+    `<option value="${r.id}" ${selected === r.id ? 'selected' : ''}>${escapeHtml(r.label)}</option>`
+  ).join('');
+  select.innerHTML = '<option value="">None</option>' + options;
+}
+
 function updateAllSelects() {
   // Update new task form selects
   const taskEffortSelect = document.getElementById('task-effort');
@@ -5155,12 +5281,9 @@ function updateAllSelects() {
   if (taskEffortSelect) populateEffortSelect(taskEffortSelect);
   if (taskResourceSelect) populateUserSelect(taskResourceSelect);
   
-  // Update new requirement form selects
-  const requirementPrioritySelect = document.getElementById('requirement-priority');
-  const editRequirementPrioritySelect = document.getElementById('edit-requirement-priority');
-  
-  if (requirementPrioritySelect) populatePrioritySelect(requirementPrioritySelect);
-  if (editRequirementPrioritySelect) populatePrioritySelect(editRequirementPrioritySelect);
+  // Update requirement form risk selects
+  populateRiskSelect('requirement-risk');
+  populateRiskSelect('edit-requirement-risk');
   
   // Re-render views to update all dynamic selects
   if (currentView === 'projects') {
@@ -5187,20 +5310,34 @@ function attachProjectListeners(project) {
     renderProjects();
   });
   
-  // Save project
+  // Save project (initiative)
   document.querySelector(`.save-project[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    const title = document.querySelector(`.edit-title[data-project-id="${projectId}"]`).value.trim();
-    const description = document.querySelector(`.edit-description[data-project-id="${projectId}"]`).value.trim();
-    
+    const title = document.querySelector(`.edit-title[data-project-id="${projectId}"]`)?.value?.trim();
+    const description = document.querySelector(`.edit-description[data-project-id="${projectId}"]`)?.value?.trim();
+    const problemStatement = document.querySelector(`.edit-problem[data-project-id="${projectId}"]`)?.value?.trim() || '';
+    const strategy = document.querySelector(`.edit-strategy[data-project-id="${projectId}"]`)?.value?.trim() || '';
+    const owner = document.querySelector(`.edit-owner[data-project-id="${projectId}"]`)?.value || undefined;
+    const devLead = document.querySelector(`.edit-dev-lead[data-project-id="${projectId}"]`)?.value || undefined;
+    const qaLead = document.querySelector(`.edit-qa-lead[data-project-id="${projectId}"]`)?.value || undefined;
+    const stakeholdersEl = document.querySelector(`.edit-stakeholders[data-project-id="${projectId}"]`);
+    const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
     if (!title) return;
-    
     try {
-      storage.updateProject(projectId, { title, description: description || undefined });
+      storage.updateProject(projectId, {
+        title,
+        description: description || undefined,
+        problemStatement,
+        strategy,
+        owner,
+        devLead,
+        qaLead,
+        stakeholders,
+      });
       state.editingProjects.delete(projectId);
       loadProjects();
     } catch (error) {
-      console.error('Failed to update project:', error);
-      alert('Failed to update project');
+      console.error('Failed to update initiative:', error);
+      alert('Failed to update initiative');
     }
   });
   
@@ -5221,6 +5358,12 @@ function attachProjectListeners(project) {
       console.error('Failed to delete project:', error);
       alert('Failed to delete project');
     }
+  });
+  
+  // Add milestone button
+  document.querySelector(`.add-milestone-btn[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
+    state.showAddMilestone.set(projectId, true);
+    renderProjects();
   });
   
   // Cancel add milestone
@@ -5317,26 +5460,29 @@ function attachRequirementViewListeners(requirement) {
     }
   });
 
-  // Project change should refresh milestone options
+  // Project change should refresh objective options
   document.querySelector(`.requirement-edit-project-select[data-requirement-id="${requirementId}"]`)?.addEventListener('change', (e) => {
-    refreshRequirementMilestoneOptions(requirementId, e.target.value);
+    refreshRequirementObjectiveOptions(requirementId, e.target.value);
   });
 
   // Save requirement
   document.querySelector(`.save-edit-requirement[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
     const projectSelect = document.querySelector(`.requirement-edit-project-select[data-requirement-id="${requirementId}"]`);
-    const milestoneSelect = document.querySelector(`.requirement-edit-milestone-select[data-requirement-id="${requirementId}"]`);
+    const objectiveSelect = document.querySelector(`.requirement-edit-objective-select[data-requirement-id="${requirementId}"]`);
+    const typeSelect = document.querySelector(`.requirement-edit-type[data-requirement-id="${requirementId}"]`);
+    const riskSelect = document.querySelector(`.requirement-edit-risk[data-requirement-id="${requirementId}"]`);
     const trackingIdInput = document.querySelector(`.requirement-edit-tracking[data-requirement-id="${requirementId}"]`);
     const titleInput = document.querySelector(`.requirement-edit-title[data-requirement-id="${requirementId}"]`);
     const descriptionInput = document.querySelector(`.requirement-edit-description[data-requirement-id="${requirementId}"]`);
-    const prioritySelect = document.querySelector(`.requirement-edit-priority[data-requirement-id="${requirementId}"]`);
     
     const newProjectId = projectSelect ? projectSelect.value : '';
-    const milestoneId = milestoneSelect ? milestoneSelect.value : '';
+    const objectiveId = objectiveSelect ? objectiveSelect.value || undefined : undefined;
+    const type = typeSelect ? typeSelect.value || 'user' : 'user';
+    const risk = riskSelect ? riskSelect.value || undefined : undefined;
     const trackingId = trackingIdInput ? trackingIdInput.value.trim() : '';
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
-    const priority = prioritySelect ? prioritySelect.value : '';
+    const riskAssessment = getRiskAssessmentFromInlineEdit(requirementId);
     
     if (!title || !newProjectId) return;
     
@@ -5345,8 +5491,10 @@ function attachRequirementViewListeners(requirement) {
         trackingId: trackingId || undefined,
         title,
         description: description || undefined,
-        priority: priority || undefined,
-        milestoneId: milestoneId || undefined
+        objectiveId,
+        type,
+        risk,
+        riskAssessment: riskAssessment ?? null
       });
       state.editingRequirements.delete(requirementId);
       renderRequirements();
@@ -5358,15 +5506,27 @@ function attachRequirementViewListeners(requirement) {
     }
   });
 
+  // Update inline risk value display when any risk factor changes
+  document.querySelectorAll(`.requirement-edit-risk-factor[data-requirement-id="${requirementId}"]`).forEach((el) => {
+    el.addEventListener('change', () => {
+      const assessment = getRiskAssessmentFromInlineEdit(requirementId);
+      const { riskValue } = storage.computeRiskValue(assessment || {});
+      const rvSpan = document.querySelector(`.requirement-edit-risk-value-inline[data-requirement-id="${requirementId}"]`);
+      if (rvSpan) rvSpan.textContent = riskValue !== undefined ? String(riskValue) : '—';
+    });
+  });
+
   // Cancel edit
   document.querySelector(`.cancel-edit-requirement[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
     state.editingRequirements.delete(requirementId);
     renderRequirements();
   });
 
-  if (state.activeRequirementLinkId === requirementId) {
-    attachFunctionalRequirementLinkFormListeners(requirement);
-  }
+  // Expansion row Close button
+  document.querySelector(`.cancel-fr-link[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
+    state.activeRequirementLinkId = null;
+    renderRequirements();
+  });
 
   const row = document.querySelector(`.requirement-row[data-requirement-id="${requirementId}"]`);
   row?.addEventListener('click', (e) => {
@@ -5427,16 +5587,14 @@ function handleLinkRequirementToExistingFunctionalRequirement(requirement) {
   linkedReqs.add(requirement.id);
 
   try {
-    storage.updateFunctionalRequirement(requirement.projectId, functionalRequirementId, {
-      linkedUserRequirements: Array.from(linkedReqs),
-    });
+    storage.updateRequirement(requirement.projectId, functionalRequirementId, {});
     refreshProjectsState();
     state.activeRequirementLinkId = requirement.id;
     renderFunctionalRequirements();
     renderRequirements();
   } catch (error) {
-    console.error('Failed to link requirement to functional requirement:', error);
-    alert('Failed to link to functional requirement');
+    console.error('Failed to link requirement:', error);
+    alert('Failed to link requirement');
   }
 }
 
@@ -5455,15 +5613,13 @@ function handleUnlinkFunctionalRequirementFromRequirement(requirement, functiona
   linkedReqs.delete(requirement.id);
 
   try {
-    storage.updateFunctionalRequirement(project.id, functionalRequirementId, {
-      linkedUserRequirements: Array.from(linkedReqs),
-    });
+    storage.updateRequirement(project.id, functionalRequirementId, {});
     refreshProjectsState();
     renderFunctionalRequirements();
     renderRequirements();
   } catch (error) {
-    console.error('Failed to remove linked FRS:', error);
-    alert('Failed to remove linked FRS');
+    console.error('Failed to remove link:', error);
+    alert('Failed to remove link');
   }
 }
 
@@ -5471,7 +5627,7 @@ function handleCreateFunctionalRequirementFromRequirement(requirement) {
   const titleInput = document.getElementById(`new-fr-title-${requirement.id}`);
   const title = titleInput ? titleInput.value.trim() : '';
   if (!title) {
-    alert('Please enter a title for the functional requirement.');
+    alert('Please enter a title for the requirement.');
     return;
   }
 
@@ -5479,18 +5635,18 @@ function handleCreateFunctionalRequirementFromRequirement(requirement) {
   const description = descriptionInput ? descriptionInput.value.trim() : '';
 
   try {
-    storage.createFunctionalRequirement(requirement.projectId, {
+    storage.createRequirement(requirement.projectId, {
       title,
       description: description || undefined,
-      linkedUserRequirements: [requirement.id],
+      type: 'system'
     });
     refreshProjectsState();
     state.activeRequirementLinkId = requirement.id;
     renderFunctionalRequirements();
     renderRequirements();
   } catch (error) {
-    console.error('Failed to create functional requirement from requirement view:', error);
-    alert('Failed to create functional requirement');
+    console.error('Failed to create requirement from requirement view:', error);
+    alert('Failed to create requirement');
   }
 }
 
@@ -5545,17 +5701,16 @@ function attachFunctionalRequirementViewListeners(functionalRequirement) {
     if (!title || !newProjectId) return;
 
     try {
-      storage.updateFunctionalRequirement(newProjectId, functionalRequirementId, {
+      storage.updateRequirement(newProjectId, functionalRequirementId, {
         title,
-        description: description || undefined,
-        linkedUserRequirements
+        description: description || undefined
       });
       state.editingFunctionalRequirements.delete(functionalRequirementId);
       renderFunctionalRequirements();
       renderRequirements();
       renderProjects();
     } catch (error) {
-      console.error('Failed to update functional requirement:', error);
+      console.error('Failed to update requirement:', error);
       alert('Failed to update functional requirement');
     }
   });
@@ -5826,6 +5981,7 @@ function attachTaskListeners(projectId, milestoneId, task) {
 function renderSettings() {
   renderWorkspaceSection();
   renderUsers();
+  renderStakeholders();
   renderPriorities();
   renderStatuses();
   renderEffortLevels();
@@ -5879,6 +6035,42 @@ function renderUsers() {
   users.forEach(user => {
     attachUserListeners(user);
   });
+}
+
+function renderStakeholders() {
+  const list = elements.stakeholdersList;
+  if (!list) return;
+  const stakeholders = storage.getStakeholders();
+  if (stakeholders.length === 0) {
+    list.innerHTML = '<p class="text-muted">No stakeholders yet. Add one above!</p>';
+    return;
+  }
+  list.innerHTML = stakeholders.map(s => {
+    const isEditing = state.editingMetadata.get(`stakeholder-${s.id}`);
+    if (isEditing) {
+      return `
+        <div class="metadata-item-editing" data-stakeholder-id="${s.id}">
+          <input type="text" class="edit-stakeholder-name" value="${escapeHtml(s.name)}" data-stakeholder-id="${s.id}">
+          <div class="metadata-item-editing-actions">
+            <button class="btn btn-primary btn-sm save-stakeholder" data-stakeholder-id="${s.id}">Save</button>
+            <button class="btn btn-secondary btn-sm cancel-edit-stakeholder" data-stakeholder-id="${s.id}">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div class="metadata-item" data-stakeholder-id="${s.id}">
+        <div class="metadata-item-content">
+          <span class="metadata-item-label">${escapeHtml(s.name)}</span>
+        </div>
+        <div class="metadata-item-actions">
+          <button class="btn btn-blue btn-xs edit-stakeholder" data-stakeholder-id="${s.id}">Edit</button>
+          <button class="btn btn-red btn-xs delete-stakeholder" data-stakeholder-id="${s.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  stakeholders.forEach(s => attachStakeholderListeners(s));
 }
 
 function renderPriorities() {
@@ -6211,6 +6403,34 @@ function setupSettingsEventListeners() {
     }
   });
 
+  // Stakeholders
+  document.getElementById('add-stakeholder-btn')?.addEventListener('click', () => {
+    document.getElementById('add-stakeholder-form').style.display = 'block';
+    document.getElementById('add-stakeholder-btn').style.display = 'none';
+    document.getElementById('stakeholder-name').focus();
+  });
+  document.getElementById('cancel-stakeholder-btn')?.addEventListener('click', () => {
+    document.getElementById('add-stakeholder-form').style.display = 'none';
+    document.getElementById('add-stakeholder-btn').style.display = 'block';
+    document.getElementById('stakeholder-name').value = '';
+  });
+  document.getElementById('add-stakeholder-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('stakeholder-name').value.trim();
+    if (!name) return;
+    try {
+      storage.addStakeholder(name);
+      document.getElementById('stakeholder-name').value = '';
+      document.getElementById('add-stakeholder-form').style.display = 'none';
+      document.getElementById('add-stakeholder-btn').style.display = 'block';
+      renderSettings();
+      updateAllSelects();
+    } catch (err) {
+      console.error('Failed to add stakeholder:', err);
+      alert('Failed to add stakeholder');
+    }
+  });
+
   // Priorities
   document.getElementById('add-priority-btn')?.addEventListener('click', () => {
     document.getElementById('add-priority-form').style.display = 'block';
@@ -6423,6 +6643,42 @@ function attachUserListeners(user) {
     } catch (error) {
       console.error('Failed to delete user:', error);
       alert('Failed to delete user');
+    }
+  });
+}
+
+function attachStakeholderListeners(stakeholder) {
+  const id = stakeholder.id;
+  document.querySelector(`.edit-stakeholder[data-stakeholder-id="${id}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.set(`stakeholder-${id}`, true);
+    renderSettings();
+  });
+  document.querySelector(`.save-stakeholder[data-stakeholder-id="${id}"]`)?.addEventListener('click', () => {
+    const name = document.querySelector(`.edit-stakeholder-name[data-stakeholder-id="${id}"]`)?.value?.trim();
+    if (!name) return;
+    try {
+      storage.updateStakeholder(id, { name });
+      state.editingMetadata.delete(`stakeholder-${id}`);
+      renderSettings();
+      updateAllSelects();
+    } catch (err) {
+      console.error('Failed to update stakeholder:', err);
+      alert('Failed to update stakeholder');
+    }
+  });
+  document.querySelector(`.cancel-edit-stakeholder[data-stakeholder-id="${id}"]`)?.addEventListener('click', () => {
+    state.editingMetadata.delete(`stakeholder-${id}`);
+    renderSettings();
+  });
+  document.querySelector(`.delete-stakeholder[data-stakeholder-id="${id}"]`)?.addEventListener('click', () => {
+    if (!confirm(`Are you sure you want to delete "${stakeholder.name}"?`)) return;
+    try {
+      storage.deleteStakeholder(id);
+      renderSettings();
+      updateAllSelects();
+    } catch (err) {
+      console.error('Failed to delete stakeholder:', err);
+      alert('Failed to delete stakeholder');
     }
   });
 }
