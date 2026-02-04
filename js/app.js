@@ -744,10 +744,11 @@ function setupEventListeners() {
     if (currentView === 'projects') renderProjects();
   });
 
-  // Chip list: remove
+  // Chip list: remove (capture phase so it runs inside modal before modal's stopPropagation)
   document.addEventListener('click', (e) => {
     if (e.target?.classList?.contains('chip-remove')) {
       e.preventDefault();
+      e.stopPropagation();
       const chip = e.target.closest('.chip');
       const list = e.target.closest('.chip-list');
       if (!chip || !list) return;
@@ -758,7 +759,7 @@ function setupEventListeners() {
       const ids = getChipListIds(containerId).filter(id => id !== removeId);
       renderChipList(containerId, addSelectId, kind, ids);
     }
-  });
+  }, true);
 
   // Chip list: add (development team and stakeholders, new and edit)
   function chipAddClick(containerId, addSelectId, kind) {
