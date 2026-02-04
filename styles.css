@@ -2120,6 +2120,9 @@ body {
   overflow: hidden;
 }
 
+.initiatives-table {
+  table-layout: fixed;
+}
 .initiatives-table th,
 .initiatives-table td {
   padding: 0.625rem 1rem;
@@ -2127,16 +2130,35 @@ body {
 .initiatives-table .task-title-cell {
   min-width: 160px;
 }
+/* Product lead, Technical lead, Development team: same width */
+.initiatives-table th:nth-child(3),
+.initiatives-table th:nth-child(4),
+.initiatives-table th:nth-child(5),
+.initiatives-table td:nth-child(3),
+.initiatives-table td:nth-child(4),
+.initiatives-table td:nth-child(5) {
+  width: 100px;
+  max-width: 100px;
+  word-wrap: break-word;
+}
+.initiatives-table .initiative-progress-cell {
+  width: 1%;
+  min-width: 140px;
+}
 .initiatives-table .initiative-progress-cell .progress-meter {
-  min-width: 100px;
+  min-width: 120px;
+  max-width: 100%;
 }
 .initiatives-table .task-actions-cell {
   white-space: nowrap;
+  width: 1%;
 }
-
 .initiatives-table .initiative-list-cell {
-  max-width: 200px;
   word-wrap: break-word;
+}
+.initiatives-table td:nth-child(5),
+.initiatives-table td:nth-child(6) {
+  max-width: 100px;
 }
 .requirements-fr-link-criteria {
   margin-bottom: 1rem;
