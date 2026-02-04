@@ -630,9 +630,8 @@ function setupEventListeners() {
   elements.newProjectBtn?.addEventListener('click', () => {
     populateUserSelect('project-owner');
     populateUserSelect('project-dev-lead');
-    populateUserSelect('project-qa-lead');
-    populateUserMultiSelect('project-development-team');
-    populateStakeholderMultiSelect('project-stakeholders');
+    renderChipList('project-development-team-chips', 'project-development-team-add', 'user', []);
+    renderChipList('project-stakeholders-chips', 'project-stakeholders-add', 'stakeholder', []);
     openModal('new-project');
   });
 
@@ -643,23 +642,7 @@ function setupEventListeners() {
     const strategyEl = document.getElementById('project-strategy');
     if (problemEl) problemEl.value = '';
     if (strategyEl) strategyEl.value = '';
-    const container = document.getElementById('project-objectives-container');
-    if (container) container.innerHTML = '';
     closeModal();
-  });
-
-  document.getElementById('add-project-objective-btn')?.addEventListener('click', () => {
-    const container = document.getElementById('project-objectives-container');
-    if (!container) return;
-    const priorityOpts = getObjectivePriorityOptionsHtml('');
-    container.insertAdjacentHTML('beforeend', getObjectiveRowHtml(priorityOpts, '', ''));
-  });
-
-  document.getElementById('project-objectives-container')?.addEventListener('click', (e) => {
-    if (e.target?.classList?.contains('remove-objective-row')) {
-      const row = e.target.closest('.objective-row');
-      if (row) row.remove();
-    }
   });
 
   elements.newProjectForm?.addEventListener('submit', (e) => {
@@ -670,38 +653,24 @@ function setupEventListeners() {
     const strategy = document.getElementById('project-strategy')?.value?.trim() || '';
     const owner = document.getElementById('project-owner')?.value || undefined;
     const devLead = document.getElementById('project-dev-lead')?.value || undefined;
-    const qaLead = document.getElementById('project-qa-lead')?.value || undefined;
-    const devTeamEl = document.getElementById('project-development-team');
-    const developmentTeam = devTeamEl ? Array.from(devTeamEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
-    const stakeholdersEl = document.getElementById('project-stakeholders');
-    const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
+    const developmentTeam = getChipListIds('project-development-team-chips');
+    const stakeholders = getChipListIds('project-stakeholders-chips');
     if (!title) return;
     try {
-      const newProject = storage.createProject({
+      storage.createProject({
         title,
         description: description || undefined,
         problemStatement,
         strategy,
         owner,
         devLead,
-        qaLead,
         developmentTeam,
         stakeholders,
       });
-      const container = document.getElementById('project-objectives-container');
-      if (container) {
-        container.querySelectorAll('.objective-row').forEach((row) => {
-          const name = row.querySelector('.objective-name')?.value?.trim();
-          const priority = row.querySelector('.objective-priority')?.value || undefined;
-          if (name) storage.createObjective(newProject.id, { name, priority });
-        });
-      }
       document.getElementById('project-title').value = '';
       document.getElementById('project-description').value = '';
       if (document.getElementById('project-problem')) document.getElementById('project-problem').value = '';
       if (document.getElementById('project-strategy')) document.getElementById('project-strategy').value = '';
-      const objContainer = document.getElementById('project-objectives-container');
-      if (objContainer) objContainer.innerHTML = '';
       closeModal();
       loadProjects();
     } catch (error) {
@@ -725,11 +694,8 @@ function setupEventListeners() {
     const strategy = document.getElementById('edit-project-strategy')?.value?.trim() || '';
     const owner = document.getElementById('edit-project-owner')?.value || undefined;
     const devLead = document.getElementById('edit-project-dev-lead')?.value || undefined;
-    const qaLead = document.getElementById('edit-project-qa-lead')?.value || undefined;
-    const devTeamEl = document.getElementById('edit-project-development-team');
-    const developmentTeam = devTeamEl ? Array.from(devTeamEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
-    const stakeholdersEl = document.getElementById('edit-project-stakeholders');
-    const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
+    const developmentTeam = getChipListIds('edit-project-development-team-chips');
+    const stakeholders = getChipListIds('edit-project-stakeholders-chips');
     if (!title) return;
     try {
       storage.updateProject(id, {
@@ -739,50 +705,14 @@ function setupEventListeners() {
         strategy,
         owner,
         devLead,
-        qaLead,
         developmentTeam,
         stakeholders,
       });
-      const container = document.getElementById('edit-project-objectives-container');
-      if (container) {
-        const rows = container.querySelectorAll('.objective-row');
-        const keptIds = [];
-        rows.forEach((row) => {
-          const objectiveId = row.getAttribute('data-objective-id');
-          const name = row.querySelector('.objective-name')?.value?.trim() || '';
-          const priority = row.querySelector('.objective-priority')?.value || undefined;
-          if (objectiveId) {
-            storage.updateObjective(id, objectiveId, { name, priority });
-            keptIds.push(objectiveId);
-          } else if (name) {
-            const created = storage.createObjective(id, { name, priority });
-            keptIds.push(created.id);
-          }
-        });
-        const project = storage.getProject(id);
-        (project?.objectives || []).forEach((o) => {
-          if (!keptIds.includes(o.id)) storage.deleteObjective(id, o.id);
-        });
-      }
       closeModal();
       loadProjects();
     } catch (error) {
       console.error('Failed to update initiative:', error);
       alert('Failed to update initiative');
-    }
-  });
-
-  document.getElementById('add-edit-project-objective-btn')?.addEventListener('click', () => {
-    const container = document.getElementById('edit-project-objectives-container');
-    if (!container) return;
-    const priorityOpts = getObjectivePriorityOptionsHtml('');
-    container.insertAdjacentHTML('beforeend', getObjectiveRowHtml(priorityOpts, '', ''));
-  });
-
-  document.getElementById('edit-project-form')?.addEventListener('click', (e) => {
-    if (e.target?.classList?.contains('remove-objective-row')) {
-      const row = e.target.closest('.objective-row');
-      if (row) row.remove();
     }
   });
 
@@ -796,42 +726,13 @@ function setupEventListeners() {
     document.getElementById('edit-project-strategy').value = project.strategy || '';
     populateUserSelect('edit-project-owner');
     populateUserSelect('edit-project-dev-lead');
-    populateUserSelect('edit-project-qa-lead');
-    populateUserMultiSelect('edit-project-development-team', project.developmentTeam || []);
-    populateStakeholderMultiSelect('edit-project-stakeholders');
-    const objContainer = document.getElementById('edit-project-objectives-container');
-    if (objContainer) {
-      const objectives = project.objectives || [];
-      let html = '';
-      objectives.forEach((o) => {
-        const priorityOpts = getObjectivePriorityOptionsHtml(o.priority || '');
-        html += `<div class="objective-row" data-objective-id="${escapeHtml(o.id)}" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
-          <input type="text" class="objective-name" placeholder="Objective name" value="${escapeHtml(o.name || '')}" style="flex: 1; min-width: 0;">
-          <select class="objective-priority" style="min-width: 120px;">${priorityOpts}</select>
-          <button type="button" class="btn btn-secondary btn-sm remove-objective-row">Remove</button>
-        </div>`;
-      });
-      objContainer.innerHTML = html;
-    }
+    renderChipList('edit-project-development-team-chips', 'edit-project-development-team-add', 'user', project.developmentTeam || []);
+    renderChipList('edit-project-stakeholders-chips', 'edit-project-stakeholders-add', 'stakeholder', project.stakeholders || []);
     setTimeout(() => {
       const o = document.getElementById('edit-project-owner');
       const d = document.getElementById('edit-project-dev-lead');
-      const q = document.getElementById('edit-project-qa-lead');
-      const devTeam = document.getElementById('edit-project-development-team');
-      const s = document.getElementById('edit-project-stakeholders');
       if (o) o.value = project.owner || '';
       if (d) d.value = project.devLead || '';
-      if (q) q.value = project.qaLead || '';
-      if (devTeam && project.developmentTeam?.length) {
-        Array.from(devTeam.options).forEach(opt => {
-          opt.selected = project.developmentTeam.includes(opt.value);
-        });
-      }
-      if (s && project.stakeholders?.length) {
-        Array.from(s.options).forEach(opt => {
-          opt.selected = project.stakeholders.includes(opt.value);
-        });
-      }
     }, 0);
     openModal('edit-project');
     document.getElementById('edit-project-title').focus();
@@ -842,6 +743,36 @@ function setupEventListeners() {
     state.projectSearch = (e.target && e.target.value) ? String(e.target.value).trim() : '';
     if (currentView === 'projects') renderProjects();
   });
+
+  // Chip list: remove
+  document.addEventListener('click', (e) => {
+    if (e.target?.classList?.contains('chip-remove')) {
+      e.preventDefault();
+      const chip = e.target.closest('.chip');
+      const list = e.target.closest('.chip-list');
+      if (!chip || !list) return;
+      const containerId = list.id;
+      const addSelectId = containerId.replace('-chips', '-add');
+      const kind = list.getAttribute('data-kind') || 'user';
+      const removeId = chip.getAttribute('data-id');
+      const ids = getChipListIds(containerId).filter(id => id !== removeId);
+      renderChipList(containerId, addSelectId, kind, ids);
+    }
+  });
+
+  // Chip list: add (development team and stakeholders, new and edit)
+  function chipAddClick(containerId, addSelectId, kind) {
+    const value = document.getElementById(addSelectId)?.value;
+    if (!value) return;
+    const ids = getChipListIds(containerId);
+    if (ids.includes(value)) return;
+    ids.push(value);
+    renderChipList(containerId, addSelectId, kind, ids);
+  }
+  document.getElementById('project-development-team-add-btn')?.addEventListener('click', () => chipAddClick('project-development-team-chips', 'project-development-team-add', 'user'));
+  document.getElementById('project-stakeholders-add-btn')?.addEventListener('click', () => chipAddClick('project-stakeholders-chips', 'project-stakeholders-add', 'stakeholder'));
+  document.getElementById('edit-project-development-team-add-btn')?.addEventListener('click', () => chipAddClick('edit-project-development-team-chips', 'edit-project-development-team-add', 'user'));
+  document.getElementById('edit-project-stakeholders-add-btn')?.addEventListener('click', () => chipAddClick('edit-project-stakeholders-chips', 'edit-project-stakeholders-add', 'stakeholder'));
 
   // Milestone form
   elements.newMilestoneBtn?.addEventListener('click', () => {
@@ -2208,7 +2139,6 @@ function renderInitiativeExpansionRow(project) {
   const priorities = storage.getPriorities();
   const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
   const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
-  const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || '') : '';
   const developmentTeamNames = (project.developmentTeam || []).map(id => users.find(u => u.id === id)?.name || id).filter(Boolean);
   const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
   const objectives = project.objectives || [];
@@ -2272,7 +2202,7 @@ function renderInitiativeExpansionRow(project) {
 
   return `
     <tr class="initiative-expansion-row" data-project-id="${project.id}">
-      <td colspan="9">
+      <td colspan="7">
         <div class="initiative-expansion-panel">
           <div class="initiative-expansion-body">
             ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
@@ -2283,7 +2213,7 @@ function renderInitiativeExpansionRow(project) {
               <div class="progress-cell">${renderProgressMeter(initiativeProgress.segmentsHtml, initiativeProgress.completedPercent)}</div>
             </div>
             <div class="initiative-expansion-people">
-              <p><strong>Product lead</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Technical lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'} · <strong>QA lead</strong> ${qaLeadName ? escapeHtml(qaLeadName) : '—'}</p>
+              <p><strong>Product lead</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Technical lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'}</p>
               ${developmentTeamNames.length ? `<p><strong>Development team</strong> ${developmentTeamNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
               ${stakeholderNames.length ? `<p><strong>Stakeholders</strong> ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
             </div>
@@ -2343,7 +2273,6 @@ function renderProjectsTable(projects) {
   const rowPairs = projects.map(project => {
     const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
     const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
-    const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || '') : '';
     const developmentTeamNames = (project.developmentTeam || []).map(id => users.find(u => u.id === id)?.name || id).filter(Boolean);
     const developmentTeamDisplay = developmentTeamNames.length ? developmentTeamNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>';
     const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
@@ -2369,7 +2298,6 @@ function renderProjectsTable(projects) {
         <td class="initiative-progress-cell">${progressCell}</td>
         <td>${ownerName ? escapeHtml(ownerName) : '<span class="text-muted">—</span>'}</td>
         <td>${devLeadName ? escapeHtml(devLeadName) : '<span class="text-muted">—</span>'}</td>
-        <td>${qaLeadName ? escapeHtml(qaLeadName) : '<span class="text-muted">—</span>'}</td>
         <td class="task-description-small-cell">${developmentTeamDisplay}</td>
         <td>${stakeholderNames.length ? stakeholderNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>'}</td>
         <td class="task-actions-cell">
@@ -2395,7 +2323,6 @@ function renderProjectsTable(projects) {
           <th>Progress</th>
           <th>Product lead</th>
           <th>Technical lead</th>
-          <th>QA lead</th>
           <th>Development team</th>
           <th>Stakeholders</th>
           <th>Actions</th>
@@ -3482,20 +3409,18 @@ function renderRequirementEditRow(requirement) {
               </select>
             </div>
             <div class="form-group risk-factor-inline">
-              <label for="requirement-edit-reg-${requirement.id}" title="0=N/A; 1=Simple; 2=Moderate; 3=High complexity">Reg</label>
-              <select id="requirement-edit-reg-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="regressionNeed" title="Regression: 0=N/A; 1=Simple; 2=Moderate/many issues; 3=High complexity">
+              <label for="requirement-edit-reg-${requirement.id}" title="1=Simple; 2=Moderate; 3=High complexity">Reg</label>
+              <select id="requirement-edit-reg-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="regressionNeed" title="Regression: 1=Simple; 2=Moderate/many issues; 3=High complexity">
                 <option value="">—</option>
-                <option value="0" ${(requirement.riskAssessment?.regressionNeed) === 0 ? 'selected' : ''}>0</option>
                 <option value="1" ${(requirement.riskAssessment?.regressionNeed) === 1 ? 'selected' : ''}>1</option>
                 <option value="2" ${(requirement.riskAssessment?.regressionNeed) === 2 ? 'selected' : ''}>2</option>
                 <option value="3" ${(requirement.riskAssessment?.regressionNeed) === 3 ? 'selected' : ''}>3</option>
               </select>
             </div>
             <div class="form-group risk-factor-inline">
-              <label for="requirement-edit-freq-${requirement.id}" title="0=N/A; 1=Rare admin; 2=Rare user; 3=Routine">Freq</label>
-              <select id="requirement-edit-freq-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="frequencyOfUse" title="Frequency: 0=N/A; 1=Rare admin; 2=Rare user or routine admin; 3=Routine user">
+              <label for="requirement-edit-freq-${requirement.id}" title="1=Rare admin; 2=Rare user; 3=Routine">Freq</label>
+              <select id="requirement-edit-freq-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="frequencyOfUse" title="Frequency: 1=Rare admin; 2=Rare user or routine admin; 3=Routine user">
                 <option value="">—</option>
-                <option value="0" ${(requirement.riskAssessment?.frequencyOfUse) === 0 ? 'selected' : ''}>0</option>
                 <option value="1" ${(requirement.riskAssessment?.frequencyOfUse) === 1 ? 'selected' : ''}>1</option>
                 <option value="2" ${(requirement.riskAssessment?.frequencyOfUse) === 2 ? 'selected' : ''}>2</option>
                 <option value="3" ${(requirement.riskAssessment?.frequencyOfUse) === 3 ? 'selected' : ''}>3</option>
@@ -5550,6 +5475,35 @@ function populateUserMultiSelect(selectId, selectedIds = []) {
   const users = storage.getUsers();
   const selectedSet = new Set(Array.isArray(selectedIds) ? selectedIds : []);
   select.innerHTML = users.map(u => `<option value="${u.id}" ${selectedSet.has(u.id) ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
+}
+
+function getChipListIds(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return [];
+  return Array.from(container.querySelectorAll('.chip')).map(el => el.getAttribute('data-id')).filter(Boolean);
+}
+
+function renderChipList(containerId, addSelectId, kind, selectedIds) {
+  const container = document.getElementById(containerId);
+  const addSelect = document.getElementById(addSelectId);
+  if (!container || !addSelect) return;
+  const ids = Array.isArray(selectedIds) ? selectedIds : [];
+  const users = storage.getUsers();
+  const stakeholders = storage.getStakeholders();
+  const getLabel = (id) => {
+    if (kind === 'user') return users.find(u => u.id === id)?.name || id;
+    return stakeholders.find(s => s.id === id)?.name || id;
+  };
+  const options = kind === 'user' ? users : stakeholders;
+  const availableOptions = options.filter(o => !ids.includes(o.id));
+  container.innerHTML = ids.map(id => `
+    <span class="chip" data-id="${escapeHtml(id)}">
+      ${escapeHtml(getLabel(id))}
+      <button type="button" class="chip-remove" aria-label="Remove">×</button>
+    </span>
+  `).join('');
+  addSelect.innerHTML = '<option value="">' + (kind === 'user' ? 'Add user…' : 'Add stakeholder…') + '</option>' +
+    availableOptions.map(o => `<option value="${o.id}">${escapeHtml(o.name)}</option>`).join('');
 }
 
 function populateMilestoneSelect(selectId, projectId) {

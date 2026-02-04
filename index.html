@@ -203,31 +203,28 @@
                   <option value="">None</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label for="project-qa-lead">QA lead</label>
-                <select id="project-qa-lead">
-                  <option value="">None</option>
+            </div>
+            <div class="form-group">
+              <label>Development team</label>
+              <div id="project-development-team-chips" class="chip-list" data-kind="user"></div>
+              <div class="chip-add-row">
+                <select id="project-development-team-add" aria-label="Add user to development team">
+                  <option value="">Add user…</option>
                 </select>
+                <button type="button" id="project-development-team-add-btn" class="btn btn-secondary btn-sm">Add</button>
               </div>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define users in Settings.</small>
             </div>
             <div class="form-group">
-              <label for="project-development-team">Development team</label>
-              <select id="project-development-team" multiple style="min-height: 80px;">
-              </select>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define users in Settings. Hold Ctrl/Cmd to select multiple.</small>
-            </div>
-            <div class="form-group">
-              <label for="project-stakeholders">Stakeholders</label>
-              <select id="project-stakeholders" multiple style="min-height: 80px;">
-                <option value="">None</option>
-              </select>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define stakeholders in Settings. Hold Ctrl/Cmd to select multiple.</small>
-            </div>
-            <div class="form-group">
-              <label class="block mb-1">Objectives (optional)</label>
-              <p class="text-muted text-sm" style="margin-bottom: 0.5rem;">Add objectives with name and priority for this initiative.</p>
-              <div id="project-objectives-container" class="objectives-edit-list"></div>
-              <button type="button" id="add-project-objective-btn" class="btn btn-secondary btn-sm mt-1">+ Add objective</button>
+              <label>Stakeholders</label>
+              <div id="project-stakeholders-chips" class="chip-list" data-kind="stakeholder"></div>
+              <div class="chip-add-row">
+                <select id="project-stakeholders-add" aria-label="Add stakeholder">
+                  <option value="">Add stakeholder…</option>
+                </select>
+                <button type="button" id="project-stakeholders-add-btn" class="btn btn-secondary btn-sm">Add</button>
+              </div>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define stakeholders in Settings.</small>
             </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Create Initiative</button>
@@ -268,31 +265,28 @@
                   <option value="">None</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label for="edit-project-qa-lead">QA lead</label>
-                <select id="edit-project-qa-lead">
-                  <option value="">None</option>
+            </div>
+            <div class="form-group">
+              <label>Development team</label>
+              <div id="edit-project-development-team-chips" class="chip-list" data-kind="user"></div>
+              <div class="chip-add-row">
+                <select id="edit-project-development-team-add" aria-label="Add user to development team">
+                  <option value="">Add user…</option>
                 </select>
+                <button type="button" id="edit-project-development-team-add-btn" class="btn btn-secondary btn-sm">Add</button>
               </div>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define users in Settings.</small>
             </div>
             <div class="form-group">
-              <label for="edit-project-development-team">Development team</label>
-              <select id="edit-project-development-team" multiple style="min-height: 80px;">
-              </select>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define users in Settings. Hold Ctrl/Cmd to select multiple.</small>
-            </div>
-            <div class="form-group">
-              <label for="edit-project-stakeholders">Stakeholders</label>
-              <select id="edit-project-stakeholders" multiple style="min-height: 80px;">
-                <option value="">None</option>
-              </select>
-              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define stakeholders in Settings. Hold Ctrl/Cmd to select multiple.</small>
-            </div>
-            <div class="form-group">
-              <label class="block mb-1">Objectives</label>
-              <p class="text-muted text-sm" style="margin-bottom: 0.5rem;">Add objectives with name and priority for this initiative.</p>
-              <div id="edit-project-objectives-container" class="objectives-edit-list"></div>
-              <button type="button" id="add-edit-project-objective-btn" class="btn btn-secondary btn-sm mt-1">+ Add objective</button>
+              <label>Stakeholders</label>
+              <div id="edit-project-stakeholders-chips" class="chip-list" data-kind="stakeholder"></div>
+              <div class="chip-add-row">
+                <select id="edit-project-stakeholders-add" aria-label="Add stakeholder">
+                  <option value="">Add stakeholder…</option>
+                </select>
+                <button type="button" id="edit-project-stakeholders-add-btn" class="btn btn-secondary btn-sm">Add</button>
+              </div>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define stakeholders in Settings.</small>
             </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Save Initiative</button>
@@ -621,22 +615,20 @@
                   </select>
                 </div>
                 <div class="form-group risk-factor-with-desc">
-                  <label for="requirement-regression-need">Regression need (0–3)</label>
-                  <p class="risk-factor-desc text-muted">0=N/A; 1=Simple code, few alpha issues; 2=Moderate complexity or many alpha issues; 3=High complexity or outside system comms</p>
+                  <label for="requirement-regression-need">Regression need (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=Simple code, few alpha issues; 2=Moderate complexity or many alpha issues; 3=High complexity or outside system comms</p>
                   <select id="requirement-regression-need" class="risk-factor-select">
                     <option value="">—</option>
-                    <option value="0">0</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
                   </select>
                 </div>
                 <div class="form-group risk-factor-with-desc">
-                  <label for="requirement-frequency-of-use">Frequency of use (0–3)</label>
-                  <p class="risk-factor-desc text-muted">0=N/A; 1=Rarely, admin config; 2=Rarely by end users or routinely by admins; 3=Routinely by end users</p>
+                  <label for="requirement-frequency-of-use">Frequency of use (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=Rarely, admin config; 2=Rarely by end users or routinely by admins; 3=Routinely by end users</p>
                   <select id="requirement-frequency-of-use" class="risk-factor-select">
                     <option value="">—</option>
-                    <option value="0">0</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
@@ -735,22 +727,20 @@
                   </select>
                 </div>
                 <div class="form-group risk-factor-with-desc">
-                  <label for="edit-requirement-regression-need">Regression need (0–3)</label>
-                  <p class="risk-factor-desc text-muted">0=N/A; 1=Simple code, few alpha issues; 2=Moderate complexity or many alpha issues; 3=High complexity or outside system comms</p>
+                  <label for="edit-requirement-regression-need">Regression need (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=Simple code, few alpha issues; 2=Moderate complexity or many alpha issues; 3=High complexity or outside system comms</p>
                   <select id="edit-requirement-regression-need" class="risk-factor-select">
                     <option value="">—</option>
-                    <option value="0">0</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
                   </select>
                 </div>
                 <div class="form-group risk-factor-with-desc">
-                  <label for="edit-requirement-frequency-of-use">Frequency of use (0–3)</label>
-                  <p class="risk-factor-desc text-muted">0=N/A; 1=Rarely, admin config; 2=Rarely by end users or routinely by admins; 3=Routinely by end users</p>
+                  <label for="edit-requirement-frequency-of-use">Frequency of use (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=Rarely, admin config; 2=Rarely by end users or routinely by admins; 3=Routinely by end users</p>
                   <select id="edit-requirement-frequency-of-use" class="risk-factor-select">
                     <option value="">—</option>
-                    <option value="0">0</option>
                     <option value="1">1</option>
                     <option value="2">2</option>
                     <option value="3">3</option>
