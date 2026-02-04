@@ -2168,16 +2168,53 @@ function sortProjects(projects) {
   return sorted;
 }
 
+function renderInitiativeExpansionRow(project) {
+  if (state.expandedProjectId !== project.id) return '';
+  const users = storage.getUsers();
+  const stakeholders = storage.getStakeholders();
+  const priorities = storage.getPriorities();
+  const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
+  const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
+  const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || '') : '';
+  const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
+  const objectives = project.objectives || [];
+  const objectivesDisplay = objectives.length
+    ? objectives.map(o => {
+        const priorityLabel = (o.priority && priorities.find(p => p.id === o.priority)?.label) || o.priority || '';
+        return priorityLabel ? `${escapeHtml(o.name)} (${escapeHtml(priorityLabel)})` : escapeHtml(o.name);
+      }).join(', ')
+    : '—';
+  return `
+    <tr class="initiative-expansion-row" data-project-id="${project.id}">
+      <td colspan="8">
+        <div class="initiative-expansion-panel">
+          <div class="initiative-expansion-body">
+            ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
+            ${project.problemStatement ? `<p><strong>Problem</strong><br>${escapeHtml(project.problemStatement)}</p>` : ''}
+            ${project.strategy ? `<p><strong>Strategy</strong><br>${escapeHtml(project.strategy)}</p>` : ''}
+            ${objectives.length ? `<p><strong>Objectives</strong><br>${objectivesDisplay}</p>` : ''}
+            <p><strong>Owner</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Dev lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'} · <strong>QA lead</strong> ${qaLeadName ? escapeHtml(qaLeadName) : '—'}</p>
+            ${stakeholderNames.length ? `<p><strong>Stakeholders</strong> ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
+          </div>
+          <div class="initiative-expansion-actions">
+            <button type="button" class="btn btn-blue btn-sm edit-project-view" data-project-id="${project.id}">Edit</button>
+            <button type="button" class="btn btn-red btn-sm delete-project-view" data-project-id="${project.id}">Delete</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
 function renderProjectsTable(projects) {
   const users = storage.getUsers();
   const stakeholders = storage.getStakeholders();
   const priorities = storage.getPriorities();
-  const rows = projects.map(project => {
+  const rowPairs = projects.map(project => {
     const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
     const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
     const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || '') : '';
     const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
-    const milestoneCount = (project.milestones || []).length;
     const objectives = project.objectives || [];
     const objectivesDisplay = objectives.length
       ? objectives.map(o => {
@@ -2185,8 +2222,10 @@ function renderProjectsTable(projects) {
           return priorityLabel ? `${escapeHtml(o.name)} (${escapeHtml(priorityLabel)})` : escapeHtml(o.name);
         }).join(', ')
       : '<span class="text-muted">—</span>';
-    return `
-      <tr class="task-table-row" data-project-id="${project.id}">
+    const isExpanded = state.expandedProjectId === project.id;
+    const rowClass = `task-table-row initiative-row${isExpanded ? ' expanded' : ''}`;
+    const mainRow = `
+      <tr class="${rowClass}" data-project-id="${project.id}">
         <td class="task-title-cell">
           <strong>${escapeHtml(project.title)}</strong>
           ${project.description ? `<div class="task-description-small">${escapeHtml(project.description)}</div>` : ''}
@@ -2198,14 +2237,12 @@ function renderProjectsTable(projects) {
         <td>${devLeadName ? escapeHtml(devLeadName) : '<span class="text-muted">—</span>'}</td>
         <td>${qaLeadName ? escapeHtml(qaLeadName) : '<span class="text-muted">—</span>'}</td>
         <td>${stakeholderNames.length ? stakeholderNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>'}</td>
-        <td>${milestoneCount}</td>
-        <td class="task-actions-cell">
-          <button type="button" class="btn btn-blue btn-xs edit-project-view" data-project-id="${project.id}">Edit</button>
-          <button type="button" class="btn btn-red btn-xs delete-project-view" data-project-id="${project.id}">Delete</button>
-        </td>
       </tr>
     `;
-  }).join('');
+    const expansionRow = renderInitiativeExpansionRow(project);
+    return mainRow + expansionRow;
+  });
+  const rows = rowPairs.join('');
 
   const getSortIndicator = (col) => state.projectSortColumn !== col ? '' : (state.projectSortDirection === 'asc' ? ' ↑' : ' ↓');
   const getSortClass = (col) => state.projectSortColumn === col ? 'sortable-header sorted' : 'sortable-header';
@@ -2222,8 +2259,6 @@ function renderProjectsTable(projects) {
           <th>Dev lead</th>
           <th>QA lead</th>
           <th>Stakeholders</th>
-          <th class="${getSortClass('milestones')}" data-sort-column="milestones">Milestones${getSortIndicator('milestones')}</th>
-          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -2266,6 +2301,14 @@ function renderProjects() {
 
   sorted.forEach(project => {
     attachProjectListeners(project);
+  });
+
+  document.querySelectorAll('#projects-list .initiative-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const projectId = row.getAttribute('data-project-id');
+      state.expandedProjectId = state.expandedProjectId === projectId ? null : projectId;
+      renderProjects();
+    });
   });
 
   document.querySelectorAll('#projects-list .sortable-header[data-sort-column]').forEach(header => {
