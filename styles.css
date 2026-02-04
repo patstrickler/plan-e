@@ -988,8 +988,8 @@ body {
 }
 
 .initiative-objectives-table .initiative-objective-description-cell {
-  max-width: 360px;
-  min-width: 200px;
+  max-width: 500px;
+  min-width: 280px;
   vertical-align: top;
 }
 
@@ -1002,9 +1002,9 @@ body {
 .initiative-objectives-table .objective-priority-select {
   min-width: 0;
   width: 100%;
-  max-width: 100px;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.8rem;
+  max-width: 72px;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.75rem;
   border-radius: 0.25rem;
   cursor: pointer;
 }
@@ -1076,7 +1076,7 @@ body {
 }
 
 .initiative-objective-progress-cell .progress-meter {
-  min-width: 100px;
+  min-width: 150px;
 }
 
 .initiative-add-objective-form .form-group {
