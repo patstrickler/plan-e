@@ -58,6 +58,9 @@ const state = {
   functionalRequirementSortDirection: 'asc',
   taskSortColumn: '',
   taskSortDirection: 'asc',
+  projectSearch: '',
+  projectSortColumn: '',
+  projectSortDirection: 'asc',
   activeRequirementLinkId: null,
   activeFunctionalRequirementId: null,
   activeMilestoneId: null,
@@ -558,6 +561,22 @@ function setupEventListeners() {
     const strategyEl = document.getElementById('project-strategy');
     if (problemEl) problemEl.value = '';
     if (strategyEl) strategyEl.value = '';
+    const container = document.getElementById('project-objectives-container');
+    if (container) container.innerHTML = '';
+  });
+
+  document.getElementById('add-project-objective-btn')?.addEventListener('click', () => {
+    const container = document.getElementById('project-objectives-container');
+    if (!container) return;
+    const priorityOpts = getObjectivePriorityOptionsHtml('');
+    container.insertAdjacentHTML('beforeend', getObjectiveRowHtml(priorityOpts, '', ''));
+  });
+
+  document.getElementById('project-objectives-container')?.addEventListener('click', (e) => {
+    if (e.target?.classList?.contains('remove-objective-row')) {
+      const row = e.target.closest('.objective-row');
+      if (row) row.remove();
+    }
   });
 
   elements.newProjectForm?.addEventListener('submit', (e) => {
@@ -573,7 +592,7 @@ function setupEventListeners() {
     const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
     if (!title) return;
     try {
-      storage.createProject({
+      const newProject = storage.createProject({
         title,
         description: description || undefined,
         problemStatement,
@@ -583,10 +602,20 @@ function setupEventListeners() {
         qaLead,
         stakeholders,
       });
+      const container = document.getElementById('project-objectives-container');
+      if (container) {
+        container.querySelectorAll('.objective-row').forEach((row) => {
+          const name = row.querySelector('.objective-name')?.value?.trim();
+          const priority = row.querySelector('.objective-priority')?.value || undefined;
+          if (name) storage.createObjective(newProject.id, { name, priority });
+        });
+      }
       document.getElementById('project-title').value = '';
       document.getElementById('project-description').value = '';
       if (document.getElementById('project-problem')) document.getElementById('project-problem').value = '';
       if (document.getElementById('project-strategy')) document.getElementById('project-strategy').value = '';
+      const objContainer = document.getElementById('project-objectives-container');
+      if (objContainer) objContainer.innerHTML = '';
       elements.newProjectForm.style.display = 'none';
       elements.newProjectBtn.style.display = 'block';
       loadProjects();
@@ -594,6 +623,129 @@ function setupEventListeners() {
       console.error('Failed to create initiative:', error);
       alert('Failed to create initiative');
     }
+  });
+
+  // Edit initiative form (same fields as New)
+  document.getElementById('cancel-edit-project-btn')?.addEventListener('click', () => {
+    document.getElementById('edit-project-form').style.display = 'none';
+  });
+
+  document.getElementById('edit-project-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = document.getElementById('edit-project-id').value;
+    if (!id) return;
+    const title = document.getElementById('edit-project-title').value.trim();
+    const description = document.getElementById('edit-project-description').value.trim();
+    const problemStatement = document.getElementById('edit-project-problem')?.value?.trim() || '';
+    const strategy = document.getElementById('edit-project-strategy')?.value?.trim() || '';
+    const owner = document.getElementById('edit-project-owner')?.value || undefined;
+    const devLead = document.getElementById('edit-project-dev-lead')?.value || undefined;
+    const qaLead = document.getElementById('edit-project-qa-lead')?.value || undefined;
+    const stakeholdersEl = document.getElementById('edit-project-stakeholders');
+    const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
+    if (!title) return;
+    try {
+      storage.updateProject(id, {
+        title,
+        description: description || undefined,
+        problemStatement,
+        strategy,
+        owner,
+        devLead,
+        qaLead,
+        stakeholders,
+      });
+      const container = document.getElementById('edit-project-objectives-container');
+      if (container) {
+        const rows = container.querySelectorAll('.objective-row');
+        const keptIds = [];
+        rows.forEach((row) => {
+          const objectiveId = row.getAttribute('data-objective-id');
+          const name = row.querySelector('.objective-name')?.value?.trim() || '';
+          const priority = row.querySelector('.objective-priority')?.value || undefined;
+          if (objectiveId) {
+            storage.updateObjective(id, objectiveId, { name, priority });
+            keptIds.push(objectiveId);
+          } else if (name) {
+            const created = storage.createObjective(id, { name, priority });
+            keptIds.push(created.id);
+          }
+        });
+        const project = storage.getProject(id);
+        (project?.objectives || []).forEach((o) => {
+          if (!keptIds.includes(o.id)) storage.deleteObjective(id, o.id);
+        });
+      }
+      document.getElementById('edit-project-form').style.display = 'none';
+      loadProjects();
+    } catch (error) {
+      console.error('Failed to update initiative:', error);
+      alert('Failed to update initiative');
+    }
+  });
+
+  document.getElementById('add-edit-project-objective-btn')?.addEventListener('click', () => {
+    const container = document.getElementById('edit-project-objectives-container');
+    if (!container) return;
+    const priorityOpts = getObjectivePriorityOptionsHtml('');
+    container.insertAdjacentHTML('beforeend', getObjectiveRowHtml(priorityOpts, '', ''));
+  });
+
+  document.getElementById('edit-project-form')?.addEventListener('click', (e) => {
+    if (e.target?.classList?.contains('remove-objective-row')) {
+      const row = e.target.closest('.objective-row');
+      if (row) row.remove();
+    }
+  });
+
+  window.openEditProjectModal = function(project) {
+    const form = document.getElementById('edit-project-form');
+    if (!form || !project) return;
+    document.getElementById('edit-project-id').value = project.id;
+    document.getElementById('edit-project-title').value = project.title || '';
+    document.getElementById('edit-project-description').value = project.description || '';
+    document.getElementById('edit-project-problem').value = project.problemStatement || '';
+    document.getElementById('edit-project-strategy').value = project.strategy || '';
+    populateUserSelect('edit-project-owner');
+    populateUserSelect('edit-project-dev-lead');
+    populateUserSelect('edit-project-qa-lead');
+    populateStakeholderMultiSelect('edit-project-stakeholders');
+    const objContainer = document.getElementById('edit-project-objectives-container');
+    if (objContainer) {
+      const objectives = project.objectives || [];
+      let html = '';
+      objectives.forEach((o) => {
+        const priorityOpts = getObjectivePriorityOptionsHtml(o.priority || '');
+        html += `<div class="objective-row" data-objective-id="${escapeHtml(o.id)}" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+          <input type="text" class="objective-name" placeholder="Objective name" value="${escapeHtml(o.name || '')}" style="flex: 1; min-width: 0;">
+          <select class="objective-priority" style="min-width: 120px;">${priorityOpts}</select>
+          <button type="button" class="btn btn-secondary btn-sm remove-objective-row">Remove</button>
+        </div>`;
+      });
+      objContainer.innerHTML = html;
+    }
+    setTimeout(() => {
+      const o = document.getElementById('edit-project-owner');
+      const d = document.getElementById('edit-project-dev-lead');
+      const q = document.getElementById('edit-project-qa-lead');
+      const s = document.getElementById('edit-project-stakeholders');
+      if (o) o.value = project.owner || '';
+      if (d) d.value = project.devLead || '';
+      if (q) q.value = project.qaLead || '';
+      if (s && project.stakeholders?.length) {
+        Array.from(s.options).forEach(opt => {
+          opt.selected = project.stakeholders.includes(opt.value);
+        });
+      }
+    }, 0);
+    form.style.display = 'block';
+    document.getElementById('edit-project-title').focus();
+  };
+
+  // Initiative search
+  document.getElementById('project-search')?.addEventListener('input', (e) => {
+    state.projectSearch = (e.target && e.target.value) ? String(e.target.value).trim() : '';
+    if (currentView === 'projects') renderProjects();
   });
 
   // Milestone form
@@ -1930,116 +2082,150 @@ function importTasksFromCsv(rows) {
 }
 
 // Render functions
+function filterProjects(projects) {
+  const q = (state.projectSearch || '').trim().toLowerCase();
+  if (!q) return projects;
+  return projects.filter(p => {
+    const title = (p.title || '').toLowerCase();
+    const desc = (p.description || '').toLowerCase();
+    const problem = (p.problemStatement || '').toLowerCase();
+    const strategy = (p.strategy || '').toLowerCase();
+    return title.includes(q) || desc.includes(q) || problem.includes(q) || strategy.includes(q);
+  });
+}
+
+function sortProjects(projects) {
+  if (!state.projectSortColumn) return projects;
+  const sorted = [...projects].sort((a, b) => {
+    let aVal, bVal;
+    switch (state.projectSortColumn) {
+      case 'title':
+        aVal = (a.title || '').toLowerCase();
+        bVal = (b.title || '').toLowerCase();
+        return state.projectSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      case 'milestones':
+        aVal = (a.milestones || []).length;
+        bVal = (b.milestones || []).length;
+        return state.projectSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      default:
+        return 0;
+    }
+  });
+  return sorted;
+}
+
+function renderProjectsTable(projects) {
+  const users = storage.getUsers();
+  const stakeholders = storage.getStakeholders();
+  const priorities = storage.getPriorities();
+  const rows = projects.map(project => {
+    const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
+    const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
+    const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || '') : '';
+    const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
+    const milestoneCount = (project.milestones || []).length;
+    const objectives = project.objectives || [];
+    const objectivesDisplay = objectives.length
+      ? objectives.map(o => {
+          const priorityLabel = (o.priority && priorities.find(p => p.id === o.priority)?.label) || o.priority || '';
+          return priorityLabel ? `${escapeHtml(o.name)} (${escapeHtml(priorityLabel)})` : escapeHtml(o.name);
+        }).join(', ')
+      : '<span class="text-muted">—</span>';
+    return `
+      <tr class="task-table-row" data-project-id="${project.id}">
+        <td class="task-title-cell">
+          <strong>${escapeHtml(project.title)}</strong>
+          ${project.description ? `<div class="task-description-small">${escapeHtml(project.description)}</div>` : ''}
+        </td>
+        <td class="task-description-small-cell">${project.problemStatement ? escapeHtml(project.problemStatement) : '<span class="text-muted">—</span>'}</td>
+        <td class="task-description-small-cell">${project.strategy ? escapeHtml(project.strategy) : '<span class="text-muted">—</span>'}</td>
+        <td class="task-description-small-cell">${objectivesDisplay}</td>
+        <td>${ownerName ? escapeHtml(ownerName) : '<span class="text-muted">—</span>'}</td>
+        <td>${devLeadName ? escapeHtml(devLeadName) : '<span class="text-muted">—</span>'}</td>
+        <td>${qaLeadName ? escapeHtml(qaLeadName) : '<span class="text-muted">—</span>'}</td>
+        <td>${stakeholderNames.length ? stakeholderNames.map(n => escapeHtml(n)).join(', ') : '<span class="text-muted">—</span>'}</td>
+        <td>${milestoneCount}</td>
+        <td class="task-actions-cell">
+          <button type="button" class="btn btn-blue btn-xs edit-project-view" data-project-id="${project.id}">Edit</button>
+          <button type="button" class="btn btn-red btn-xs delete-project-view" data-project-id="${project.id}">Delete</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const getSortIndicator = (col) => state.projectSortColumn !== col ? '' : (state.projectSortDirection === 'asc' ? ' ↑' : ' ↓');
+  const getSortClass = (col) => state.projectSortColumn === col ? 'sortable-header sorted' : 'sortable-header';
+
+  return `
+    <table class="tasks-table initiatives-table">
+      <thead>
+        <tr>
+          <th class="${getSortClass('title')}" data-sort-column="title">Initiative${getSortIndicator('title')}</th>
+          <th>Problem</th>
+          <th>Strategy</th>
+          <th>Objectives</th>
+          <th>Owner</th>
+          <th>Dev lead</th>
+          <th>QA lead</th>
+          <th>Stakeholders</th>
+          <th class="${getSortClass('milestones')}" data-sort-column="milestones">Milestones${getSortIndicator('milestones')}</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
 function renderProjects() {
   if (!elements.projectsList) return;
-  
+
+  const projectsControl = document.getElementById('projects-controls');
+  if (projectsControl) projectsControl.style.display = state.projects.length > 0 ? 'block' : 'none';
+
   if (state.projects.length === 0) {
     elements.projectsList.innerHTML = `
       <div class="empty-state">
-        <p>No projects yet</p>
-        <p class="empty-state-sub">Create your first project to get started!</p>
+        <p>No initiatives yet</p>
+        <p class="empty-state-sub">Create your first initiative to get started!</p>
       </div>
     `;
     return;
   }
-  
-  elements.projectsList.innerHTML = state.projects.map(project => renderProjectCard(project)).join('');
-  
-  // Re-attach event listeners
-  state.projects.forEach(project => {
-    attachProjectListeners(project);
-  });
-}
 
-function renderProjectCard(project) {
-  const isEditing = state.editingProjects.has(project.id);
-  
-  if (isEditing) {
-    const users = storage.getUsers();
-    const stakeholders = storage.getStakeholders();
-    const userOpts = (id) => users.map(u => `<option value="${u.id}" ${project[id] === u.id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
-    const stakeholderOpts = stakeholders.map(s => `<option value="${s.id}" ${(project.stakeholders || []).includes(s.id) ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('');
-    return `
-      <div class="project-card" data-project-id="${project.id}">
-        <div class="project-card-header">
-          <div class="project-card-content">
-            <input type="text" class="edit-title" value="${escapeHtml(project.title)}" data-project-id="${project.id}" placeholder="Initiative title">
-            <textarea class="edit-description" data-project-id="${project.id}" rows="2" placeholder="Description">${escapeHtml(project.description || '')}</textarea>
-            <textarea class="edit-problem" data-project-id="${project.id}" rows="2" placeholder="Problem statement">${escapeHtml(project.problemStatement || '')}</textarea>
-            <textarea class="edit-strategy" data-project-id="${project.id}" rows="2" placeholder="Strategy">${escapeHtml(project.strategy || '')}</textarea>
-            <div class="form-row">
-              <label class="text-sm">Owner</label><select class="edit-owner" data-project-id="${project.id}"><option value="">None</option>${userOpts('owner')}</select>
-              <label class="text-sm">Dev lead</label><select class="edit-dev-lead" data-project-id="${project.id}"><option value="">None</option>${userOpts('devLead')}</select>
-              <label class="text-sm">QA lead</label><select class="edit-qa-lead" data-project-id="${project.id}"><option value="">None</option>${userOpts('qaLead')}</select>
-            </div>
-            <label class="text-sm">Stakeholders</label><select class="edit-stakeholders" data-project-id="${project.id}" multiple style="min-height: 60px;">${stakeholderOpts}</select>
-            <div class="form-actions">
-              <button class="btn btn-primary btn-sm save-project" data-project-id="${project.id}">Save</button>
-              <button class="btn btn-secondary btn-sm cancel-edit-project" data-project-id="${project.id}">Cancel</button>
-            </div>
-          </div>
-        </div>
+  const filtered = filterProjects(state.projects);
+  const sorted = sortProjects(filtered);
+
+  if (sorted.length === 0) {
+    elements.projectsList.innerHTML = `
+      <div class="empty-state">
+        <p>No initiatives match your search</p>
+        <p class="empty-state-sub">Try a different search term.</p>
       </div>
     `;
+    return;
   }
-  
-  const users = storage.getUsers();
-  const stakeholders = storage.getStakeholders();
-  const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || project.owner) : '';
-  const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || project.devLead) : '';
-  const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || project.qaLead) : '';
-  const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
-  const rolesHtml = (ownerName || devLeadName || qaLeadName || stakeholderNames.length) ? `
-    <div class="text-xs text-muted" style="margin-top: 0.5rem;">
-      ${ownerName ? `<span>Owner: ${escapeHtml(ownerName)}</span>` : ''}
-      ${devLeadName ? ` <span>Dev lead: ${escapeHtml(devLeadName)}</span>` : ''}
-      ${qaLeadName ? ` <span>QA lead: ${escapeHtml(qaLeadName)}</span>` : ''}
-      ${stakeholderNames.length ? ` <span>Stakeholders: ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</span>` : ''}
-    </div>
-  ` : '';
-  const objectives = project.objectives || [];
-  const objectivesHtml = objectives.length ? `
-    <div class="objectives-list" style="margin-top: 0.5rem;">
-      <strong class="text-sm">Objectives</strong>
-      <ul class="text-sm text-muted" style="margin: 0.25rem 0 0 1rem; padding: 0;">
-        ${objectives.map(o => `<li>${escapeHtml(o.name)}${o.priority ? ` (${escapeHtml(o.priority)})` : ''}</li>`).join('')}
-      </ul>
-    </div>
-  ` : '';
-  const sortedMilestones = [...(project.milestones || [])].sort((a, b) => {
-    if ((a.title || '').toLowerCase() === 'backlog') return -1;
-    if ((b.title || '').toLowerCase() === 'backlog') return 1;
-    return 0;
+
+  elements.projectsList.innerHTML = renderProjectsTable(sorted);
+
+  sorted.forEach(project => {
+    attachProjectListeners(project);
   });
-  const milestoneProgressHtml = sortedMilestones.length > 0 ? `
-    <div class="project-milestones-progress" style="margin-top: 0.75rem;">
-      <h3 class="text-sm" style="margin-bottom: 0.5rem; font-weight: 600;">Milestones</h3>
-      <div class="milestones-progress-list">
-        ${sortedMilestones.map(m => renderMilestoneProgressBar(m)).join('')}
-      </div>
-      ${state.showAddMilestone.get(project.id) ? renderAddMilestoneForm(project.id) : `<button type="button" class="btn btn-secondary btn-xs add-milestone-btn" data-project-id="${project.id}">+ Add milestone</button>`}
-    </div>
-  ` : '';
-  
-  return `
-    <div class="project-card" data-project-id="${project.id}">
-      <div class="project-card-header">
-        <div class="project-card-content">
-          <h2>${escapeHtml(project.title)}</h2>
-          ${project.description ? `<p>${escapeHtml(project.description)}</p>` : ''}
-          ${project.problemStatement ? `<p class="text-sm"><strong>Problem:</strong> ${escapeHtml(project.problemStatement)}</p>` : ''}
-          ${project.strategy ? `<p class="text-sm"><strong>Strategy:</strong> ${escapeHtml(project.strategy)}</p>` : ''}
-          ${rolesHtml}
-          ${objectivesHtml}
-        </div>
-        <div class="project-card-actions">
-          <button class="btn btn-blue btn-sm edit-project" data-project-id="${project.id}">Edit</button>
-          <button class="btn btn-red btn-sm delete-project" data-project-id="${project.id}">Delete</button>
-        </div>
-      </div>
-      ${milestoneProgressHtml}
-    </div>
-  `;
+
+  document.querySelectorAll('#projects-list .sortable-header[data-sort-column]').forEach(header => {
+    header.addEventListener('click', () => {
+      const col = header.getAttribute('data-sort-column');
+      if (state.projectSortColumn === col) {
+        state.projectSortDirection = state.projectSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.projectSortColumn = col;
+        state.projectSortDirection = 'asc';
+      }
+      renderProjects();
+    });
+  });
 }
 
 function renderMilestoneCard(milestone, projectId) {
@@ -2352,7 +2538,7 @@ function renderMilestonesTable(milestones) {
       <thead>
         <tr>
           <th class="${getSortClass('title')}" data-sort-column="title">Milestone${getSortIndicator('title')}</th>
-          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Initiative${getSortIndicator('project')}</th>
           <th class="${getSortClass('targetDate')}" data-sort-column="targetDate">Target Date${getSortIndicator('targetDate')}</th>
           <th class="${getSortClass('progress')}" data-sort-column="progress">Progress${getSortIndicator('progress')}</th>
           <th>Status</th>
@@ -3470,7 +3656,7 @@ function renderFunctionalRequirementsTable(functionalRequirements) {
       <thead>
         <tr>
           <th class="${getSortClass('title')}" data-sort-column="title">Functional Requirement${getSortIndicator('title')}</th>
-          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Initiative${getSortIndicator('project')}</th>
           <th class="${getSortClass('linkedUserReqs')}" data-sort-column="linkedUserReqs">Linked User Reqs${getSortIndicator('linkedUserReqs')}</th>
           <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
           <th>Progress</th>
@@ -4580,7 +4766,7 @@ function renderTasksTable(tasks) {
         <tr>
           <th class="${getSortClass('status')}" data-sort-column="status">Status${getSortIndicator('status')}</th>
           <th class="${getSortClass('title')}" data-sort-column="title">Task${getSortIndicator('title')}</th>
-          <th class="${getSortClass('project')}" data-sort-column="project">Project${getSortIndicator('project')}</th>
+          <th class="${getSortClass('project')}" data-sort-column="project">Initiative${getSortIndicator('project')}</th>
           <th class="${getSortClass('effort')}" data-sort-column="effort">Effort${getSortIndicator('effort')}</th>
           <th class="${getSortClass('assigned')}" data-sort-column="assigned">Assigned${getSortIndicator('assigned')}</th>
           <th class="${getSortClass('startDate')}" data-sort-column="startDate">Dates${getSortIndicator('startDate')}</th>
@@ -5115,6 +5301,23 @@ function populateUserSelect(selectId) {
     users.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
 }
 
+function getObjectiveRowHtml(priorityOptionsHtml, name = '', priorityId = '') {
+  return `
+    <div class="objective-row" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+      <input type="text" class="objective-name" placeholder="Objective name" value="${escapeHtml(name)}" style="flex: 1; min-width: 0;">
+      <select class="objective-priority" style="min-width: 120px;">${priorityOptionsHtml}</select>
+      <button type="button" class="btn btn-secondary btn-sm remove-objective-row">Remove</button>
+    </div>
+  `;
+}
+
+function getObjectivePriorityOptionsHtml(selectedId = '') {
+  const priorities = storage.getPriorities();
+  return '<option value="">None</option>' + priorities.map(p =>
+    `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
+  ).join('');
+}
+
 function populateStakeholderMultiSelect(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
@@ -5286,57 +5489,16 @@ function updateAllSelects() {
   }
 }
 
-// Attach event listeners to project cards
+// Attach event listeners to project table rows
 function attachProjectListeners(project) {
   const projectId = project.id;
-  
-  // Edit project
-  document.querySelector(`.edit-project[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    state.editingProjects.add(projectId);
-    renderProjects();
+
+  document.querySelector(`.edit-project-view[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
+    openEditProjectModal(project);
   });
-  
-  // Save project (initiative)
-  document.querySelector(`.save-project[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    const title = document.querySelector(`.edit-title[data-project-id="${projectId}"]`)?.value?.trim();
-    const description = document.querySelector(`.edit-description[data-project-id="${projectId}"]`)?.value?.trim();
-    const problemStatement = document.querySelector(`.edit-problem[data-project-id="${projectId}"]`)?.value?.trim() || '';
-    const strategy = document.querySelector(`.edit-strategy[data-project-id="${projectId}"]`)?.value?.trim() || '';
-    const owner = document.querySelector(`.edit-owner[data-project-id="${projectId}"]`)?.value || undefined;
-    const devLead = document.querySelector(`.edit-dev-lead[data-project-id="${projectId}"]`)?.value || undefined;
-    const qaLead = document.querySelector(`.edit-qa-lead[data-project-id="${projectId}"]`)?.value || undefined;
-    const stakeholdersEl = document.querySelector(`.edit-stakeholders[data-project-id="${projectId}"]`);
-    const stakeholders = stakeholdersEl ? Array.from(stakeholdersEl.selectedOptions).map(o => o.value).filter(Boolean) : [];
-    if (!title) return;
-    try {
-      storage.updateProject(projectId, {
-        title,
-        description: description || undefined,
-        problemStatement,
-        strategy,
-        owner,
-        devLead,
-        qaLead,
-        stakeholders,
-      });
-      state.editingProjects.delete(projectId);
-      loadProjects();
-    } catch (error) {
-      console.error('Failed to update initiative:', error);
-      alert('Failed to update initiative');
-    }
-  });
-  
-  // Cancel edit project
-  document.querySelector(`.cancel-edit-project[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    state.editingProjects.delete(projectId);
-    renderProjects();
-  });
-  
-  // Delete project
-  document.querySelector(`.delete-project[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
+
+  document.querySelector(`.delete-project-view[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
     if (!confirm(`Are you sure you want to delete "${project.title}"?`)) return;
-    
     try {
       storage.deleteProject(projectId);
       loadProjects();
@@ -5345,43 +5507,6 @@ function attachProjectListeners(project) {
       alert('Failed to delete project');
     }
   });
-  
-  // Add milestone button
-  document.querySelector(`.add-milestone-btn[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    state.showAddMilestone.set(projectId, true);
-    renderProjects();
-  });
-  
-  // Cancel add milestone
-  document.querySelector(`.cancel-add-milestone[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
-    state.showAddMilestone.delete(projectId);
-    renderProjects();
-  });
-  
-  // Add milestone form
-  document.querySelector(`.add-milestone-form[data-project-id="${projectId}"]`)?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const title = e.target.querySelector('.milestone-title-input').value.trim();
-    const description = e.target.querySelector('.milestone-description-input').value.trim();
-    const targetDateInput = e.target.querySelector('.milestone-target-date-input');
-    const targetDate = targetDateInput ? (targetDateInput.flatpickr ? targetDateInput.flatpickr.input.value : targetDateInput.value) : '';
-    
-    if (!title) return;
-    
-    try {
-      storage.createMilestone(projectId, { 
-        title, 
-        description: description || undefined,
-        targetDate: targetDate || undefined
-      });
-      state.showAddMilestone.delete(projectId);
-      loadProjects();
-    } catch (error) {
-      console.error('Failed to create milestone:', error);
-      alert('Failed to create milestone');
-    }
-  });
-  
 }
 
 function attachMilestoneViewListeners(milestone) {

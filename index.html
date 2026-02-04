@@ -217,14 +217,85 @@
               </select>
               <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define stakeholders in Settings. Hold Ctrl/Cmd to select multiple.</small>
             </div>
+            <div class="form-group">
+              <label class="block mb-1">Objectives (optional)</label>
+              <p class="text-muted text-sm" style="margin-bottom: 0.5rem;">Add objectives with name and priority for this initiative.</p>
+              <div id="project-objectives-container" class="objectives-edit-list"></div>
+              <button type="button" id="add-project-objective-btn" class="btn btn-secondary btn-sm mt-1">+ Add objective</button>
+            </div>
             <div class="form-actions">
               <button type="submit" class="btn btn-primary">Create Initiative</button>
               <button type="button" id="cancel-project-btn" class="btn btn-secondary">Cancel</button>
             </div>
           </form>
+
+          <!-- Edit Initiative Form (same fields as New) -->
+          <form id="edit-project-form" class="form-card" style="display: none;">
+            <h2>Edit Initiative</h2>
+            <input type="hidden" id="edit-project-id">
+            <div class="form-group">
+              <label for="edit-project-title">Initiative Title *</label>
+              <input type="text" id="edit-project-title" required placeholder="Enter initiative title">
+            </div>
+            <div class="form-group">
+              <label for="edit-project-description">Description (optional)</label>
+              <textarea id="edit-project-description" rows="3" placeholder="Enter description"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="edit-project-problem">Problem statement (optional)</label>
+              <textarea id="edit-project-problem" rows="2" placeholder="Overall problem or market need"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="edit-project-strategy">Strategy (optional)</label>
+              <textarea id="edit-project-strategy" rows="2" placeholder="Strategy / net-benefit"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="edit-project-owner">Owner</label>
+                <select id="edit-project-owner">
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="edit-project-dev-lead">Dev lead</label>
+                <select id="edit-project-dev-lead">
+                  <option value="">None</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="edit-project-qa-lead">QA lead</label>
+                <select id="edit-project-qa-lead">
+                  <option value="">None</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="edit-project-stakeholders">Stakeholders</label>
+              <select id="edit-project-stakeholders" multiple style="min-height: 80px;">
+                <option value="">None</option>
+              </select>
+              <small class="text-muted" style="display: block; margin-top: 0.25rem;">Define stakeholders in Settings. Hold Ctrl/Cmd to select multiple.</small>
+            </div>
+            <div class="form-group">
+              <label class="block mb-1">Objectives</label>
+              <p class="text-muted text-sm" style="margin-bottom: 0.5rem;">Add objectives with name and priority for this initiative.</p>
+              <div id="edit-project-objectives-container" class="objectives-edit-list"></div>
+              <button type="button" id="add-edit-project-objective-btn" class="btn btn-secondary btn-sm mt-1">+ Add objective</button>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Save Initiative</button>
+              <button type="button" id="cancel-edit-project-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
         </div>
 
-        <div id="projects-list" class="projects-list"></div>
+        <!-- Initiatives table controls -->
+        <div class="tasks-controls mb-4" id="projects-controls">
+          <div class="tasks-search-filter">
+            <input type="text" id="project-search" class="task-search-input" placeholder="Search initiatives...">
+          </div>
+        </div>
+        <div id="projects-list" class="tasks-table-container"></div>
       </div>
 
       <!-- Milestones View -->
@@ -749,7 +820,7 @@
           <form id="new-functional-requirement-form" class="form-card" style="display: none;">
             <h2>Create New Functional Requirement</h2>
             <div class="form-group">
-              <label for="functional-requirement-project">Project *</label>
+              <label for="functional-requirement-project">Initiative *</label>
               <select id="functional-requirement-project" required></select>
             </div>
             <div class="form-group">
@@ -778,7 +849,7 @@
             <input type="hidden" id="edit-functional-requirement-id">
             <input type="hidden" id="edit-functional-requirement-project-id">
             <div class="form-group">
-              <label for="edit-functional-requirement-project">Project *</label>
+              <label for="edit-functional-requirement-project">Initiative *</label>
               <select id="edit-functional-requirement-project" required></select>
             </div>
             <div class="form-group">

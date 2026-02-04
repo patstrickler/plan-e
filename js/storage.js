@@ -287,6 +287,12 @@ export function deleteObjective(projectId, objectiveId) {
   if (!project || !project.objectives) return false;
   const initialLength = project.objectives.length;
   project.objectives = project.objectives.filter(o => o.id !== objectiveId);
+  // Clear objective reference from requirements that pointed to this objective
+  if (project.requirements) {
+    project.requirements.forEach((r) => {
+      if (r.objectiveId === objectiveId) r.objectiveId = undefined;
+    });
+  }
   project.updatedAt = new Date().toISOString();
   writeData(data);
   return project.objectives.length < initialLength;
