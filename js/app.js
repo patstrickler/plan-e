@@ -459,8 +459,91 @@ function closeNavDropdowns() {
   });
 }
 
+// Modal: move forms into panels and open/close
+const MODAL_PANEL_IDS = [
+  'new-project', 'edit-project', 'new-task', 'edit-task', 'new-requirement', 'edit-requirement'
+];
+const FORM_ID_TO_PANEL = {
+  'new-project-form': 'modal-panel-new-project',
+  'edit-project-form': 'modal-panel-edit-project',
+  'new-task-form': 'modal-panel-new-task',
+  'edit-task-form': 'modal-panel-edit-task',
+  'new-requirement-form': 'modal-panel-new-requirement',
+  'edit-requirement-form': 'modal-panel-edit-requirement',
+};
+
+function moveFormsIntoModal() {
+  const backdrop = document.getElementById('modal-backdrop');
+  if (!backdrop) return;
+  Object.entries(FORM_ID_TO_PANEL).forEach(([formId, panelId]) => {
+    const form = document.getElementById(formId);
+    const panel = document.getElementById(panelId);
+    if (form && panel) {
+      panel.appendChild(form);
+      form.style.display = '';
+    }
+  });
+}
+
+function openModal(panelKey) {
+  const backdrop = document.getElementById('modal-backdrop');
+  const key = typeof panelKey === 'string' && panelKey.startsWith('modal-panel-') ? panelKey.replace(/^modal-panel-/, '') : panelKey;
+  const panelId = `modal-panel-${key}`;
+  if (!backdrop) return;
+  MODAL_PANEL_IDS.forEach(k => {
+    const p = document.getElementById(`modal-panel-${k}`);
+    if (p) p.style.display = k === key ? 'block' : 'none';
+  });
+  backdrop.style.display = 'flex';
+  backdrop.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  const panel = document.getElementById(panelId);
+  const firstFocusable = panel?.querySelector('input:not([type="hidden"]), select, textarea, button');
+  if (firstFocusable && typeof firstFocusable.focus === 'function') {
+    setTimeout(() => firstFocusable.focus(), 50);
+  }
+}
+
+function closeModal() {
+  const backdrop = document.getElementById('modal-backdrop');
+  if (!backdrop) return;
+  backdrop.style.display = 'none';
+  backdrop.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  MODAL_PANEL_IDS.forEach(key => {
+    const p = document.getElementById(`modal-panel-${key}`);
+    if (p) p.style.display = 'none';
+  });
+}
+
+function isModalOpen() {
+  const backdrop = document.getElementById('modal-backdrop');
+  return backdrop && backdrop.getAttribute('aria-hidden') === 'false';
+}
+
 // Event listeners setup
 function setupEventListeners() {
+  moveFormsIntoModal();
+
+  // Modal backdrop click and Escape
+  document.getElementById('modal-backdrop')?.addEventListener('click', (e) => {
+    if (e.target.id === 'modal-backdrop' || e.target.classList.contains('modal-backdrop')) {
+      closeModal();
+    }
+  });
+  document.querySelector('.modal-dialog')?.addEventListener('click', (e) => e.stopPropagation());
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      if (isModalOpen()) {
+        closeModal();
+        event.preventDefault();
+      } else {
+        closeNavDropdowns();
+      }
+    }
+  });
+
   // Navigation
   document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
@@ -541,20 +624,16 @@ function setupEventListeners() {
     renderProgress();
   });
 
-  // Initiative (project) form
+  // Initiative (project) form — open in modal
   elements.newProjectBtn?.addEventListener('click', () => {
     populateUserSelect('project-owner');
     populateUserSelect('project-dev-lead');
     populateUserSelect('project-qa-lead');
     populateStakeholderMultiSelect('project-stakeholders');
-    elements.newProjectForm.style.display = 'block';
-    elements.newProjectBtn.style.display = 'none';
-    document.getElementById('project-title').focus();
+    openModal('new-project');
   });
 
   document.getElementById('cancel-project-btn')?.addEventListener('click', () => {
-    elements.newProjectForm.style.display = 'none';
-    elements.newProjectBtn.style.display = 'block';
     document.getElementById('project-title').value = '';
     document.getElementById('project-description').value = '';
     const problemEl = document.getElementById('project-problem');
@@ -563,6 +642,7 @@ function setupEventListeners() {
     if (strategyEl) strategyEl.value = '';
     const container = document.getElementById('project-objectives-container');
     if (container) container.innerHTML = '';
+    closeModal();
   });
 
   document.getElementById('add-project-objective-btn')?.addEventListener('click', () => {
@@ -616,8 +696,7 @@ function setupEventListeners() {
       if (document.getElementById('project-strategy')) document.getElementById('project-strategy').value = '';
       const objContainer = document.getElementById('project-objectives-container');
       if (objContainer) objContainer.innerHTML = '';
-      elements.newProjectForm.style.display = 'none';
-      elements.newProjectBtn.style.display = 'block';
+      closeModal();
       loadProjects();
     } catch (error) {
       console.error('Failed to create initiative:', error);
@@ -627,7 +706,7 @@ function setupEventListeners() {
 
   // Edit initiative form (same fields as New)
   document.getElementById('cancel-edit-project-btn')?.addEventListener('click', () => {
-    document.getElementById('edit-project-form').style.display = 'none';
+    closeModal();
   });
 
   document.getElementById('edit-project-form')?.addEventListener('submit', (e) => {
@@ -676,7 +755,7 @@ function setupEventListeners() {
           if (!keptIds.includes(o.id)) storage.deleteObjective(id, o.id);
         });
       }
-      document.getElementById('edit-project-form').style.display = 'none';
+      closeModal();
       loadProjects();
     } catch (error) {
       console.error('Failed to update initiative:', error);
@@ -738,7 +817,7 @@ function setupEventListeners() {
         });
       }
     }, 0);
-    form.style.display = 'block';
+    openModal('edit-project');
     document.getElementById('edit-project-title').focus();
   };
 
@@ -833,14 +912,12 @@ function setupEventListeners() {
     }
   });
 
-  // Requirement form
+  // Requirement form — open in modal
   elements.newRequirementBtn?.addEventListener('click', () => {
     populateProjectSelect('requirement-project');
-    updateAllSelects(); // Populate risk and other selects
-    populateRiskSelect('requirement-risk');
+    updateAllSelects();
     clearRiskAssessmentForm('requirement-');
-    elements.newRequirementForm.style.display = 'block';
-    elements.newRequirementBtn.style.display = 'none';
+    openModal('new-requirement');
     document.getElementById('requirement-title').focus();
   });
 
@@ -850,16 +927,14 @@ function setupEventListeners() {
   });
 
   document.getElementById('cancel-requirement-btn')?.addEventListener('click', () => {
-    elements.newRequirementForm.style.display = 'none';
-    elements.newRequirementBtn.style.display = 'block';
     document.getElementById('requirement-tracking-id').value = '';
     document.getElementById('requirement-title').value = '';
     document.getElementById('requirement-description').value = '';
     document.getElementById('requirement-type').value = 'user';
-    document.getElementById('requirement-risk').value = '';
     clearRiskAssessmentForm('requirement-');
     const objectiveSelect = document.getElementById('requirement-objective');
     if (objectiveSelect) objectiveSelect.innerHTML = '<option value="">None</option>';
+    closeModal();
   });
   elements.newRequirementForm?.addEventListener('change', (e) => {
     if (e.target.classList.contains('risk-factor-select')) updateRiskValueDisplay('requirement-');
@@ -870,7 +945,6 @@ function setupEventListeners() {
     const projectId = document.getElementById('requirement-project').value;
     const objectiveId = document.getElementById('requirement-objective').value || undefined;
     const type = document.getElementById('requirement-type').value || 'user';
-    const risk = document.getElementById('requirement-risk').value || undefined;
     const trackingId = document.getElementById('requirement-tracking-id').value.trim();
     const title = document.getElementById('requirement-title').value.trim();
     const description = document.getElementById('requirement-description').value.trim();
@@ -885,7 +959,6 @@ function setupEventListeners() {
         description: description || undefined,
         objectiveId,
         type,
-        risk,
         riskAssessment: riskAssessment || undefined
       });
       document.getElementById('requirement-tracking-id').value = '';
@@ -897,8 +970,7 @@ function setupEventListeners() {
       const objectiveSelect = document.getElementById('requirement-objective');
       if (objectiveSelect) objectiveSelect.innerHTML = '<option value="">None</option>';
       clearRiskAssessmentForm('requirement-');
-      elements.newRequirementForm.style.display = 'none';
-      elements.newRequirementBtn.style.display = 'block';
+      closeModal();
       renderRequirements();
     } catch (error) {
       console.error('Failed to create requirement:', error);
@@ -971,24 +1043,16 @@ function setupEventListeners() {
     newTaskBtn.addEventListener('click', () => {
       populateProjectSelect('task-project');
       updateAllSelects(); // Populate effort and resource selects
-      // Clear and reset functional requirement select
       const functionalReqSelect = document.getElementById('task-requirement');
       if (functionalReqSelect) {
         functionalReqSelect.innerHTML = '<option value="">Select a project first</option>';
         functionalReqSelect.value = '';
       }
-      // Reset project select
       const projectSelect = document.getElementById('task-project');
-      if (projectSelect) {
-        projectSelect.value = '';
-      }
-      newTaskForm.style.display = 'block';
-      newTaskBtn.style.display = 'none';
+      if (projectSelect) projectSelect.value = '';
+      openModal('new-task');
       const titleInput = document.getElementById('task-title');
-      if (titleInput) {
-        titleInput.focus();
-      }
-      // Initialize date picker for task due date
+      if (titleInput) titleInput.focus();
       setTimeout(() => {
         if (!window.taskDueDatePicker) {
           const dateInput = document.getElementById('task-due-date');
@@ -1018,33 +1082,24 @@ function setupEventListeners() {
   const cancelTaskBtn = document.getElementById('cancel-task-btn');
   if (cancelTaskBtn) {
     cancelTaskBtn.addEventListener('click', () => {
-      const taskForm = document.getElementById('new-task-form');
-      const taskBtn = document.getElementById('new-task-btn');
-      if (taskForm) taskForm.style.display = 'none';
-      if (taskBtn) taskBtn.style.display = 'block';
       const titleInput = document.getElementById('task-title');
       if (titleInput) titleInput.value = '';
       const descInput = document.getElementById('task-description');
       if (descInput) descInput.value = '';
       const dueDateInput = document.getElementById('task-due-date');
       if (dueDateInput) dueDateInput.value = '';
-      // Reset project select
       const projectSelect = document.getElementById('task-project');
-      if (projectSelect) {
-        projectSelect.value = '';
-      }
+      if (projectSelect) projectSelect.value = '';
       const reqSelect = document.getElementById('task-requirement');
       if (reqSelect) { reqSelect.innerHTML = '<option value="">Select an initiative first</option>'; reqSelect.value = ''; }
       const milestoneSelect = document.getElementById('task-milestone');
       if (milestoneSelect) { milestoneSelect.innerHTML = '<option value="">Select an initiative first</option>'; milestoneSelect.value = ''; }
-      // Reset other selects
       const effortSelect = document.getElementById('task-effort');
       if (effortSelect) effortSelect.value = '';
       const resourceSelect = document.getElementById('task-resource');
       if (resourceSelect) resourceSelect.value = '';
-      if (window.taskDueDatePicker) {
-        window.taskDueDatePicker.clear();
-      }
+      if (window.taskDueDatePicker) window.taskDueDatePicker.clear();
+      closeModal();
     });
   }
 
@@ -1053,12 +1108,9 @@ function setupEventListeners() {
   const cancelEditTaskBtn = document.getElementById('cancel-edit-task-btn');
   
   cancelEditTaskBtn?.addEventListener('click', () => {
-    editTaskForm.style.display = 'none';
-    // Clear date picker if it exists
     const editDueDateInput = document.getElementById('edit-task-due-date');
-    if (editDueDateInput && editDueDateInput.flatpickr) {
-      editDueDateInput.flatpickr.clear();
-    }
+    if (editDueDateInput && editDueDateInput.flatpickr) editDueDateInput.flatpickr.clear();
+    closeModal();
   });
 
   // Function to open edit task modal and populate it
@@ -1112,9 +1164,7 @@ function setupEventListeners() {
         editDueDateInput.flatpickr.setDate(task.dueDate);
       }
     }, 150);
-    
-    // Show modal
-    editTaskForm.style.display = 'block';
+    openModal('edit-task');
   };
 
   // Function to open edit milestone modal and populate it
@@ -1196,14 +1246,28 @@ function setupEventListeners() {
     populateProjectSelect('edit-requirement-project');
     document.getElementById('edit-requirement-project').value = requirement.projectId;
     
-    // Populate objective and risk
+    // Populate objective
     populateObjectiveSelect('edit-requirement-objective', requirement.projectId, requirement.objectiveId);
-    populateRiskSelect('edit-requirement-risk');
-    const editRiskSelect = document.getElementById('edit-requirement-risk');
-    if (editRiskSelect && requirement.risk) editRiskSelect.value = requirement.risk;
     
-    // Show form
-    editRequirementForm.style.display = 'block';
+    // Populate risk assessment (T0085)
+    const ra = requirement.riskAssessment;
+    const setRisk = (suffix, val) => {
+      const el = document.getElementById('edit-requirement-' + suffix);
+      if (el) el.value = val !== undefined && val !== null ? String(val) : '';
+    };
+    setRisk('data-integrity-risk', ra?.dataIntegrityRisk);
+    setRisk('security-risk', ra?.securityRisk);
+    setRisk('regression-need', ra?.regressionNeed);
+    setRisk('frequency-of-use', ra?.frequencyOfUse);
+    setRisk('detectability', ra?.detectability);
+    setRisk('remediation', ra?.remediation);
+    const rvDisplay = document.getElementById('edit-requirement-risk-value-display');
+    if (rvDisplay) {
+      rvDisplay.textContent = requirement.riskValue !== undefined && requirement.riskValue !== null ? String(requirement.riskValue) : '—';
+      rvDisplay.classList.toggle('text-muted', requirement.riskValue === undefined || requirement.riskValue === null);
+    }
+    
+    openModal('edit-requirement');
   };
 
   // Function to open edit functional requirement modal and populate it
@@ -1284,7 +1348,7 @@ function setupEventListeners() {
         dueDate: dueDate || undefined,
         requirementId: requirementId || undefined,
       });
-      editTaskForm.style.display = 'none';
+      closeModal();
       renderTasks();
       renderRequirements();
       if (currentView === 'projects') renderProjects();
@@ -1367,7 +1431,7 @@ function setupEventListeners() {
   const cancelEditRequirementBtn = document.getElementById('cancel-edit-requirement-btn');
   
   cancelEditRequirementBtn?.addEventListener('click', () => {
-    if (editRequirementForm) editRequirementForm.style.display = 'none';
+    closeModal();
   });
 
   editRequirementForm?.addEventListener('submit', (e) => {
@@ -1380,7 +1444,6 @@ function setupEventListeners() {
     const projectSelect = document.getElementById('edit-requirement-project');
     const objectiveSelect = document.getElementById('edit-requirement-objective');
     const typeSelect = document.getElementById('edit-requirement-type');
-    const riskSelect = document.getElementById('edit-requirement-risk');
     
     const requirementId = requirementIdInput ? requirementIdInput.value : '';
     const projectId = projectIdInput ? projectIdInput.value : '';
@@ -1390,7 +1453,6 @@ function setupEventListeners() {
     const newProjectId = projectSelect ? projectSelect.value : projectId;
     const objectiveId = objectiveSelect ? objectiveSelect.value || undefined : undefined;
     const type = typeSelect ? typeSelect.value || 'user' : 'user';
-    const risk = riskSelect ? riskSelect.value || undefined : undefined;
     
     if (!title || !newProjectId || !requirementId) return;
     
@@ -1401,13 +1463,12 @@ function setupEventListeners() {
       description: description || undefined,
       objectiveId,
       type,
-      risk,
       riskAssessment: riskAssessment ?? null
     };
     
     try {
       storage.updateRequirement(newProjectId, requirementId, updates);
-      if (editRequirementForm) editRequirementForm.style.display = 'none';
+      closeModal();
       renderRequirements();
       renderProjects();
     } catch (error) {
@@ -1534,12 +1595,8 @@ function setupEventListeners() {
         if (requirementSelect) { requirementSelect.innerHTML = '<option value="">Select an initiative first</option>'; requirementSelect.value = ''; }
         if (milestoneSelect) { milestoneSelect.innerHTML = '<option value="">Select an initiative first</option>'; milestoneSelect.value = ''; }
         // Clear due date
-        if (window.taskDueDatePicker) {
-          window.taskDueDatePicker.clear();
-        }
-        newTaskForm.style.display = 'none';
-        const taskBtn = document.getElementById('new-task-btn');
-        if (taskBtn) taskBtn.style.display = 'block';
+        if (window.taskDueDatePicker) window.taskDueDatePicker.clear();
+        closeModal();
         renderTasks();
         renderRequirements();
         if (currentView === 'projects') renderProjects();
@@ -2984,14 +3041,6 @@ function sortRequirements(requirements) {
         aVal = a.type || 'user';
         bVal = b.type || 'user';
         break;
-      case 'risk': {
-        const riskLevels = storage.getRiskLevels();
-        const aRiskLabel = riskLevels.find(r => r.id === a.risk)?.label || '';
-        const bRiskLabel = riskLevels.find(r => r.id === b.risk)?.label || '';
-        aVal = aRiskLabel;
-        bVal = bRiskLabel;
-        break;
-      }
       case 'riskValue':
         aVal = a.riskValue !== undefined && a.riskValue !== null ? a.riskValue : -1;
         bVal = b.riskValue !== undefined && b.riskValue !== null ? b.riskValue : -1;
@@ -3063,7 +3112,6 @@ function renderRequirementsTable(requirements) {
   const allTasks = storage.getAllTasks();
   const effortLevels = storage.getEffortLevels();
   const pointsMap = new Map(effortLevels.map(e => [e.id, Number(e.points) || 0]));
-  const riskLevels = storage.getRiskLevels();
 
   const rows = requirements.map(r => {
     if (state.editingRequirements.has(r.id)) {
@@ -3073,8 +3121,6 @@ function renderRequirementsTable(requirements) {
     const project = state.projects.find(p => p.id === r.projectId);
     const objective = project?.objectives?.find(o => o.id === r.objectiveId);
     const typeLabel = (r.type || 'user').charAt(0).toUpperCase() + (r.type || 'user').slice(1);
-    const risk = riskLevels.find(l => l.id === r.risk);
-    const riskBadgeStyle = risk?.color ? getBadgeStyle(risk.color) : '';
     const linkedTasks = allTasks.filter(t => t.requirementId === r.id);
     const effortSum = linkedTasks.reduce((s, t) => s + (pointsMap.get(t.effortLevel) || 0), 0);
 
@@ -3095,7 +3141,6 @@ function renderRequirementsTable(requirements) {
         <td class="task-project-cell">${escapeHtml(r.project.title)}</td>
         <td class="task-objective-cell">${objective ? escapeHtml(objective.name) : '<span class="text-muted">—</span>'}</td>
         <td>${typeLabel}</td>
-        <td>${risk ? `<span class="badge" style="${riskBadgeStyle}">${escapeHtml(risk.label)}</span>` : '<span class="text-muted">—</span>'}</td>
         <td class="requirement-risk-value-cell">${r.riskValue !== undefined && r.riskValue !== null ? escapeHtml(String(r.riskValue)) : '<span class="text-muted">—</span>'}</td>
         <td>${linkedTasks.length}</td>
         <td>${effortSum > 0 ? `${effortSum} pts` : '<span class="text-muted">—</span>'}</td>
@@ -3132,7 +3177,6 @@ function renderRequirementsTable(requirements) {
           <th class="${getSortClass('project')}" data-sort-column="project">Initiative${getSortIndicator('project')}</th>
           <th class="${getSortClass('objective')}" data-sort-column="objective">Objective${getSortIndicator('objective')}</th>
           <th class="${getSortClass('type')}" data-sort-column="type">Type${getSortIndicator('type')}</th>
-          <th class="${getSortClass('risk')}" data-sort-column="risk">Risk${getSortIndicator('risk')}</th>
           <th class="${getSortClass('riskValue')}" data-sort-column="riskValue">Risk value${getSortIndicator('riskValue')}</th>
           <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
           <th class="${getSortClass('effort')}" data-sort-column="effort">Effort${getSortIndicator('effort')}</th>
@@ -3188,14 +3232,10 @@ function refreshRequirementObjectiveOptions(requirementId, projectId, selectedOb
 function renderRequirementEditRow(requirement) {
   const projectOptions = getRequirementProjectOptions(requirement.projectId);
   const objectiveOptions = getRequirementObjectiveOptions(requirement.projectId, requirement.objectiveId);
-  const riskLevels = storage.getRiskLevels();
-  const riskOptions = riskLevels.map(r =>
-    `<option value="${r.id}" ${r.id === requirement.risk ? 'selected' : ''}>${escapeHtml(r.label)}</option>`
-  ).join('');
 
   return `
     <tr class="task-table-row requirement-edit-row" data-requirement-id="${requirement.id}">
-      <td colspan="11">
+      <td colspan="10">
         <div class="requirement-edit-form">
           <div class="form-row">
             <div class="form-group">
@@ -3218,13 +3258,6 @@ function renderRequirementEditRow(requirement) {
                 <option value="admin" ${requirement.type === 'admin' ? 'selected' : ''}>Admin</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="requirement-edit-risk-${requirement.id}">Risk</label>
-              <select id="requirement-edit-risk-${requirement.id}" class="requirement-edit-risk" data-requirement-id="${requirement.id}">
-                <option value="">None</option>
-                ${riskOptions}
-              </select>
-            </div>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -3245,8 +3278,8 @@ function renderRequirementEditRow(requirement) {
           <div class="form-row risk-assessment-row">
             <span class="risk-assessment-inline-label">Risk (T0085):</span>
             <div class="form-group risk-factor-inline">
-              <label for="requirement-edit-di-${requirement.id}">DI</label>
-              <select id="requirement-edit-di-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="dataIntegrityRisk">
+              <label for="requirement-edit-di-${requirement.id}" title="1=No commit/modify; 2=Indirectly modifies regulatory data; 3=Directly modifies">DI</label>
+              <select id="requirement-edit-di-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="dataIntegrityRisk" title="Data integrity: 1=No commit/modify; 2=Indirect; 3=Direct regulatory data">
                 <option value="">—</option>
                 <option value="1" ${(requirement.riskAssessment?.dataIntegrityRisk) === 1 ? 'selected' : ''}>1</option>
                 <option value="2" ${(requirement.riskAssessment?.dataIntegrityRisk) === 2 ? 'selected' : ''}>2</option>
@@ -3254,8 +3287,8 @@ function renderRequirementEditRow(requirement) {
               </select>
             </div>
             <div class="form-group risk-factor-inline">
-              <label for="requirement-edit-sec-${requirement.id}">Sec</label>
-              <select id="requirement-edit-sec-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="securityRisk">
+              <label for="requirement-edit-sec-${requirement.id}" title="1=Non-configurable; 2=Moderate lab; 3=Significant lab/data">Sec</label>
+              <select id="requirement-edit-sec-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="securityRisk" title="Security: 1=Non-configurable; 2=Moderate lab risk; 3=Significant">
                 <option value="">—</option>
                 <option value="1" ${(requirement.riskAssessment?.securityRisk) === 1 ? 'selected' : ''}>1</option>
                 <option value="2" ${(requirement.riskAssessment?.securityRisk) === 2 ? 'selected' : ''}>2</option>
@@ -3263,8 +3296,8 @@ function renderRequirementEditRow(requirement) {
               </select>
             </div>
             <div class="form-group risk-factor-inline">
-              <label for="requirement-edit-reg-${requirement.id}">Reg</label>
-              <select id="requirement-edit-reg-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="regressionNeed">
+              <label for="requirement-edit-reg-${requirement.id}" title="0=N/A; 1=Simple; 2=Moderate; 3=High complexity">Reg</label>
+              <select id="requirement-edit-reg-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="regressionNeed" title="Regression: 0=N/A; 1=Simple; 2=Moderate/many issues; 3=High complexity">
                 <option value="">—</option>
                 <option value="0" ${(requirement.riskAssessment?.regressionNeed) === 0 ? 'selected' : ''}>0</option>
                 <option value="1" ${(requirement.riskAssessment?.regressionNeed) === 1 ? 'selected' : ''}>1</option>
@@ -3273,8 +3306,8 @@ function renderRequirementEditRow(requirement) {
               </select>
             </div>
             <div class="form-group risk-factor-inline">
-              <label for="requirement-edit-freq-${requirement.id}">Freq</label>
-              <select id="requirement-edit-freq-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="frequencyOfUse">
+              <label for="requirement-edit-freq-${requirement.id}" title="0=N/A; 1=Rare admin; 2=Rare user; 3=Routine">Freq</label>
+              <select id="requirement-edit-freq-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="frequencyOfUse" title="Frequency: 0=N/A; 1=Rare admin; 2=Rare user or routine admin; 3=Routine user">
                 <option value="">—</option>
                 <option value="0" ${(requirement.riskAssessment?.frequencyOfUse) === 0 ? 'selected' : ''}>0</option>
                 <option value="1" ${(requirement.riskAssessment?.frequencyOfUse) === 1 ? 'selected' : ''}>1</option>
@@ -3283,8 +3316,8 @@ function renderRequirementEditRow(requirement) {
               </select>
             </div>
             <div class="form-group risk-factor-inline">
-              <label for="requirement-edit-det-${requirement.id}">Det</label>
-              <select id="requirement-edit-det-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="detectability">
+              <label for="requirement-edit-det-${requirement.id}" title="1=Easily detected; 2=Second-party review; 3=Go unnoticed">Det</label>
+              <select id="requirement-edit-det-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="detectability" title="Detectability: 1=Easy; 2=On review; 3=Unnoticed">
                 <option value="">—</option>
                 <option value="1" ${(requirement.riskAssessment?.detectability) === 1 ? 'selected' : ''}>1</option>
                 <option value="2" ${(requirement.riskAssessment?.detectability) === 2 ? 'selected' : ''}>2</option>
@@ -3292,8 +3325,8 @@ function renderRequirementEditRow(requirement) {
               </select>
             </div>
             <div class="form-group risk-factor-inline">
-              <label for="requirement-edit-rem-${requirement.id}">Rem</label>
-              <select id="requirement-edit-rem-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="remediation">
+              <label for="requirement-edit-rem-${requirement.id}" title="1=Trivial; 2=Small manual; 3=Large/loss; 4=DB restore">Rem</label>
+              <select id="requirement-edit-rem-${requirement.id}" class="requirement-edit-risk-factor" data-requirement-id="${requirement.id}" data-risk-factor="remediation" title="Remediation: 1=Trivial; 2=Small manual; 3=Large or loss; 4=DB restore">
                 <option value="">—</option>
                 <option value="1" ${(requirement.riskAssessment?.remediation) === 1 ? 'selected' : ''}>1</option>
                 <option value="2" ${(requirement.riskAssessment?.remediation) === 2 ? 'selected' : ''}>2</option>
@@ -3351,7 +3384,7 @@ function renderRequirementExpansionRow(requirement) {
 
   return `
     <tr class="requirement-expansion-row" data-requirement-id="${requirement.id}">
-      <td colspan="11">
+      <td colspan="10">
         <div class="requirement-expansion-panel">
           <div class="requirement-expansion-header">
             <div class="requirement-expansion-criteria-container">
@@ -5470,10 +5503,6 @@ function updateAllSelects() {
   if (taskEffortSelect) populateEffortSelect(taskEffortSelect);
   if (taskResourceSelect) populateUserSelectElement(taskResourceSelect);
   
-  // Update requirement form risk selects
-  populateRiskSelect('requirement-risk');
-  populateRiskSelect('edit-requirement-risk');
-  
   // Re-render views to update all dynamic selects
   if (currentView === 'projects') {
     renderProjects();
@@ -5581,7 +5610,6 @@ function attachRequirementViewListeners(requirement) {
     const projectSelect = document.querySelector(`.requirement-edit-project-select[data-requirement-id="${requirementId}"]`);
     const objectiveSelect = document.querySelector(`.requirement-edit-objective-select[data-requirement-id="${requirementId}"]`);
     const typeSelect = document.querySelector(`.requirement-edit-type[data-requirement-id="${requirementId}"]`);
-    const riskSelect = document.querySelector(`.requirement-edit-risk[data-requirement-id="${requirementId}"]`);
     const trackingIdInput = document.querySelector(`.requirement-edit-tracking[data-requirement-id="${requirementId}"]`);
     const titleInput = document.querySelector(`.requirement-edit-title[data-requirement-id="${requirementId}"]`);
     const descriptionInput = document.querySelector(`.requirement-edit-description[data-requirement-id="${requirementId}"]`);
@@ -5589,7 +5617,6 @@ function attachRequirementViewListeners(requirement) {
     const newProjectId = projectSelect ? projectSelect.value : '';
     const objectiveId = objectiveSelect ? objectiveSelect.value || undefined : undefined;
     const type = typeSelect ? typeSelect.value || 'user' : 'user';
-    const risk = riskSelect ? riskSelect.value || undefined : undefined;
     const trackingId = trackingIdInput ? trackingIdInput.value.trim() : '';
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
@@ -5604,7 +5631,6 @@ function attachRequirementViewListeners(requirement) {
         description: description || undefined,
         objectiveId,
         type,
-        risk,
         riskAssessment: riskAssessment ?? null
       });
       state.editingRequirements.delete(requirementId);

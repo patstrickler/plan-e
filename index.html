@@ -584,18 +584,13 @@
               <label for="requirement-description">Description / Acceptance Criteria (optional)</label>
               <textarea id="requirement-description" rows="4" placeholder="Enter description or acceptance criteria"></textarea>
             </div>
-            <div class="form-group">
-              <label for="requirement-risk">Risk</label>
-              <select id="requirement-risk">
-                <option value="">None</option>
-              </select>
-            </div>
             <div class="form-group risk-assessment-section">
               <h3 class="risk-assessment-heading">Risk assessment (T0085)</h3>
               <p class="text-muted text-sm">Optional. Set all six to compute Risk Value (Rv).</p>
               <div class="form-row risk-assessment-row">
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="requirement-data-integrity-risk">Data integrity (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=No commit/modify stored data; 2=Indirectly modifies regulatory data; 3=Directly modifies regulatory data</p>
                   <select id="requirement-data-integrity-risk" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="1">1</option>
@@ -603,8 +598,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="requirement-security-risk">Security (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=Non-configurable, no protection of audit/results/config; 2=Moderate lab risk; 3=Significant lab or data processing risk</p>
                   <select id="requirement-security-risk" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="1">1</option>
@@ -612,8 +608,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="requirement-regression-need">Regression need (0–3)</label>
+                  <p class="risk-factor-desc text-muted">0=N/A; 1=Simple code, few alpha issues; 2=Moderate complexity or many alpha issues; 3=High complexity or outside system comms</p>
                   <select id="requirement-regression-need" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="0">0</option>
@@ -622,8 +619,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="requirement-frequency-of-use">Frequency of use (0–3)</label>
+                  <p class="risk-factor-desc text-muted">0=N/A; 1=Rarely, admin config; 2=Rarely by end users or routinely by admins; 3=Routinely by end users</p>
                   <select id="requirement-frequency-of-use" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="0">0</option>
@@ -632,8 +630,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="requirement-detectability">Detectability (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=Easily detected by user or monitoring; 2=Likely on second-party review; 3=Likely go unnoticed</p>
                   <select id="requirement-detectability" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="1">1</option>
@@ -641,8 +640,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="requirement-remediation">Remediation (1–4)</label>
+                  <p class="risk-factor-desc text-muted">1=Trivial, no dynamic data; 2=Small data, manual fix; 3=Large data or loss/corruption; 4=Database restore required</p>
                   <select id="requirement-remediation" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="1">1</option>
@@ -698,18 +698,13 @@
               <label for="edit-requirement-description">Description / Acceptance Criteria (optional)</label>
               <textarea id="edit-requirement-description" rows="4" placeholder="Enter description or acceptance criteria"></textarea>
             </div>
-            <div class="form-group">
-              <label for="edit-requirement-risk">Risk</label>
-              <select id="edit-requirement-risk">
-                <option value="">None</option>
-              </select>
-            </div>
             <div class="form-group risk-assessment-section">
               <h3 class="risk-assessment-heading">Risk assessment (T0085)</h3>
               <p class="text-muted text-sm">Optional. Set all six to compute Risk Value (Rv).</p>
               <div class="form-row risk-assessment-row">
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="edit-requirement-data-integrity-risk">Data integrity (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=No commit/modify stored data; 2=Indirectly modifies regulatory data; 3=Directly modifies regulatory data</p>
                   <select id="edit-requirement-data-integrity-risk" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="1">1</option>
@@ -717,8 +712,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="edit-requirement-security-risk">Security (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=Non-configurable, no protection of audit/results/config; 2=Moderate lab risk; 3=Significant lab or data processing risk</p>
                   <select id="edit-requirement-security-risk" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="1">1</option>
@@ -726,8 +722,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="edit-requirement-regression-need">Regression need (0–3)</label>
+                  <p class="risk-factor-desc text-muted">0=N/A; 1=Simple code, few alpha issues; 2=Moderate complexity or many alpha issues; 3=High complexity or outside system comms</p>
                   <select id="edit-requirement-regression-need" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="0">0</option>
@@ -736,8 +733,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="edit-requirement-frequency-of-use">Frequency of use (0–3)</label>
+                  <p class="risk-factor-desc text-muted">0=N/A; 1=Rarely, admin config; 2=Rarely by end users or routinely by admins; 3=Routinely by end users</p>
                   <select id="edit-requirement-frequency-of-use" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="0">0</option>
@@ -746,8 +744,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="edit-requirement-detectability">Detectability (1–3)</label>
+                  <p class="risk-factor-desc text-muted">1=Easily detected by user or monitoring; 2=Likely on second-party review; 3=Likely go unnoticed</p>
                   <select id="edit-requirement-detectability" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="1">1</option>
@@ -755,8 +754,9 @@
                     <option value="3">3</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group risk-factor-with-desc">
                   <label for="edit-requirement-remediation">Remediation (1–4)</label>
+                  <p class="risk-factor-desc text-muted">1=Trivial, no dynamic data; 2=Small data, manual fix; 3=Large data or loss/corruption; 4=Database restore required</p>
                   <select id="edit-requirement-remediation" class="risk-factor-select">
                     <option value="">—</option>
                     <option value="1">1</option>
@@ -1114,6 +1114,20 @@
               </div>
             </form>
             <div id="effort-levels-list" class="metadata-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal for New/Edit Initiative, Task, Requirement -->
+      <div id="modal-backdrop" class="modal-backdrop" aria-hidden="true" style="display: none;">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <div class="modal-body">
+            <div id="modal-panel-new-project" class="modal-panel" style="display: none;"></div>
+            <div id="modal-panel-edit-project" class="modal-panel" style="display: none;"></div>
+            <div id="modal-panel-new-task" class="modal-panel" style="display: none;"></div>
+            <div id="modal-panel-edit-task" class="modal-panel" style="display: none;"></div>
+            <div id="modal-panel-new-requirement" class="modal-panel" style="display: none;"></div>
+            <div id="modal-panel-edit-requirement" class="modal-panel" style="display: none;"></div>
           </div>
         </div>
       </div>
