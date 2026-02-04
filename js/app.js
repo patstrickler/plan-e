@@ -65,6 +65,7 @@ const state = {
   activeFunctionalRequirementId: null,
   activeMilestoneId: null,
   expandedProjectId: null,
+  editingObjectiveId: null,
 };
 
 let isUpdatingRequirementProjectFilter = false;
@@ -2168,6 +2169,16 @@ function sortProjects(projects) {
   return sorted;
 }
 
+function getObjectiveRequirementAndTaskCounts(projectId, objectiveId) {
+  const project = storage.getProject(projectId);
+  if (!project) return { requirementCount: 0, taskCount: 0 };
+  const requirements = (project.requirements || []).filter(r => r.objectiveId === objectiveId);
+  const requirementIds = new Set(requirements.map(r => r.id));
+  const allTasks = storage.getAllTasks();
+  const taskCount = allTasks.filter(t => t.projectId === projectId && t.requirementId && requirementIds.has(t.requirementId)).length;
+  return { requirementCount: requirements.length, taskCount };
+}
+
 function renderInitiativeExpansionRow(project) {
   if (state.expandedProjectId !== project.id) return '';
   const users = storage.getUsers();
@@ -2178,12 +2189,57 @@ function renderInitiativeExpansionRow(project) {
   const qaLeadName = project.qaLead ? (users.find(u => u.id === project.qaLead)?.name || '') : '';
   const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
   const objectives = project.objectives || [];
-  const objectivesDisplay = objectives.length
-    ? objectives.map(o => {
-        const priorityLabel = (o.priority && priorities.find(p => p.id === o.priority)?.label) || o.priority || '';
-        return priorityLabel ? `${escapeHtml(o.name)} (${escapeHtml(priorityLabel)})` : escapeHtml(o.name);
-      }).join(', ')
-    : '—';
+
+  const objectiveRows = objectives.map(o => {
+    const priorityLabel = (o.priority && priorities.find(p => p.id === o.priority)?.label) || o.priority || '—';
+    const { requirementCount, taskCount } = getObjectiveRequirementAndTaskCounts(project.id, o.id);
+    const isEditing = state.editingObjectiveId === o.id;
+    if (isEditing) {
+      const priorityOpts = getObjectivePriorityOptionsHtml(o.priority || '');
+      return `
+        <tr class="initiative-objective-row initiative-objective-edit-row" data-project-id="${project.id}" data-objective-id="${o.id}">
+          <td colspan="6">
+            <div class="initiative-objective-edit-form">
+              <div class="form-row">
+                <div class="form-group" style="flex: 1;">
+                  <label>Name</label>
+                  <input type="text" class="initiative-objective-edit-name" value="${escapeHtml(o.name || '')}" placeholder="Objective name">
+                </div>
+                <div class="form-group" style="min-width: 120px;">
+                  <label>Priority</label>
+                  <select class="initiative-objective-edit-priority">${priorityOpts}</select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Description</label>
+                <textarea class="initiative-objective-edit-description" rows="2" placeholder="Description (optional)">${escapeHtml(o.description || '')}</textarea>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn-primary btn-sm save-objective-initiative-view" data-project-id="${project.id}" data-objective-id="${o.id}">Save</button>
+                <button type="button" class="btn btn-secondary btn-sm cancel-edit-objective-initiative-view">Cancel</button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+    return `
+      <tr class="initiative-objective-row" data-project-id="${project.id}" data-objective-id="${o.id}">
+        <td>${escapeHtml(o.name || '—')}</td>
+        <td class="task-description-small-cell">${o.description ? escapeHtml(o.description) : '<span class="text-muted">—</span>'}</td>
+        <td>${escapeHtml(priorityLabel)}</td>
+        <td>${requirementCount}</td>
+        <td>${taskCount}</td>
+        <td class="task-actions-cell">
+          <button type="button" class="btn btn-blue btn-xs edit-objective-initiative-view" data-project-id="${project.id}" data-objective-id="${o.id}">Edit</button>
+          <button type="button" class="btn btn-red btn-xs delete-objective-initiative-view" data-project-id="${project.id}" data-objective-id="${o.id}">Delete</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const addObjectivePriorityOpts = getObjectivePriorityOptionsHtml('');
+
   return `
     <tr class="initiative-expansion-row" data-project-id="${project.id}">
       <td colspan="8">
@@ -2192,13 +2248,40 @@ function renderInitiativeExpansionRow(project) {
             ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
             ${project.problemStatement ? `<p><strong>Problem</strong><br>${escapeHtml(project.problemStatement)}</p>` : ''}
             ${project.strategy ? `<p><strong>Strategy</strong><br>${escapeHtml(project.strategy)}</p>` : ''}
-            ${objectives.length ? `<p><strong>Objectives</strong><br>${objectivesDisplay}</p>` : ''}
-            <p><strong>Owner</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Dev lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'} · <strong>QA lead</strong> ${qaLeadName ? escapeHtml(qaLeadName) : '—'}</p>
-            ${stakeholderNames.length ? `<p><strong>Stakeholders</strong> ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
+            <div class="initiative-expansion-people">
+              <p><strong>Owner</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Dev lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'} · <strong>QA lead</strong> ${qaLeadName ? escapeHtml(qaLeadName) : '—'}</p>
+              ${stakeholderNames.length ? `<p><strong>Stakeholders</strong> ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
+            </div>
+            <div class="initiative-expansion-objectives">
+              <h4 class="initiative-expansion-section-title">Objectives</h4>
+              <table class="initiative-objectives-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Priority</th>
+                    <th>Requirements</th>
+                    <th>Tasks</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${objectiveRows}
+                </tbody>
+              </table>
+              <form class="initiative-add-objective-form" data-project-id="${project.id}">
+                <div class="form-row initiative-add-objective-row">
+                  <input type="text" class="initiative-add-objective-name" placeholder="Objective name" required>
+                  <input type="text" class="initiative-add-objective-description" placeholder="Description (optional)">
+                  <select class="initiative-add-objective-priority">${addObjectivePriorityOpts}</select>
+                  <button type="submit" class="btn btn-primary btn-sm">Add objective</button>
+                </div>
+              </form>
+            </div>
           </div>
           <div class="initiative-expansion-actions">
-            <button type="button" class="btn btn-blue btn-sm edit-project-view" data-project-id="${project.id}">Edit</button>
-            <button type="button" class="btn btn-red btn-sm delete-project-view" data-project-id="${project.id}">Delete</button>
+            <button type="button" class="btn btn-blue btn-sm edit-project-view" data-project-id="${project.id}">Edit initiative</button>
+            <button type="button" class="btn btn-red btn-sm delete-project-view" data-project-id="${project.id}">Delete initiative</button>
           </div>
         </div>
       </td>
@@ -2307,9 +2390,15 @@ function renderProjects() {
     row.addEventListener('click', () => {
       const projectId = row.getAttribute('data-project-id');
       state.expandedProjectId = state.expandedProjectId === projectId ? null : projectId;
+      state.editingObjectiveId = null;
       renderProjects();
     });
   });
+
+  if (state.expandedProjectId) {
+    const expandedProject = state.projects.find(p => p.id === state.expandedProjectId);
+    if (expandedProject) attachInitiativeExpansionListeners(expandedProject);
+  }
 
   document.querySelectorAll('#projects-list .sortable-header[data-sort-column]').forEach(header => {
     header.addEventListener('click', () => {
@@ -5562,11 +5651,13 @@ function updateAllSelects() {
 function attachProjectListeners(project) {
   const projectId = project.id;
 
-  document.querySelector(`.edit-project-view[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
+  document.querySelector(`.edit-project-view[data-project-id="${projectId}"]`)?.addEventListener('click', (e) => {
+    e.stopPropagation();
     openEditProjectModal(project);
   });
 
-  document.querySelector(`.delete-project-view[data-project-id="${projectId}"]`)?.addEventListener('click', () => {
+  document.querySelector(`.delete-project-view[data-project-id="${projectId}"]`)?.addEventListener('click', (e) => {
+    e.stopPropagation();
     if (!confirm(`Are you sure you want to delete "${project.title}"?`)) return;
     try {
       storage.deleteProject(projectId);
@@ -5574,6 +5665,95 @@ function attachProjectListeners(project) {
     } catch (error) {
       console.error('Failed to delete project:', error);
       alert('Failed to delete project');
+    }
+  });
+}
+
+function attachInitiativeExpansionListeners(project) {
+  const projectId = project.id;
+
+  document.querySelectorAll(`.edit-objective-initiative-view[data-project-id="${projectId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.editingObjectiveId = btn.getAttribute('data-objective-id');
+      renderProjects();
+    });
+  });
+
+  document.querySelectorAll(`.delete-objective-initiative-view[data-project-id="${projectId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const objectiveId = btn.getAttribute('data-objective-id');
+      const objective = (project.objectives || []).find(o => o.id === objectiveId);
+      if (!confirm(`Delete objective "${objective?.name || 'this objective'}"?`)) return;
+      try {
+        storage.deleteObjective(projectId, objectiveId);
+        state.editingObjectiveId = null;
+        loadProjects();
+        renderProjects();
+      } catch (err) {
+        console.error('Failed to delete objective:', err);
+        alert('Failed to delete objective');
+      }
+    });
+  });
+
+  document.querySelectorAll(`.save-objective-initiative-view[data-project-id="${projectId}"]`).forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const objectiveId = btn.getAttribute('data-objective-id');
+      const row = btn.closest('.initiative-objective-edit-row');
+      const nameInput = row?.querySelector('.initiative-objective-edit-name');
+      const descInput = row?.querySelector('.initiative-objective-edit-description');
+      const prioritySelect = row?.querySelector('.initiative-objective-edit-priority');
+      const name = nameInput?.value?.trim() || '';
+      if (!name) {
+        alert('Objective name is required');
+        return;
+      }
+      try {
+        storage.updateObjective(projectId, objectiveId, {
+          name,
+          description: descInput?.value?.trim() || '',
+          priority: prioritySelect?.value || undefined,
+        });
+        state.editingObjectiveId = null;
+        loadProjects();
+        renderProjects();
+      } catch (err) {
+        console.error('Failed to update objective:', err);
+        alert('Failed to update objective');
+      }
+    });
+  });
+
+  document.querySelectorAll('#projects-list .cancel-edit-objective-initiative-view').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.editingObjectiveId = null;
+      renderProjects();
+    });
+  });
+
+  const addForm = document.querySelector(`.initiative-add-objective-form[data-project-id="${projectId}"]`);
+  addForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nameInput = addForm.querySelector('.initiative-add-objective-name');
+    const descInput = addForm.querySelector('.initiative-add-objective-description');
+    const prioritySelect = addForm.querySelector('.initiative-add-objective-priority');
+    const name = nameInput?.value?.trim() || '';
+    if (!name) return;
+    try {
+      storage.createObjective(projectId, {
+        name,
+        description: descInput?.value?.trim() || '',
+        priority: prioritySelect?.value || undefined,
+      });
+      loadProjects();
+      renderProjects();
+    } catch (err) {
+      console.error('Failed to create objective:', err);
+      alert('Failed to create objective');
     }
   });
 }

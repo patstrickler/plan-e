@@ -938,6 +938,83 @@ body {
   border-top: 1px solid var(--border);
 }
 
+.initiative-expansion-people {
+  margin-bottom: 1rem;
+}
+
+.initiative-expansion-section-title {
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary);
+}
+
+.initiative-expansion-objectives {
+  margin-top: 1rem;
+}
+
+.initiative-objectives-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.initiative-objectives-table th,
+.initiative-objectives-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+
+.initiative-objectives-table th {
+  background: var(--gray-50);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.initiative-objectives-table .task-description-small-cell {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.initiative-objectives-table .task-actions-cell {
+  white-space: nowrap;
+}
+
+.initiative-objective-edit-form {
+  padding: 0.5rem 0;
+}
+
+.initiative-objective-edit-form .form-row,
+.initiative-add-objective-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.initiative-add-objective-form {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.initiative-add-objective-row input[type="text"]:first-of-type {
+  flex: 1;
+  min-width: 120px;
+}
+
+.initiative-add-objective-row .initiative-add-objective-description {
+  flex: 1;
+  min-width: 160px;
+}
+
+.initiative-add-objective-row .initiative-add-objective-priority {
+  min-width: 120px;
+}
+
 .progress-summary-bar {
   width: 100%;
   height: 0.75rem;
