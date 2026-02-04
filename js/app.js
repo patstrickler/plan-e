@@ -5177,26 +5177,12 @@ function getMilestoneIdFromFunctionalRequirement(projectId, functionalRequiremen
   const project = storage.getProject(projectId);
   if (!project) return '';
 
-  const functionalRequirement = (project.functionalRequirements || []).find(fr => fr.id === functionalRequirementId);
+  const functionalRequirement = (project.requirements || []).find(fr => fr.id === functionalRequirementId);
   if (!functionalRequirement) return '';
 
-  if (functionalRequirement.milestoneId) {
-    return functionalRequirement.milestoneId;
-  }
-
-  const requirements = project.requirements || [];
-  const linkedRequirements = Array.isArray(functionalRequirement.linkedUserRequirements)
-    ? functionalRequirement.linkedUserRequirements
-    : [];
-
-  for (const requirementId of linkedRequirements) {
-    const requirement = requirements.find(r => r.id === requirementId);
-    if (requirement?.milestoneId) {
-      return requirement.milestoneId;
-    }
-  }
-
-  return '';
+  const milestones = project.milestones || [];
+  const defaultMilestoneId = getDefaultMilestoneIdForProject(projectId);
+  return defaultMilestoneId || (milestones.length ? milestones[0].id : '');
 }
 
 function getDefaultMilestoneIdForProject(projectId) {
@@ -5573,15 +5559,15 @@ function handleLinkRequirementToExistingFunctionalRequirement(requirement) {
   }
 
   const project = storage.getProject(requirement.projectId);
-  const functionalRequirement = project?.functionalRequirements?.find(fr => fr.id === functionalRequirementId);
+  const functionalRequirement = (project?.requirements || []).find(fr => fr.id === functionalRequirementId);
   if (!functionalRequirement) {
-    alert('The selected functional requirement could not be found.');
+    alert('The selected requirement could not be found.');
     return;
   }
 
   const linkedReqs = new Set(functionalRequirement.linkedUserRequirements || []);
   if (linkedReqs.has(requirement.id)) {
-    alert('This user requirement is already linked to the selected functional requirement.');
+    alert('This requirement is already linked to the selected requirement.');
     return;
   }
   linkedReqs.add(requirement.id);
@@ -5600,9 +5586,9 @@ function handleLinkRequirementToExistingFunctionalRequirement(requirement) {
 
 function handleUnlinkFunctionalRequirementFromRequirement(requirement, functionalRequirementId) {
   const project = storage.getProject(requirement.projectId);
-  const functionalRequirement = project?.functionalRequirements?.find(fr => fr.id === functionalRequirementId);
+  const functionalRequirement = (project?.requirements || []).find(fr => fr.id === functionalRequirementId);
   if (!project || !functionalRequirement) {
-    alert('The linked FRS could not be found.');
+    alert('The linked requirement could not be found.');
     return;
   }
 
