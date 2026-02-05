@@ -247,57 +247,6 @@ export function deleteProject(id) {
   return data.projects.length < initialLength;
 }
 
-export function createObjective(projectId, objective) {
-  const data = readData();
-  const project = data.projects.find(p => p.id === projectId);
-  if (!project) throw new Error('Project not found');
-  if (!project.objectives) project.objectives = [];
-  const newObjective = {
-    id: `objective-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name: objective.name ?? '',
-    description: objective.description ?? '',
-    priority: objective.priority ?? '',
-    ...objective,
-  };
-  project.objectives.push(newObjective);
-  project.updatedAt = new Date().toISOString();
-  writeData(data);
-  return newObjective;
-}
-
-export function updateObjective(projectId, objectiveId, updates) {
-  const data = readData();
-  const project = data.projects.find(p => p.id === projectId);
-  if (!project || !project.objectives) return null;
-  const idx = project.objectives.findIndex(o => o.id === objectiveId);
-  if (idx === -1) return null;
-  project.objectives[idx] = {
-    ...project.objectives[idx],
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
-  project.updatedAt = new Date().toISOString();
-  writeData(data);
-  return project.objectives[idx];
-}
-
-export function deleteObjective(projectId, objectiveId) {
-  const data = readData();
-  const project = data.projects.find(p => p.id === projectId);
-  if (!project || !project.objectives) return false;
-  const initialLength = project.objectives.length;
-  project.objectives = project.objectives.filter(o => o.id !== objectiveId);
-  // Clear objective reference from requirements that pointed to this objective
-  if (project.requirements) {
-    project.requirements.forEach((r) => {
-      if (r.objectiveId === objectiveId) r.objectiveId = undefined;
-    });
-  }
-  project.updatedAt = new Date().toISOString();
-  writeData(data);
-  return project.objectives.length < initialLength;
-}
-
 export function createMilestone(projectId, milestone) {
   const data = readData();
   const project = data.projects.find(p => p.id === projectId);

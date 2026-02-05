@@ -5,6 +5,7 @@ let currentView = 'projects';
 const DEFAULT_VIEW = 'projects';
 const VIEW_HASH_MAP = {
   projects: '#initiatives',
+  milestones: '#milestones',
   tasks: '#tasks',
   capacity: '#capacity',
   progress: '#progress',
@@ -14,9 +15,8 @@ const VIEW_HASH_MAP = {
 const HASH_VIEW_MAP = Object.fromEntries(
   Object.entries(VIEW_HASH_MAP).map(([view, hash]) => [hash.toLowerCase(), view])
 );
-// Redirect legacy hashes to initiatives
+// Redirect legacy hashes
 HASH_VIEW_MAP['#projects'] = 'projects';
-HASH_VIEW_MAP['#milestones'] = 'projects';
 const state = {
   projects: [],
   expandedProjects: new Set(),
@@ -65,7 +65,6 @@ const state = {
   activeFunctionalRequirementId: null,
   activeMilestoneId: null,
   expandedProjectId: null,
-  editingObjectiveId: null,
 };
 
 let isUpdatingRequirementProjectFilter = false;
@@ -136,7 +135,7 @@ const csvTemplates = {
     sampleRow: ['Plan-E Platform', 'Platform Launch', 'Deliver MVP functionality', '2025-12-31'],
   },
   requirements: {
-    headers: ['Initiative Title', 'Tracking ID', 'Objective Name', 'Type', 'Requirement Title', 'Acceptance Criteria', 'Risk'],
+    headers: ['Initiative Title', 'Tracking ID', 'Type', 'Requirement Title', 'Acceptance Criteria', 'Risk'],
     sampleRow: ['Plan-E Platform', 'REQ-101', 'Improve security', 'user', 'Users can sign in', 'Allow secure authentication before showing dashboards', 'high'],
   },
   functionalRequirements: {
@@ -150,7 +149,7 @@ const csvTemplates = {
 };
 
 const milestoneExportHeaders = ['Initiative Title', 'Milestone Title', 'Description', 'Target Date (YYYY-MM-DD)', 'Tasks Completed', 'Total Tasks', 'Progress (%)'];
-const requirementExportHeaders = ['Initiative Title', 'Tracking ID', 'Objective', 'Type', 'Requirement Title', 'Acceptance Criteria', 'Risk', 'Linked Tasks', 'Effort (pts)'];
+const requirementExportHeaders = ['Initiative Title', 'Tracking ID', 'Type', 'Requirement Title', 'Acceptance Criteria', 'Risk', 'Linked Tasks', 'Effort (pts)'];
 const functionalRequirementExportHeaders = ['Initiative Title', 'Requirement Title', 'Description', 'Type', 'Linked Tasks', 'Progress (%)'];
 const taskExportHeaders = ['Initiative Title', 'Milestone Title', 'Requirement Title', 'Task Title', 'Description', 'Effort', 'Assigned Resource', 'Due Date (YYYY-MM-DD)', 'Status'];
 
@@ -427,7 +426,7 @@ function initializeViewFromHash() {
 function showView(viewName) {
   currentView = viewName;
   if (elements.projectsView) elements.projectsView.style.display = viewName === 'projects' ? 'block' : 'none';
-  if (elements.milestonesView) elements.milestonesView.style.display = 'none';
+  if (elements.milestonesView) elements.milestonesView.style.display = viewName === 'milestones' ? 'block' : 'none';
   if (elements.tasksView) elements.tasksView.style.display = viewName === 'tasks' ? 'block' : 'none';
   if (elements.capacityView) elements.capacityView.style.display = viewName === 'capacity' ? 'block' : 'none';
   if (elements.progressView) elements.progressView.style.display = viewName === 'progress' ? 'block' : 'none';
@@ -437,6 +436,8 @@ function showView(viewName) {
   
   if (viewName === 'projects') {
     renderProjects();
+  } else if (viewName === 'milestones') {
+    renderMilestones();
   } else if (viewName === 'tasks') {
     renderTasks();
     renderCapacity();
@@ -869,19 +870,12 @@ function setupEventListeners() {
     document.getElementById('requirement-title').focus();
   });
 
-  // Handle project change to populate objectives
-  document.getElementById('requirement-project')?.addEventListener('change', (e) => {
-    populateObjectiveSelect('requirement-objective', e.target.value);
-  });
-
   document.getElementById('cancel-requirement-btn')?.addEventListener('click', () => {
     document.getElementById('requirement-tracking-id').value = '';
     document.getElementById('requirement-title').value = '';
     document.getElementById('requirement-description').value = '';
     document.getElementById('requirement-type').value = 'user';
     clearRiskAssessmentForm('requirement-');
-    const objectiveSelect = document.getElementById('requirement-objective');
-    if (objectiveSelect) objectiveSelect.innerHTML = '<option value="">None</option>';
     closeModal();
   });
   elements.newRequirementForm?.addEventListener('change', (e) => {
@@ -891,7 +885,6 @@ function setupEventListeners() {
   elements.newRequirementForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     const projectId = document.getElementById('requirement-project').value;
-    const objectiveId = document.getElementById('requirement-objective').value || undefined;
     const type = document.getElementById('requirement-type').value || 'user';
     const trackingId = document.getElementById('requirement-tracking-id').value.trim();
     const title = document.getElementById('requirement-title').value.trim();
@@ -905,18 +898,14 @@ function setupEventListeners() {
         trackingId: trackingId || undefined,
         title, 
         description: description || undefined,
-        objectiveId,
         type,
         riskAssessment: riskAssessment || undefined
       });
       document.getElementById('requirement-tracking-id').value = '';
       document.getElementById('requirement-title').value = '';
       document.getElementById('requirement-description').value = '';
-      document.getElementById('requirement-objective').value = '';
       document.getElementById('requirement-type').value = 'user';
       document.getElementById('requirement-risk').value = '';
-      const objectiveSelect = document.getElementById('requirement-objective');
-      if (objectiveSelect) objectiveSelect.innerHTML = '<option value="">None</option>';
       clearRiskAssessmentForm('requirement-');
       closeModal();
       renderRequirements();
@@ -1194,9 +1183,6 @@ function setupEventListeners() {
     populateProjectSelect('edit-requirement-project');
     document.getElementById('edit-requirement-project').value = requirement.projectId;
     
-    // Populate objective
-    populateObjectiveSelect('edit-requirement-objective', requirement.projectId, requirement.objectiveId);
-    
     // Populate risk assessment (T0085)
     const ra = requirement.riskAssessment;
     const setRisk = (suffix, val) => {
@@ -1390,7 +1376,6 @@ function setupEventListeners() {
     const titleInput = document.getElementById('edit-requirement-title');
     const descriptionInput = document.getElementById('edit-requirement-description');
     const projectSelect = document.getElementById('edit-requirement-project');
-    const objectiveSelect = document.getElementById('edit-requirement-objective');
     const typeSelect = document.getElementById('edit-requirement-type');
     
     const requirementId = requirementIdInput ? requirementIdInput.value : '';
@@ -1399,7 +1384,6 @@ function setupEventListeners() {
     const title = titleInput ? titleInput.value.trim() : '';
     const description = descriptionInput ? descriptionInput.value.trim() : '';
     const newProjectId = projectSelect ? projectSelect.value : projectId;
-    const objectiveId = objectiveSelect ? objectiveSelect.value || undefined : undefined;
     const type = typeSelect ? typeSelect.value || 'user' : 'user';
     
     if (!title || !newProjectId || !requirementId) return;
@@ -1409,7 +1393,6 @@ function setupEventListeners() {
       trackingId: trackingId || undefined,
       title,
       description: description || undefined,
-      objectiveId,
       type,
       riskAssessment: riskAssessment ?? null
     };
@@ -1426,12 +1409,6 @@ function setupEventListeners() {
   });
   editRequirementForm?.addEventListener('change', (e) => {
     if (e.target.classList.contains('risk-factor-select')) updateRiskValueDisplay('edit-requirement-');
-  });
-
-  document.getElementById('edit-requirement-project')?.addEventListener('change', (e) => {
-    if (e && e.target && e.target.value !== undefined) {
-      populateObjectiveSelect('edit-requirement-objective', e.target.value);
-    }
   });
 
   // Edit Functional Requirement Form handlers
@@ -1800,9 +1777,6 @@ function exportRequirementsToCsv() {
   const pointsMap = new Map(effortLevels.map(e => [e.id, Number(e.points) || 0]));
   const tasks = storage.getAllTasks();
   const rows = requirements.map(requirement => {
-    const project = requirement.project;
-    const objective = project?.objectives?.find(o => o.id === requirement.objectiveId);
-    const objectiveName = objective?.name || '';
     const type = requirement.type || 'user';
     const riskLabel = riskLevels.find(r => r.id === requirement.risk)?.label || '';
     const linkedTasks = tasks.filter(t => t.requirementId === requirement.id);
@@ -1810,7 +1784,6 @@ function exportRequirementsToCsv() {
     return [
       requirement.project?.title || '',
       requirement.trackingId || '',
-      objectiveName,
       type,
       requirement.title || '',
       requirement.description || '',
@@ -1907,7 +1880,6 @@ function importRequirementsFromCsv(rows) {
   rows.forEach((row, index) => {
     const rowNumber = index + 2;
     const projectTitle = getRowValue(row, ['initiative title', 'project title', 'project']).trim();
-    const objectiveName = getRowValue(row, ['objective name', 'objective']).trim();
     const typeValue = getRowValue(row, ['type']).trim().toLowerCase() || 'user';
     const requirementTitle = getRowValue(row, ['requirement title', 'title', 'requirement']).trim();
     const acceptanceCriteria = getRowValue(row, ['acceptance criteria', 'criteria', 'description']).trim();
@@ -1922,12 +1894,6 @@ function importRequirementsFromCsv(rows) {
     if (!project) {
       errors.push(`Row ${rowNumber}: Initiative "${projectTitle}" not found.`);
       return;
-    }
-
-    let objectiveId;
-    if (objectiveName && project.objectives) {
-      const objective = project.objectives.find(o => (o.name || '').toLowerCase() === objectiveName.toLowerCase());
-      if (objective) objectiveId = objective.id;
     }
 
     const type = ['user', 'system', 'admin'].includes(typeValue) ? typeValue : 'user';
@@ -1946,7 +1912,6 @@ function importRequirementsFromCsv(rows) {
         trackingId: trackingId || undefined,
         title: requirementTitle,
         description: acceptanceCriteria || undefined,
-        objectiveId: objectiveId || undefined,
         type,
         risk: risk || undefined,
       });
@@ -2115,16 +2080,6 @@ function sortProjects(projects) {
   return sorted;
 }
 
-function getObjectiveRequirementAndTaskCounts(projectId, objectiveId) {
-  const project = storage.getProject(projectId);
-  if (!project) return { requirementCount: 0, taskCount: 0, tasks: [] };
-  const requirements = (project.requirements || []).filter(r => r.objectiveId === objectiveId);
-  const requirementIds = new Set(requirements.map(r => r.id));
-  const allTasks = storage.getAllTasks();
-  const tasks = allTasks.filter(t => t.projectId === projectId && t.requirementId && requirementIds.has(t.requirementId));
-  return { requirementCount: requirements.length, taskCount: tasks.length, tasks };
-}
-
 function getInitiativeTasks(projectId) {
   const project = storage.getProject(projectId);
   if (!project) return [];
@@ -2137,75 +2092,14 @@ function renderInitiativeExpansionRow(project) {
   if (state.expandedProjectId !== project.id) return '';
   const users = storage.getUsers();
   const stakeholders = storage.getStakeholders();
-  const priorities = storage.getPriorities();
   const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
   const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
   const developmentTeamNames = (project.developmentTeam || []).map(id => users.find(u => u.id === id)?.name || id).filter(Boolean);
   const stakeholderNames = (project.stakeholders || []).map(id => stakeholders.find(s => s.id === id)?.name || id).filter(Boolean);
-  const objectives = project.objectives || [];
-
-  const objectiveRows = objectives.map(o => {
-    const { requirementCount, taskCount, tasks: objectiveTasks } = getObjectiveRequirementAndTaskCounts(project.id, o.id);
-    const objectiveProgress = buildProgressSegments(objectiveTasks);
-    const isEditing = state.editingObjectiveId === o.id;
-    if (isEditing) {
-      const priorityOpts = getObjectivePriorityOptionsHtml(o.priority || '');
-      return `
-        <tr class="initiative-objective-row initiative-objective-edit-row" data-project-id="${project.id}" data-objective-id="${o.id}">
-          <td colspan="7">
-            <div class="initiative-objective-edit-form">
-              <div class="form-row">
-                <div class="form-group" style="flex: 1;">
-                  <label>Name</label>
-                  <input type="text" class="initiative-objective-edit-name" value="${escapeHtml(o.name || '')}" placeholder="Objective name">
-                </div>
-                <div class="form-group" style="min-width: 120px;">
-                  <label>Priority</label>
-                  <select class="initiative-objective-edit-priority">${priorityOpts}</select>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>Description</label>
-                <textarea class="initiative-objective-edit-description" rows="2" placeholder="Description (optional)">${escapeHtml(o.description || '')}</textarea>
-              </div>
-              <div class="form-actions">
-                <button type="button" class="btn btn-primary btn-sm save-objective-initiative-view" data-project-id="${project.id}" data-objective-id="${o.id}">Save</button>
-                <button type="button" class="btn btn-secondary btn-sm cancel-edit-objective-initiative-view">Cancel</button>
-              </div>
-            </div>
-          </td>
-        </tr>
-      `;
-    }
-    const priorityOpts = getObjectivePriorityOptionsHtml(o.priority || '');
-    const selectedPriority = priorities.find(p => p.id === o.priority);
-    const priorityColor = selectedPriority?.color || '';
-    const priorityStyle = priorityColor ? `style="background-color: ${escapeHtml(priorityColor)}; color: #fff; border-color: ${escapeHtml(priorityColor)};"` : '';
-    return `
-      <tr class="initiative-objective-row" data-project-id="${project.id}" data-objective-id="${o.id}">
-        <td>${escapeHtml(o.name || '—')}</td>
-        <td class="initiative-objective-description-cell"><span class="objective-description-text">${o.description ? escapeHtml((o.description || '').replace(/\n/g, ' ')) : '<span class="text-muted">—</span>'}</span></td>
-        <td class="initiative-objective-priority-cell">
-          <select class="objective-priority-select" data-project-id="${project.id}" data-objective-id="${o.id}" ${priorityStyle}>${priorityOpts}</select>
-        </td>
-        <td>${requirementCount}</td>
-        <td>${taskCount}</td>
-        <td class="initiative-objective-progress-cell">
-          <div class="progress-cell">${renderProgressMeter(objectiveProgress.segmentsHtml, objectiveProgress.completedPercent)}</div>
-        </td>
-        <td class="task-actions-cell">
-          <button type="button" class="btn btn-blue btn-xs edit-objective-initiative-view" data-project-id="${project.id}" data-objective-id="${o.id}">Edit</button>
-          <button type="button" class="btn btn-red btn-xs delete-objective-initiative-view" data-project-id="${project.id}" data-objective-id="${o.id}">Delete</button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  const addObjectivePriorityOpts = getObjectivePriorityOptionsHtml('');
 
   return `
     <tr class="initiative-expansion-row" data-project-id="${project.id}">
-      <td colspan="9">
+      <td colspan="7">
         <div class="initiative-expansion-panel">
           <div class="initiative-expansion-body">
             ${project.description ? `<p><strong>Description</strong><br>${escapeHtml(project.description)}</p>` : ''}
@@ -2215,44 +2109,6 @@ function renderInitiativeExpansionRow(project) {
               <p><strong>Product lead</strong> ${ownerName ? escapeHtml(ownerName) : '—'} · <strong>Technical lead</strong> ${devLeadName ? escapeHtml(devLeadName) : '—'}</p>
               ${developmentTeamNames.length ? `<p><strong>Development team</strong> ${developmentTeamNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
               ${stakeholderNames.length ? `<p><strong>Stakeholders</strong> ${stakeholderNames.map(n => escapeHtml(n)).join(', ')}</p>` : ''}
-            </div>
-            <div class="initiative-expansion-objectives">
-              <h4 class="initiative-expansion-section-title">Objectives</h4>
-              <table class="initiative-objectives-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Priority</th>
-                    <th>Requirements</th>
-                    <th>Tasks</th>
-                    <th>Progress</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${objectiveRows}
-                </tbody>
-              </table>
-              <form class="initiative-add-objective-form" data-project-id="${project.id}">
-                <div class="form-row initiative-add-objective-row">
-                  <div class="form-group" style="flex: 1; min-width: 0;">
-                    <label for="initiative-add-objective-name-${project.id}">Name</label>
-                    <input type="text" id="initiative-add-objective-name-${project.id}" class="initiative-add-objective-name" placeholder="Objective name" required>
-                  </div>
-                  <div class="form-group" style="flex: 1; min-width: 0;">
-                    <label for="initiative-add-objective-desc-${project.id}">Description</label>
-                    <input type="text" id="initiative-add-objective-desc-${project.id}" class="initiative-add-objective-description" placeholder="Optional">
-                  </div>
-                  <div class="form-group" style="min-width: 120px;">
-                    <label for="initiative-add-objective-priority-${project.id}">Priority</label>
-                    <select id="initiative-add-objective-priority-${project.id}" class="initiative-add-objective-priority">${addObjectivePriorityOpts}</select>
-                  </div>
-                  <div class="form-group" style="align-self: flex-end;">
-                    <button type="submit" class="btn btn-primary btn-sm">Add objective</button>
-                  </div>
-                </div>
-              </form>
             </div>
           </div>
         </div>
@@ -2264,7 +2120,6 @@ function renderInitiativeExpansionRow(project) {
 function renderProjectsTable(projects) {
   const users = storage.getUsers();
   const stakeholders = storage.getStakeholders();
-  const priorities = storage.getPriorities();
   const rowPairs = projects.map(project => {
     const ownerName = project.owner ? (users.find(u => u.id === project.owner)?.name || '') : '';
     const devLeadName = project.devLead ? (users.find(u => u.id === project.devLead)?.name || '') : '';
@@ -2276,8 +2131,6 @@ function renderProjectsTable(projects) {
     const stakeholdersDisplay = stakeholderNames.length
       ? stakeholderNames.map(n => escapeHtml(n)).join(', ')
       : '<span class="text-muted">—</span>';
-    const objectives = project.objectives || [];
-    const objectivesDisplay = objectives.length ? String(objectives.length) : '<span class="text-muted">—</span>';
     const initiativeTasks = getInitiativeTasks(project.id);
     const initiativeProgress = buildProgressSegments(initiativeTasks);
     const progressCell = `<div class="progress-cell">${renderProgressMeter(initiativeProgress.segmentsHtml, initiativeProgress.completedPercent)}</div>`;
@@ -2289,7 +2142,6 @@ function renderProjectsTable(projects) {
           <strong>${escapeHtml(project.title)}</strong>
           ${project.description ? `<div class="task-description-small">${escapeHtml(project.description)}</div>` : ''}
         </td>
-        <td>${objectivesDisplay}</td>
         <td>${ownerName ? escapeHtml(ownerName) : '<span class="text-muted">—</span>'}</td>
         <td>${devLeadName ? escapeHtml(devLeadName) : '<span class="text-muted">—</span>'}</td>
         <td class="initiative-list-cell">${developmentTeamDisplay}</td>
@@ -2314,7 +2166,6 @@ function renderProjectsTable(projects) {
       <thead>
         <tr>
           <th class="${getSortClass('title')}" data-sort-column="title">Initiative${getSortIndicator('title')}</th>
-          <th>Objectives</th>
           <th>Product lead</th>
           <th>Technical lead</th>
           <th>Development team</th>
@@ -2369,7 +2220,6 @@ function renderProjects() {
     row.addEventListener('click', () => {
       const projectId = row.getAttribute('data-project-id');
       state.expandedProjectId = state.expandedProjectId === projectId ? null : projectId;
-      state.editingObjectiveId = null;
       renderProjects();
     });
   });
@@ -3136,15 +2986,6 @@ function sortRequirements(requirements) {
         aVal = a.project?.title || '';
         bVal = b.project?.title || '';
         break;
-      case 'objective': {
-        const aProj = state.projects.find(p => p.id === a.projectId);
-        const bProj = state.projects.find(p => p.id === b.projectId);
-        const aObj = aProj?.objectives?.find(o => o.id === a.objectiveId);
-        const bObj = bProj?.objectives?.find(o => o.id === b.objectiveId);
-        aVal = aObj?.name || '';
-        bVal = bObj?.name || '';
-        break;
-      }
       case 'type':
         aVal = a.type || 'user';
         bVal = b.type || 'user';
@@ -3227,7 +3068,6 @@ function renderRequirementsTable(requirements) {
     }
 
     const project = state.projects.find(p => p.id === r.projectId);
-    const objective = project?.objectives?.find(o => o.id === r.objectiveId);
     const typeLabel = (r.type || 'user').charAt(0).toUpperCase() + (r.type || 'user').slice(1);
     const linkedTasks = allTasks.filter(t => t.requirementId === r.id);
     const effortSum = linkedTasks.reduce((s, t) => s + (pointsMap.get(t.effortLevel) || 0), 0);
@@ -3247,7 +3087,6 @@ function renderRequirementsTable(requirements) {
           ${r.description ? `<div class="task-description-small">${escapeHtml(r.description)}</div>` : ''}
         </td>
         <td class="task-project-cell">${escapeHtml(r.project.title)}</td>
-        <td class="task-objective-cell">${objective ? escapeHtml(objective.name) : '<span class="text-muted">—</span>'}</td>
         <td>${typeLabel}</td>
         <td class="requirement-risk-value-cell">${r.riskValue !== undefined && r.riskValue !== null ? escapeHtml(String(r.riskValue)) : '<span class="text-muted">—</span>'}</td>
         <td>${linkedTasks.length}</td>
@@ -3283,7 +3122,6 @@ function renderRequirementsTable(requirements) {
           <th class="${getSortClass('trackingId')}" data-sort-column="trackingId">Tracking ID${getSortIndicator('trackingId')}</th>
           <th class="${getSortClass('title')}" data-sort-column="title">Requirement${getSortIndicator('title')}</th>
           <th class="${getSortClass('project')}" data-sort-column="project">Initiative${getSortIndicator('project')}</th>
-          <th class="${getSortClass('objective')}" data-sort-column="objective">Objective${getSortIndicator('objective')}</th>
           <th class="${getSortClass('type')}" data-sort-column="type">Type${getSortIndicator('type')}</th>
           <th class="${getSortClass('riskValue')}" data-sort-column="riskValue">Risk value${getSortIndicator('riskValue')}</th>
           <th class="${getSortClass('linkedTasks')}" data-sort-column="linkedTasks">Linked Tasks${getSortIndicator('linkedTasks')}</th>
@@ -3317,45 +3155,18 @@ function getRequirementMilestoneOptions(projectId, selectedMilestoneId = '') {
   return '<option value="">None</option>' + milestoneOptions;
 }
 
-function getRequirementObjectiveOptions(projectId, selectedObjectiveId = '') {
-  const project = state.projects.find(p => p.id === projectId);
-  if (!project) {
-    return '<option value="">Select initiative first</option>';
-  }
-  const objectives = project.objectives || [];
-  const options = objectives.map(o =>
-    `<option value="${o.id}" ${o.id === selectedObjectiveId ? 'selected' : ''}>${escapeHtml(o.name || o.id)}</option>`
-  ).join('');
-  return '<option value="">None</option>' + options;
-}
-
-function refreshRequirementObjectiveOptions(requirementId, projectId, selectedObjectiveId = '') {
-  const objectiveSelect = document.querySelector(`.requirement-edit-objective-select[data-requirement-id="${requirementId}"]`);
-  if (!objectiveSelect) return;
-  objectiveSelect.innerHTML = projectId
-    ? getRequirementObjectiveOptions(projectId, selectedObjectiveId)
-    : '<option value="">Select initiative first</option>';
-}
-
 function renderRequirementEditRow(requirement) {
   const projectOptions = getRequirementProjectOptions(requirement.projectId);
-  const objectiveOptions = getRequirementObjectiveOptions(requirement.projectId, requirement.objectiveId);
 
   return `
     <tr class="task-table-row requirement-edit-row" data-requirement-id="${requirement.id}">
-      <td colspan="10">
+      <td colspan="9">
         <div class="requirement-edit-form">
           <div class="form-row">
             <div class="form-group">
               <label for="requirement-edit-project-${requirement.id}">Initiative *</label>
               <select id="requirement-edit-project-${requirement.id}" class="requirement-edit-project-select" data-requirement-id="${requirement.id}">
                 ${projectOptions}
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="requirement-edit-objective-${requirement.id}">Objective</label>
-              <select id="requirement-edit-objective-${requirement.id}" class="requirement-edit-objective-select" data-requirement-id="${requirement.id}">
-                ${objectiveOptions}
               </select>
             </div>
             <div class="form-group">
@@ -3490,7 +3301,7 @@ function renderRequirementExpansionRow(requirement) {
 
   return `
     <tr class="requirement-expansion-row" data-requirement-id="${requirement.id}">
-      <td colspan="10">
+      <td colspan="9">
         <div class="requirement-expansion-panel">
           <div class="requirement-expansion-header">
             <div class="requirement-expansion-criteria-container">
@@ -5427,23 +5238,6 @@ function populateUserSelect(selectId) {
     users.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('');
 }
 
-function getObjectiveRowHtml(priorityOptionsHtml, name = '', priorityId = '') {
-  return `
-    <div class="objective-row" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
-      <input type="text" class="objective-name" placeholder="Objective name" value="${escapeHtml(name)}" style="flex: 1; min-width: 0;">
-      <select class="objective-priority" style="min-width: 120px;">${priorityOptionsHtml}</select>
-      <button type="button" class="btn btn-secondary btn-sm remove-objective-row">Remove</button>
-    </div>
-  `;
-}
-
-function getObjectivePriorityOptionsHtml(selectedId = '') {
-  const priorities = storage.getPriorities();
-  return '<option value="">None</option>' + priorities.map(p =>
-    `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${escapeHtml(p.label)}</option>`
-  ).join('');
-}
-
 function populateStakeholderMultiSelect(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
@@ -5599,21 +5393,6 @@ function populateUserSelectElement(select, selectedValue = '') {
   select.innerHTML = getUserOptionsHtml(selectedValue);
 }
 
-function populateObjectiveSelect(selectId, projectId, selectedValue = '') {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-  const project = state.projects.find(p => p.id === projectId);
-  if (!projectId || !project) {
-    select.innerHTML = '<option value="">None</option>';
-    return;
-  }
-  const objectives = project.objectives || [];
-  const options = objectives.map(o =>
-    `<option value="${o.id}" ${selectedValue === o.id ? 'selected' : ''}>${escapeHtml(o.name || o.id)}</option>`
-  ).join('');
-  select.innerHTML = '<option value="">None</option>' + options;
-}
-
 function populateRiskSelect(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
@@ -5636,6 +5415,8 @@ function updateAllSelects() {
   // Re-render views to update all dynamic selects
   if (currentView === 'projects') {
     renderProjects();
+  } else if (currentView === 'milestones') {
+    renderMilestones();
   } else if (currentView === 'tasks') {
     renderTasks();
     populateTaskFilters();
@@ -5675,112 +5456,7 @@ function attachProjectListeners(project) {
 }
 
 function attachInitiativeExpansionListeners(project) {
-  const projectId = project.id;
-
-  document.querySelectorAll(`.objective-priority-select[data-project-id="${projectId}"]`).forEach(select => {
-    select.addEventListener('change', (e) => {
-      e.stopPropagation();
-      const objectiveId = select.getAttribute('data-objective-id');
-      const newPriority = select.value || undefined;
-      try {
-        storage.updateObjective(projectId, objectiveId, { priority: newPriority });
-        loadProjects();
-        renderProjects();
-        if (state.expandedProjectId === projectId) {
-          const expandedProject = state.projects.find(p => p.id === projectId);
-          if (expandedProject) attachInitiativeExpansionListeners(expandedProject);
-        }
-      } catch (err) {
-        console.error('Failed to update objective priority:', err);
-        alert('Failed to update priority');
-      }
-    });
-  });
-
-  document.querySelectorAll(`.edit-objective-initiative-view[data-project-id="${projectId}"]`).forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      state.editingObjectiveId = btn.getAttribute('data-objective-id');
-      renderProjects();
-    });
-  });
-
-  document.querySelectorAll(`.delete-objective-initiative-view[data-project-id="${projectId}"]`).forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const objectiveId = btn.getAttribute('data-objective-id');
-      const objective = (project.objectives || []).find(o => o.id === objectiveId);
-      if (!confirm(`Delete objective "${objective?.name || 'this objective'}"?`)) return;
-      try {
-        storage.deleteObjective(projectId, objectiveId);
-        state.editingObjectiveId = null;
-        loadProjects();
-        renderProjects();
-      } catch (err) {
-        console.error('Failed to delete objective:', err);
-        alert('Failed to delete objective');
-      }
-    });
-  });
-
-  document.querySelectorAll(`.save-objective-initiative-view[data-project-id="${projectId}"]`).forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const objectiveId = btn.getAttribute('data-objective-id');
-      const row = btn.closest('.initiative-objective-edit-row');
-      const nameInput = row?.querySelector('.initiative-objective-edit-name');
-      const descInput = row?.querySelector('.initiative-objective-edit-description');
-      const prioritySelect = row?.querySelector('.initiative-objective-edit-priority');
-      const name = nameInput?.value?.trim() || '';
-      if (!name) {
-        alert('Objective name is required');
-        return;
-      }
-      try {
-        storage.updateObjective(projectId, objectiveId, {
-          name,
-          description: descInput?.value?.trim() || '',
-          priority: prioritySelect?.value || undefined,
-        });
-        state.editingObjectiveId = null;
-        loadProjects();
-        renderProjects();
-      } catch (err) {
-        console.error('Failed to update objective:', err);
-        alert('Failed to update objective');
-      }
-    });
-  });
-
-  document.querySelectorAll('#projects-list .cancel-edit-objective-initiative-view').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      state.editingObjectiveId = null;
-      renderProjects();
-    });
-  });
-
-  const addForm = document.querySelector(`.initiative-add-objective-form[data-project-id="${projectId}"]`);
-  addForm?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const nameInput = addForm.querySelector('.initiative-add-objective-name');
-    const descInput = addForm.querySelector('.initiative-add-objective-description');
-    const prioritySelect = addForm.querySelector('.initiative-add-objective-priority');
-    const name = nameInput?.value?.trim() || '';
-    if (!name) return;
-    try {
-      storage.createObjective(projectId, {
-        name,
-        description: descInput?.value?.trim() || '',
-        priority: prioritySelect?.value || undefined,
-      });
-      loadProjects();
-      renderProjects();
-    } catch (err) {
-      console.error('Failed to create objective:', err);
-      alert('Failed to create objective');
-    }
-  });
+  // No objective listeners; objectives concept removed
 }
 
 function attachMilestoneViewListeners(milestone) {
@@ -5842,22 +5518,15 @@ function attachRequirementViewListeners(requirement) {
     }
   });
 
-  // Project change should refresh objective options
-  document.querySelector(`.requirement-edit-project-select[data-requirement-id="${requirementId}"]`)?.addEventListener('change', (e) => {
-    refreshRequirementObjectiveOptions(requirementId, e.target.value);
-  });
-
   // Save requirement
   document.querySelector(`.save-edit-requirement[data-requirement-id="${requirementId}"]`)?.addEventListener('click', () => {
     const projectSelect = document.querySelector(`.requirement-edit-project-select[data-requirement-id="${requirementId}"]`);
-    const objectiveSelect = document.querySelector(`.requirement-edit-objective-select[data-requirement-id="${requirementId}"]`);
     const typeSelect = document.querySelector(`.requirement-edit-type[data-requirement-id="${requirementId}"]`);
     const trackingIdInput = document.querySelector(`.requirement-edit-tracking[data-requirement-id="${requirementId}"]`);
     const titleInput = document.querySelector(`.requirement-edit-title[data-requirement-id="${requirementId}"]`);
     const descriptionInput = document.querySelector(`.requirement-edit-description[data-requirement-id="${requirementId}"]`);
     
     const newProjectId = projectSelect ? projectSelect.value : '';
-    const objectiveId = objectiveSelect ? objectiveSelect.value || undefined : undefined;
     const type = typeSelect ? typeSelect.value || 'user' : 'user';
     const trackingId = trackingIdInput ? trackingIdInput.value.trim() : '';
     const title = titleInput ? titleInput.value.trim() : '';
@@ -5871,7 +5540,6 @@ function attachRequirementViewListeners(requirement) {
         trackingId: trackingId || undefined,
         title,
         description: description || undefined,
-        objectiveId,
         type,
         riskAssessment: riskAssessment ?? null
       });

@@ -2131,12 +2131,12 @@ body {
   min-width: 160px;
 }
 /* Product lead, Technical lead, Development team: same width */
+.initiatives-table th:nth-child(2),
 .initiatives-table th:nth-child(3),
 .initiatives-table th:nth-child(4),
-.initiatives-table th:nth-child(5),
+.initiatives-table td:nth-child(2),
 .initiatives-table td:nth-child(3),
-.initiatives-table td:nth-child(4),
-.initiatives-table td:nth-child(5) {
+.initiatives-table td:nth-child(4) {
   width: 100px;
   max-width: 100px;
   word-wrap: break-word;
@@ -2156,8 +2156,7 @@ body {
 .initiatives-table .initiative-list-cell {
   word-wrap: break-word;
 }
-.initiatives-table td:nth-child(5),
-.initiatives-table td:nth-child(6) {
+.initiatives-table td:nth-child(5) {
   max-width: 100px;
 }
 .requirements-fr-link-criteria {
